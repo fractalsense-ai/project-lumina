@@ -536,7 +536,7 @@ def run_demo() -> None:
         if resolved_action in ("zpd_scaffold", "zpd_intervene_or_escalate"):
             total_drift_events += 1
         escalation_records = [
-            r for r in orch._records  # noqa: SLF001
+            r for r in orch.ctl_records
             if r.get("record_type") == "EscalationRecord"
         ]
         if len(escalation_records) > total_escalations:

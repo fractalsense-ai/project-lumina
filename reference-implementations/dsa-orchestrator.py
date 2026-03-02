@@ -378,6 +378,12 @@ class DSAOrchestrator:
 
     # ── State construction ────────────────────────────────────
 
+    @property
+    def ctl_records(self) -> list[dict[str, Any]]:
+        """Read-only view of all CTL records written in this session."""
+        return list(self._records)
+
+
     def _build_learning_state(self) -> LearningState:
         """Construct a LearningState from the loaded student profile dict."""
         ls = self.profile.get("learning_state", {})
@@ -428,9 +434,8 @@ class DSAOrchestrator:
         """Write the session-open CommitmentRecord to the CTL."""
         domain_id = self.domain.get("id", "unknown")
         domain_version = self.domain.get("version", "unknown")
-        actor_id = (
-            self.domain.get("domain_authority", {}).get("pseudonymous_id", "unknown")
-        )
+        domain_authority = self.domain.get("domain_authority") or {}
+        actor_id = domain_authority.get("pseudonymous_id", "unknown")
         record: dict[str, Any] = {
             "record_type": "CommitmentRecord",
             "record_id": str(uuid.uuid4()),
