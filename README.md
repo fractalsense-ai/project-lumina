@@ -102,7 +102,8 @@ project-lumina/
 │   ├── memory-spec-v1.md
 │   ├── audit-log-spec-v1.md
 │   ├── reports-spec-v1.md
-│   └── evaluation-harness-v1.md
+│   ├── evaluation-harness-v1.md
+│   └── orchestrator-system-prompt-v1.md
 ├── governance/                        ← policy templates and role definitions
 │   ├── meta-authority-policy-template.yaml
 │   ├── domain-authority-roles.md
@@ -139,7 +140,9 @@ project-lumina/
 │   ├── zpd-monitor-v0.2.py
 │   ├── zpd-monitor-demo.py
 │   ├── yaml-to-json-converter.py
-│   └── ctl-commitment-validator.py
+│   ├── ctl-commitment-validator.py
+│   ├── dsa-orchestrator.py
+│   └── dsa-orchestrator-demo.py
 └── examples/                          ← worked interaction examples
     ├── README.md
     ├── casual-learning-trace-example.json
@@ -154,7 +157,8 @@ project-lumina/
 2. Read [`specs/dsa-framework-v1.md`](specs/dsa-framework-v1.md) — understand the framework
 3. Browse [`domain-packs/education/algebra-level-1/`](domain-packs/education/algebra-level-1/) — a complete worked domain
 4. Run [`reference-implementations/zpd-monitor-demo.py`](reference-implementations/zpd-monitor-demo.py) — see the ZPD monitor in action
-5. Read [`examples/README.md`](examples/README.md) — walk through a full interaction loop
+5. Run [`reference-implementations/dsa-orchestrator-demo.py`](reference-implementations/dsa-orchestrator-demo.py) — see the full D.S.A. orchestrator loop in action
+6. Read [`examples/README.md`](examples/README.md) — walk through a full interaction loop
 
 ---
 

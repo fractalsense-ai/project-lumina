@@ -12,6 +12,8 @@ This directory contains Python reference implementations of core Project Lumina 
 | `zpd-monitor-demo.py` | Worked demo of the ZPD monitor running a simulated session |
 | `yaml-to-json-converter.py` | Converts and validates domain pack YAML → JSON |
 | `ctl-commitment-validator.py` | CTL hash chain validator and commitment recorder |
+| `dsa-orchestrator.py` | D.S.A. orchestrator: invariant evaluation + ZPD monitor + CTL + prompt contract |
+| `dsa-orchestrator-demo.py` | End-to-end demo of the full D.S.A. Action loop (10-turn scripted session) |
 
 ---
 
@@ -31,6 +33,12 @@ python --version  # Requires 3.10+
 
 ```bash
 python reference-implementations/zpd-monitor-demo.py
+```
+
+### Run the D.S.A. orchestrator demo (full loop)
+
+```bash
+python reference-implementations/dsa-orchestrator-demo.py
 ```
 
 ### Convert and validate a domain pack
@@ -77,3 +85,6 @@ All reference implementations:
 | `zpd-monitor-v0.2.py` | [`../state-management/compressed-state-estimators.md`](../state-management/compressed-state-estimators.md) |
 | `yaml-to-json-converter.py` | [`../specs/domain-profile-spec-v1.md`](../specs/domain-profile-spec-v1.md) |
 | `ctl-commitment-validator.py` | [`../standards/casual-trace-ledger-v1.md`](../standards/casual-trace-ledger-v1.md) |
+| `dsa-orchestrator.py` | [`../specs/dsa-framework-v1.md`](../specs/dsa-framework-v1.md) |
+| `dsa-orchestrator.py` | [`../specs/orchestrator-system-prompt-v1.md`](../specs/orchestrator-system-prompt-v1.md) |
+| `dsa-orchestrator-demo.py` | [`../specs/dsa-framework-v1.md`](../specs/dsa-framework-v1.md) |
