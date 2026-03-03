@@ -13,27 +13,33 @@ Project Lumina governance is built on a **fractal authority structure**: every p
 
 ## Fractal Authority Structure
 
+The fractal authority structure is a generic pattern applicable to any domain:
+
 ```
-Administration
-  Role: Domain Authority for "institutional policy"
-  Meta Authority for: Department Heads
-  Instruments: school-policy domain pack, escalation protocols
+Macro Authority
+  Role: Domain Authority for top-level policy
+  Meta Authority for: Meso Authorities
+  Examples: School Board / Hospital Admin / Corporate Policy
         ↓
-Department Head
-  Role: Domain Authority for "curriculum standards"
-  Meta Authority for: Teachers
-  Instruments: curriculum domain pack, approved tool list
+Meso Authority
+  Role: Domain Authority for operational standards
+  Meta Authority for: Micro Authorities
+  Examples: Curriculum Director / Department Head / Site Manager
         ↓
-Teacher
-  Role: Domain Authority for "what is correct in this subject"
-  Meta Authority for: Students (within their sessions)
-  Instruments: subject domain pack (e.g., algebra-level-1)
+Micro Authority
+  Role: Domain Authority for subject-matter or operational correctness
+  Meta Authority for: Subjects/Targets (within their sessions)
+  Examples: Teacher / Lead Physician / Operator
         ↓
-Student
-  Role: Domain Authority for "their own learning state"
+Subject/Target
+  Role: Domain Authority for their own state and preferences
   Meta Authority for: (no level below)
-  Instruments: student profile, preferences, consent contract
+  Examples: Learner / Patient / Farm Environment
 ```
+
+**Education instantiation:** Administration → Department Head → Teacher → Student  
+**Medical instantiation:** Hospital Admin → Department Head → Lead Physician → Patient  
+**Agriculture instantiation:** Corporate Policy → Site Manager → Operator → Environment
 
 Each level:
 1. **Authors its own Domain Physics** — YAML ruleset defining invariants, standing orders, and escalation triggers within its scope
@@ -111,10 +117,10 @@ Every escalation step must be recorded. An escalation that is not acknowledged w
 
 All stakeholders have the right to audit within their authority scope:
 
-- **Students**: may request a summary of their own CTL records (structured telemetry only, never raw transcripts)
-- **Teachers**: may audit CTL records for sessions within their domain
-- **Department Heads**: may audit teacher-level CTL records
-- **Administration**: may audit all CTL records within the institution
+- **Subject/Target** (e.g., Student, Patient): may request a summary of their own CTL records (structured telemetry only, never raw transcripts)
+- **Micro Authority** (e.g., Teacher, Physician, Operator): may audit CTL records for sessions within their domain
+- **Meso Authority** (e.g., Department Head, Site Manager): may audit Micro Authority-level CTL records
+- **Macro Authority** (e.g., Administration, Hospital Admin, Corporate Policy): may audit all CTL records within their scope
 
 Audit outputs are structured summaries. No audit may produce a transcript — the CTL does not store transcripts.
 
@@ -125,8 +131,8 @@ See [`governance/audit-and-rollback.md`](governance/audit-and-rollback.md) for a
 ## Privacy Policy
 
 - **No transcripts at rest** — this is a hard constraint, not a default
-- **Pseudonymous only** — student identifiers in the CTL are pseudonymous; real identity mapping is held by the institution, not the AI layer
-- **Interests affect generation, never grading** — student preference data may be used for immersion (e.g., a student who likes space gets space-themed algebra problems) but must never influence assessment or mastery scoring
+- **Pseudonymous only** — subject identifiers in the CTL are pseudonymous; real identity mapping is held by the institution, not the AI layer
+- **Interests affect generation, never grading** — subject preference data may be used for immersion (e.g., contextualizing task presentation) but must never influence assessment or outcome scoring
 - **Structured telemetry only** — the CTL records decision summaries, not conversational content
 
 ---
