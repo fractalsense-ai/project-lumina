@@ -64,16 +64,30 @@ See [`GOVERNANCE.md`](GOVERNANCE.md) for governance policies and [`governance/`]
 
 ## Key Principles
 
-1. **Consent and boundaries first** — the magic circle must be established before any session begins
-2. **Measurement, not surveillance** — structured telemetry only; no transcript storage
-3. **Domain-bounded operation** — the AI may not act outside what the Domain Physics authorizes
-4. **Minimal probing** — one probe per drift detection; do not interrogate learners
-5. **Domain Authority is the authority** — AI assists, it does not replace the human expert
-6. **Append-only accountability** — the ledger is never modified, only extended
-7. **Fade support as self-correction grows** — scaffolding reduces as mastery increases
-8. **Do not expand scope without drift justification** — scope creep is a violation
+Principles are organized in two tiers. See [`specs/principles-v1.md`](specs/principles-v1.md) for the full specification.
 
-See [`specs/principles-v1.md`](specs/principles-v1.md) for the full non-negotiables specification.
+### Universal Core Engine Principles
+
+These apply to every Project Lumina interaction, regardless of domain:
+
+1. **Domain-bounded operation** — the AI may not act outside what the Domain Physics authorizes
+2. **Measurement, not surveillance** — structured telemetry only; no transcript storage
+3. **Append-only accountability** — the ledger is never modified, only extended
+4. **Domain Authority is the authority** — AI assists, it does not replace the human expert
+5. **Do not expand scope without drift justification** — scope creep is a violation
+
+*(Principles 6–8 are domain-specific and listed in the next section.)*
+
+9. **Interests affect generation, never grading** — preferences improve immersion; they must not influence assessment
+10. **Pseudonymity by default** — the AI layer does not know who the entity is
+
+### Domain-Specific Principles (Context-Dependent)
+
+These apply only when activated by the domain pack's configuration. When active, they are enforced with the same rigor as universal principles:
+
+6. **Consent and boundaries first** — the magic circle must be established before any session begins *(active when `requires_consent: true` is declared in the domain pack)*
+7. **Minimal probing** — one probe per drift detection; do not interrogate learners *(applies to learner-facing domains)*
+8. **Fade support as self-correction grows** — scaffolding reduces as mastery increases *(applies to domains with mastery tracking / ZPD monitoring)*
 
 ---
 
