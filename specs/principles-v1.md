@@ -88,7 +88,7 @@ Every scope expansion requires an escalation record and Meta Authority approval.
 
 ---
 
-## Principle 9: Interests Affect Generation, Never Grading
+### Principle 6: Interests Affect Generation, Never Grading
 
 **Preferences are for immersion. They must not influence assessment.**
 
@@ -97,14 +97,22 @@ An entity whose profile lists "space" as an interest may receive problems with s
 Preferences must never:
 - Influence mastery scoring
 - Change the difficulty level of assessment tasks
-- Affect which skills are tested
+- Affect which skills or criteria are tested
 - Influence escalation or standing order thresholds
 
 The same equivalence check applies regardless of whether the example involves rockets or apples.
 
 ---
 
-## Principle 10: Pseudonymity by Default
+## Part II — Domain-Specific Principles (Context-Dependent)
+
+These principles are activated by domain pack configuration. When active, they are enforced as non-negotiables within that domain.
+
+---
+
+### Principle 8: Consent and Boundaries First
+
+**Activates when:** `requires_consent: true` is set in the domain pack.
 
 **The AI layer does not know who the entity is.**
 

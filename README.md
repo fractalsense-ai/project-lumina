@@ -6,7 +6,7 @@
 
 ## Vision
 
-Project Lumina builds AI orchestration systems that are **domain-bounded**, **consent-first**, and **accountable without being surveillance**. Every interaction is governed by an explicit Domain Physics ruleset, every decision is traceable via the Casual Trace Ledger, and every authority level is clearly defined.
+Project Lumina builds AI orchestration systems that are **domain-bounded**, **measurement-not-surveillance**, and **accountable at every level**. Every interaction is governed by an explicit Domain Physics ruleset, every decision is traceable via the Casual Trace Ledger, and every authority level is clearly defined.
 
 ---
 
@@ -40,17 +40,19 @@ See [`standards/casual-trace-ledger-v1.md`](standards/casual-trace-ledger-v1.md)
 
 ## Governance Model
 
-Project Lumina uses a **fractal authority structure**: every level is a Domain Authority for its own scope, and a Meta Authority for levels below.
+Project Lumina uses a **fractal authority structure**: every level is a Domain Authority for its own scope, and a Meta Authority for levels below. This is a generic pattern that applies to any domain.
 
 ```
-Administration          (Domain Authority for "school policy")
+Macro Authority    (e.g., Corporate Policy / Hospital Admin / School Board)
     ↓ Meta Authority for ↓
-Department Head         (Domain Authority for "curriculum")
+Meso Authority     (e.g., Site Manager / Dept Head / Curriculum Director)
     ↓ Meta Authority for ↓
-Teacher                 (Domain Authority for "what's correct in algebra")
+Micro Authority    (e.g., Operator / Lead Physician / Teacher)
     ↓ Meta Authority for ↓
-Student                 (Domain Authority for "their own learning state")
+Subject/Target     (e.g., Environment / Patient / Learner)
 ```
+
+Education is one instantiation of this pattern (Administration → Department Head → Teacher → Student). Agriculture (Corporate Policy → Site Manager → Operator → Environment) and medical (Hospital Admin → Department Head → Physician → Patient) are others.
 
 Each level:
 - Authors its own **Domain Physics** (YAML → JSON, version-controlled)

@@ -22,7 +22,7 @@ Every domain pack must include the following artifacts:
 |----------|----------|--------|
 | `domain-physics.yaml` | Yes | [`domain-physics-schema-v1.json`](domain-physics-schema-v1.json) |
 | `domain-physics.json` | Yes (derived) | Same schema |
-| `student-profile-template.yaml` | Yes | [`student-profile-schema-v1.json`](student-profile-schema-v1.json) |
+| `student-profile-template.yaml` | Yes | [`student-profile-schema-v1.json`](student-profile-schema-v1.json) — the education-domain instantiation of the general subject profile pattern; other domains should provide a domain-appropriate profile |
 | `CHANGELOG.md` | Yes | Semver entries |
 | `prompt-contract-schema.json` | Yes | Domain-specific prompt constraints |
 
@@ -78,21 +78,21 @@ See [`casual-trace-ledger-v1.md`](casual-trace-ledger-v1.md) for the full CTL sp
 
 ## 3. Compressed State Conformance
 
-Any system implementing learner state tracking must represent state using the compressed state schema:
+For domains that implement subject state tracking, state must be represented using the compressed state schema. The schema is domain-agnostic; the sensors that populate it are defined per domain in the domain pack's `sensors/` directory.
+
+> **Note:** The fields below reflect the education-domain instantiation. Other domains use the same schema structure but populate fields via their own domain sensor arrays (e.g., an agriculture domain might use different signal sources for `salience` and `mastery`). See [`domain-sensor-array-v1.md`](domain-sensor-array-v1.md) for the sensor array specification.
 
 | Field | Type | Range | Description |
 |-------|------|-------|-------------|
-| `salience` | float | 0..1 | How engaged/focused the learner is |
+| `salience` | float | 0..1 | How engaged/focused the subject is |
 | `valence` | float | -1..1 | Emotional tone (-1 = negative, +1 = positive) |
 | `arousal` | float | 0..1 | Activation level (0 = flat, 1 = highly activated) |
 | `mastery` | dict[skill→float] | 0..1 per skill | Current mastery estimate per skill |
 | `challenge` | float | 0..1 | Estimated challenge level of current task |
-| `uncertainty` | float | 0..1 | Orchestrator's uncertainty about learner state |
-| `zpd_band` | dict | min/max challenge | Zone of Proximal Development band |
+| `uncertainty` | float | 0..1 | Orchestrator's uncertainty about subject state |
+| `zpd_band` | dict | min/max challenge | Zone of Proximal Development band (learner-facing domains only) |
 
 See [`compressed-state-schema-v1.json`](compressed-state-schema-v1.json) for the JSON Schema.
-
-> **Domain Sensor Arrays:** The compressed state schema defines a universal structure, but the sensors that populate it are domain-specific. Each domain pack must define its own sensor array in a `sensors/` directory. See [`domain-sensor-array-v1.md`](domain-sensor-array-v1.md) for the full sensor array specification.
 
 ---
 
@@ -142,7 +142,7 @@ Before publishing a domain pack or implementation:
 - [ ] Domain Physics YAML validates against `domain-physics-schema-v1.json`
 - [ ] At least one `critical` invariant is defined
 - [ ] All standing orders have `max_attempts` and `escalation_on_exhaust` set
-- [ ] Student profile template validates against `student-profile-schema-v1.json`
+- [ ] Subject profile template validates against the appropriate profile schema for the domain
 - [ ] CHANGELOG.md is present and up to date
 - [ ] CTL integration is append-only and hash-chained
 - [ ] No transcript content is stored in the CTL

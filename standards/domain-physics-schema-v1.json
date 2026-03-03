@@ -12,8 +12,7 @@
     "invariants",
     "standing_orders",
     "escalation_triggers",
-    "artifacts",
-    "zpd_config"
+    "artifacts"
   ],
   "additionalProperties": false,
   "properties": {
@@ -71,11 +70,11 @@
     "artifacts": {
       "type": "array",
       "items": { "$ref": "#/$defs/artifact" },
-      "description": "Mastery artifacts that can be earned in this domain"
+      "description": "Domain artifacts (achievements, milestones) that can be earned in this domain"
     },
     "zpd_config": {
       "$ref": "#/$defs/zpd_config",
-      "description": "Zone of Proximal Development configuration"
+      "description": "Zone of Proximal Development configuration (required for learner-facing domains with ZPD monitoring; omit for domains without ZPD concepts)"
     },
     "evidence_summary_types": {
       "type": "array",
