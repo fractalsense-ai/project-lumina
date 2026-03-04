@@ -24,9 +24,11 @@ The Domain is authored by the **Domain Authority** (the human expert: teacher, d
 
 See [`specs/dsa-framework-v1.md`](specs/dsa-framework-v1.md) for the full specification.
 
-### Eliminating Hallucinations via the Causal Trace Ledger (CTL)
+### Tracing and Diagnosing AI Deviations via the Causal Trace Ledger (CTL)
 
 Because the AI is handed a strict D.S.A. contract rather than a generic prompt, deviations become **structurally traceable**. The contract defines exactly what the AI was authorized to do — any output outside those bounds is an identifiable violation, not an ambiguous mistake.
+
+This does not prevent hallucinations from occurring — it makes them **diagnosable**. The D.S.A. stack and the CTL together create the audit trail needed to identify what went wrong, trace the causal chain of events that led to a deviation, and improve the system so the same failure is less likely to recur.
 
 The **CTL** is the append-only, cryptographic accountability layer that makes this traceability permanent:
 
@@ -185,4 +187,4 @@ All domain packs and implementations must conform to:
 
 ---
 
-*Last updated: 2026-03-03*
+*Last updated: 2026-03-04*
