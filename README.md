@@ -17,7 +17,7 @@ Project Lumina operates on **Dynamic Prompt Contracts** — every AI interaction
 | Pillar | Name | Description |
 |--------|------|-------------|
 | **D** | **Domain (The Rules)** | The immutable ruleset authored by a human Domain Authority (e.g., a teacher, doctor, or coach). Defines strict invariants, standing orders, artifacts, and escalation triggers. |
-| **S** | **State (The Context)** | The mutable, mathematically compressed profile of the entity being observed at the exact time of the request. Includes current affect, mastery, challenge band, and cognitive load. |
+| **S** | **State (The Context)** | The mutable, mathematically compressed snapshot of the target entity at the time of the request. It contains the real-time variables, historical telemetry, and active status required by the orchestrator to make a bounded decision. |
 | **A** | **Action (The Boundary)** | The specific, highly constrained task the orchestrator is permitted to execute, based exclusively on the active Domain and State. The AI may only do what the Domain authorizes. |
 
 The Domain is authored by the **Domain Authority** (the human expert: teacher, doctor, coach). The State is updated incrementally from structured evidence. The Action layer is bounded: it may only do what the Domain authorizes.
