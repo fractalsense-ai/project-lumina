@@ -58,9 +58,9 @@ The core engine (`lumina-api-server.py`) is a **generic runtime host** that cont
 
 ```
                   ┌────────────────────────────────────┐
-                  │     lumina-api-server.py            │
-                  │     (domain-agnostic host)          │
-                  │                                     │
+                  │     lumina-api-server.py           │
+                  │     (domain-agnostic host)         │
+                  │                                    │
                   │  ┌─────────────┐  ┌──────────────┐ │
   LUMINA_RUNTIME  │  │  runtime    │  │  dsa-        │ │
   _CONFIG_PATH ──►│  │  _loader.py │─►│  orchestrator│ │
