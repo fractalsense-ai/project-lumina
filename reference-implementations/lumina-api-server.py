@@ -25,6 +25,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
+from filesystem_persistence import FilesystemPersistenceAdapter
+from persistence_adapter import PersistenceAdapter
 from runtime_loader import load_runtime_context
 
 # ─────────────────────────────────────────────────────────────
@@ -46,16 +48,6 @@ sys.modules["dsa_orchestrator"] = _orch_mod
 _orch_spec.loader.exec_module(_orch_mod)  # type: ignore[union-attr]
 
 DSAOrchestrator = _orch_mod.DSAOrchestrator
-load_domain_physics = _orch_mod.load_domain_physics
-
-_yaml_spec = importlib.util.spec_from_file_location(
-    "yaml_loader",
-    str(_THIS_DIR / "yaml-loader.py"),
-)
-_yaml_mod = importlib.util.module_from_spec(_yaml_spec)  # type: ignore[arg-type]
-sys.modules["yaml_loader"] = _yaml_mod
-_yaml_spec.loader.exec_module(_yaml_mod)  # type: ignore[union-attr]
-load_yaml = _yaml_mod.load_yaml
 
 # ─────────────────────────────────────────────────────────────
 # Configuration
@@ -65,6 +57,8 @@ LLM_PROVIDER = os.environ.get("LUMINA_LLM_PROVIDER", "openai")
 OPENAI_MODEL = os.environ.get("LUMINA_OPENAI_MODEL", "gpt-4o")
 ANTHROPIC_MODEL = os.environ.get("LUMINA_ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
 RUNTIME_CONFIG_PATH = os.environ.get("LUMINA_RUNTIME_CONFIG_PATH")
+PERSISTENCE_BACKEND = os.environ.get("LUMINA_PERSISTENCE_BACKEND", "filesystem").strip().lower()
+DB_URL = os.environ.get("LUMINA_DB_URL")
 
 RUNTIME = load_runtime_context(_REPO_ROOT, runtime_config_path=RUNTIME_CONFIG_PATH)
 
@@ -76,6 +70,17 @@ EVIDENCE_EXTRACTION_PROMPT = RUNTIME["evidence_extraction_prompt"]
 
 CTL_DIR = Path(tempfile.gettempdir()) / "lumina-ctl"
 CTL_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _build_persistence_adapter() -> PersistenceAdapter:
+    if PERSISTENCE_BACKEND == "sqlite":
+        from sqlite_persistence import SQLitePersistenceAdapter
+
+        return SQLitePersistenceAdapter(repo_root=_REPO_ROOT, database_url=DB_URL)
+    return FilesystemPersistenceAdapter(repo_root=_REPO_ROOT, ctl_dir=CTL_DIR)
+
+
+PERSISTENCE: PersistenceAdapter = _build_persistence_adapter()
 
 # ─────────────────────────────────────────────────────────────
 # Logging
@@ -249,9 +254,10 @@ _sessions: dict[str, dict[str, Any]] = {}
 
 def get_or_create_session(session_id: str) -> dict[str, Any]:
     if session_id not in _sessions:
-        domain = load_domain_physics(str(DOMAIN_PHYSICS_PATH))
-        profile = load_yaml(str(SUBJECT_PROFILE_PATH))
-        ledger_path = CTL_DIR / f"session-{session_id}.jsonl"
+        domain = PERSISTENCE.load_domain_physics(str(DOMAIN_PHYSICS_PATH))
+        profile = PERSISTENCE.load_subject_profile(str(SUBJECT_PROFILE_PATH))
+        ledger_path = PERSISTENCE.get_ctl_ledger_path(session_id)
+        persisted_state = PERSISTENCE.load_session_state(session_id) or {}
 
         state_builder = RUNTIME["state_builder_fn"]
         domain_step = RUNTIME["domain_step_fn"]
@@ -266,13 +272,28 @@ def get_or_create_session(session_id: str) -> dict[str, Any]:
             session_id=session_id,
             sensor_step_fn=lambda state, task, ev: domain_step(state, task, ev, domain_params),
             initial_state=initial_state,
+            ctl_append_callback=lambda sid, record: PERSISTENCE.append_ctl_record(
+                sid,
+                record,
+                ledger_path=str(ledger_path),
+            ),
         )
+
+        task_spec = dict(persisted_state.get("task_spec") or DEFAULT_TASK_SPEC)
+        turn_count = int(persisted_state.get("turn_count") or 0)
 
         _sessions[session_id] = {
             "orchestrator": orch,
-            "task_spec": dict(DEFAULT_TASK_SPEC),
-            "turn_count": 0,
+            "task_spec": task_spec,
+            "turn_count": turn_count,
         }
+        PERSISTENCE.save_session_state(
+            session_id,
+            {
+                "task_spec": task_spec,
+                "turn_count": turn_count,
+            },
+        )
         log.info("Created new session: %s", session_id)
 
     return _sessions[session_id]
@@ -298,6 +319,14 @@ def process_message(
 
     prompt_contract, resolved_action = orch.process_turn(task_spec, evidence)
     session["turn_count"] += 1
+    PERSISTENCE.save_session_state(
+        session_id,
+        {
+            "task_spec": task_spec,
+            "turn_count": session["turn_count"],
+            "last_action": resolved_action,
+        },
+    )
 
     log.info(
         "[%s] Turn %s: action=%s, prompt_type=%s",

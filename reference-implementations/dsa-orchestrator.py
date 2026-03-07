@@ -239,6 +239,7 @@ class DSAOrchestrator:
         session_id: str | None = None,
         sensor_step_fn: Callable[..., tuple[Any, dict[str, Any]]] | None = None,
         initial_state: Any | None = None,
+        ctl_append_callback: Callable[[str, dict[str, Any]], None] | None = None,
     ) -> None:
         """
         Initialise the orchestrator.
@@ -266,6 +267,7 @@ class DSAOrchestrator:
         self._prev_hash: str = "genesis"
         self._records: list[dict[str, Any]] = []
         self._sensor_step_fn = sensor_step_fn
+        self._ctl_append_callback = ctl_append_callback
 
         # Diagnostics for the most recently processed turn (read-only for callers)
         self.last_invariant_results: list[dict[str, Any]] = []
@@ -288,12 +290,15 @@ class DSAOrchestrator:
 
     def _append_ctl_record(self, record: dict[str, Any]) -> None:
         """Append a record to the JSONL ledger and advance the hash chain."""
-        self.ledger_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(self.ledger_path, "a", encoding="utf-8") as fh:
-            fh.write(
-                json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-            )
-            fh.write("\n")
+        if self._ctl_append_callback is not None:
+            self._ctl_append_callback(self.session_id, record)
+        else:
+            self.ledger_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.ledger_path, "a", encoding="utf-8") as fh:
+                fh.write(
+                    json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+                )
+                fh.write("\n")
         self._prev_hash = hash_record(record)
         self._records.append(record)
 

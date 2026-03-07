@@ -13,15 +13,24 @@ This directory contains Python reference implementations of the **core D.S.A. en
 | `ctl-commitment-validator.py` | CTL hash chain validator and commitment recorder |
 | `dsa-orchestrator.py` | D.S.A. orchestrator: domain-agnostic invariant evaluation + CTL + prompt contract |
 | `dsa-orchestrator-demo.py` | End-to-end demo of the full D.S.A. Action loop wired to the education domain (10-turn scripted session) |
+| `persistence_adapter.py` | Domain-agnostic persistence adapter interface |
+| `filesystem_persistence.py` | Filesystem-backed persistence adapter (default behavior) |
+| `sqlite_persistence.py` | SQLite persistence adapter (optional; SQLAlchemy async) |
 
 ---
 
 ## Requirements
 
-Python 3.10+ is required. No external dependencies beyond the standard library.
+Python 3.10+ is required. Core demos remain standard-library-first. The SQLite persistence backend is optional and requires external dependencies.
 
 ```bash
 python --version  # Requires 3.10+
+```
+
+Optional SQLite persistence dependencies:
+
+```bash
+pip install "sqlalchemy[asyncio]" aiosqlite
 ```
 
 ---

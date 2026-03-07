@@ -252,6 +252,9 @@ project-lumina/
 │   ├── dsa-orchestrator.py            ← D.S.A. orchestrator engine
 │   ├── dsa-orchestrator-demo.py       ← standalone orchestrator demo
 │   ├── ctl-commitment-validator.py    ← CTL hash-chain validator
+│   ├── persistence_adapter.py         ← persistence abstraction (domain-agnostic)
+│   ├── filesystem_persistence.py      ← default filesystem persistence backend
+│   ├── sqlite_persistence.py          ← optional SQLite persistence backend
 │   ├── yaml-loader.py                ← minimal YAML parser (zero deps)
 │   ├── yaml-to-json-converter.py
 │   └── run-preintegration-scenarios.ps1 ← deterministic regression test suite
@@ -383,6 +386,8 @@ Tests: health check, stable turn (no escalation), major drift (escalation), CTL 
 | `LUMINA_LLM_PROVIDER` | No | `openai` | LLM backend: `openai` or `anthropic` |
 | `LUMINA_OPENAI_MODEL` | No | `gpt-4o` | OpenAI model name |
 | `LUMINA_ANTHROPIC_MODEL` | No | `claude-sonnet-4-20250514` | Anthropic model name |
+| `LUMINA_PERSISTENCE_BACKEND` | No | `filesystem` | Persistence backend: `filesystem` or `sqlite` |
+| `LUMINA_DB_URL` | No | `sqlite+aiosqlite:///lumina.db` | SQLAlchemy DB URL used when persistence backend is `sqlite` |
 | `LUMINA_PORT` | No | `8000` | Server port |
 | `OPENAI_API_KEY` | For live | — | OpenAI API key |
 | `ANTHROPIC_API_KEY` | For live | — | Anthropic API key |
