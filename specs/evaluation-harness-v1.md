@@ -31,8 +31,8 @@ These tests verify that no conversation content is written to any persistent sto
 
 **TC-TNS-003: Evidence summary is structured only**
 - Trigger: Generate evidence for a turn
-- Assert: Evidence summary contains only the allowed fields: `correctness`, `hint_used`, `response_latency_sec`, `frustration_marker_count`, `repeated_error`, `off_task_ratio`
-- Assert: No additional freeform text fields
+- Assert: Evidence summary contains only fields defined by the active domain pack for that runtime
+- Assert: No additional freeform transcript or unconstrained text fields
 - Pass criterion: All assertions pass
 
 ---
@@ -125,10 +125,13 @@ These tests verify that no conversation content is written to any persistent sto
 - Assert: No drift detected; decision tier is `ok`
 - Pass criterion: Decision is `ok`
 
-**TC-SENS-004: Derived stress/instability flag from evidence**
-- Trigger: Inject evidence with `consecutive_incorrect: 3`, `hint_count: 3`, `frustration_marker_count: 2`
-- Assert: Domain lib's stress/instability estimator returns `True`
+**TC-SENS-004: Derived instability flag from domain evidence**
+- Trigger: Inject domain-specific evidence signals that should trigger instability according to active domain rules
+- Assert: Domain lib's instability estimator returns `True`
 - Pass criterion: Correct flag
+
+Education example signals:
+- `consecutive_incorrect: 3`, `hint_count: 3`, `frustration_marker_count: 2`
 
 Domain-specific worked examples:
 - [`../domain-packs/education/evaluation-tests.md`](../domain-packs/education/evaluation-tests.md)

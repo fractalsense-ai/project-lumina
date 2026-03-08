@@ -112,8 +112,8 @@ runtime:
       -
         tool_id: substitution_checker
         payload:
-          left_value: "{evidence.left_value}"
-          right_value: "{evidence.right_value}"
+          left_value: "{turn_data.left_value}"
+          right_value: "{turn_data.right_value}"
 
 ui_manifest:
   title: "Project Lumina"

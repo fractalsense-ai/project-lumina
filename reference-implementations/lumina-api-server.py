@@ -358,7 +358,6 @@ def apply_tool_call_policy(
         "action": resolved_action,
         "prompt_contract": prompt_contract,
         "turn_data": turn_data,
-        "evidence": turn_data,
         "task_spec": task_spec,
     }
 
@@ -448,7 +447,7 @@ def get_or_create_session(session_id: str) -> dict[str, Any]:
 def process_message(
     session_id: str,
     input_text: str,
-    evidence_override: dict[str, Any] | None = None,
+    turn_data_override: dict[str, Any] | None = None,
     deterministic_response: bool = False,
 ) -> dict[str, Any]:
     session = get_or_create_session(session_id)
@@ -458,7 +457,7 @@ def process_message(
 
     task_context = dict(task_spec)
     task_context["current_problem"] = current_problem
-    turn_data = evidence_override if evidence_override is not None else interpret_turn_input(input_text, task_context)
+    turn_data = turn_data_override if turn_data_override is not None else interpret_turn_input(input_text, task_context)
     turn_data = _normalize_turn_data(turn_data, RUNTIME.get("turn_input_schema") or {})
     log.info("[%s] Turn Data: %s", session_id, json.dumps(turn_data, default=str))
 
@@ -546,7 +545,7 @@ class ChatRequest(BaseModel):
     session_id: str | None = None
     message: str
     deterministic_response: bool = False
-    evidence_override: dict[str, Any] | None = None
+    turn_data_override: dict[str, Any] | None = None
 
 
 class ChatResponse(BaseModel):
@@ -583,7 +582,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
             process_message,
             session_id,
             req.message,
-            req.evidence_override,
+            req.turn_data_override,
             req.deterministic_response,
         )
     except Exception as exc:

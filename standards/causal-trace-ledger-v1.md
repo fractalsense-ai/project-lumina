@@ -90,6 +90,8 @@ Records a single decision or observation during an active session.
 }
 ```
 
+`evidence_summary` field vocabulary is domain-owned. The keys above are an education-domain example only; other domain packs may emit different structured keys.
+
 **When to emit:**
 - Invariant check result (pass or fail)
 - Standing order applied
@@ -215,7 +217,7 @@ def verify_chain(records: list) -> bool:
 
 - **No raw text**: Content fields must use hashes + external pointers, not inline text
 - **Pseudonymous IDs only**: `actor_id`, `subject_id` are pseudonymous tokens
-- **Evidence summary only**: `evidence_summary` uses structured fields (correctness, latency, etc.) — not quotes from the subject
+- **Evidence summary only**: `evidence_summary` uses structured, domain-owned fields (for example correctness, latency) and never quotes from the subject
 - **Mastery deltas only**: `mastery_delta` records how mastery changed, not what was said
 
 ---

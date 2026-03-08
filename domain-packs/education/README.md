@@ -34,11 +34,11 @@ Education state schema and estimators are defined under `schemas/` and `domain-l
 - [`domain-lib/fatigue-estimation-spec-v1.md`](domain-lib/fatigue-estimation-spec-v1.md)
 - [`runtime-config.yaml`](runtime-config.yaml)
 
-`runtime-config.yaml` is the education-root runtime ownership surface for:
+`runtime-config.yaml` is the education domain pack runtime configuration surface for:
 - domain conversational override prompt
-- domain evidence extraction prompt and defaults
+- domain turn interpretation prompt and default turn-input fields
 - deterministic response templates for local validation mode
-- manifest-style adapter bindings (state builder, domain step, evidence extractor)
+- manifest-style adapter bindings (state builder, domain step, turn interpreter)
 
 Reference implementation:
 - [`reference-implementations/README.md`](reference-implementations/README.md)
@@ -62,7 +62,7 @@ The education domain separates its components into two categories:
 
 - **`domain-lib/`** — Passive specification documents (ZPD monitor spec, fatigue estimation spec, compressed-state estimators). These are read as context by the orchestrator and LLM. They define *what* the domain measures but have no callable entry point.
 
-- **`algebra-level-1/tool-adapters/`** — Active deterministic tools (algebra parser, substitution checker, calculator). These are invoked by the orchestrator or evidence extractor, accept structured input, and return structured output. They provide ground-truth evidence that the LLM validates against.
+- **`algebra-level-1/tool-adapters/`** — Active deterministic tools (algebra parser, substitution checker, calculator). These are invoked by the orchestrator or turn interpreter, accept structured input, and return structured output. They provide ground-truth data that the LLM validates against.
 
 See [`../README.md`](../README.md#domain-lib-vs-tool-adapters) for the full architectural distinction.
 

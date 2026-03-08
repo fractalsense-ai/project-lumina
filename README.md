@@ -110,11 +110,11 @@ tool_call_policies:
     -
       tool_id: substitution_checker
       payload:
-        left_value: "{evidence.left_value}"
-        right_value: "{evidence.right_value}"
+        left_value: "{turn_data.left_value}"
+        right_value: "{turn_data.right_value}"
 ```
 
-The engine resolves `{evidence.left_value}` from the turn's evidence dict, calls the tool adapter, and passes the result to the LLM or deterministic response.
+The engine resolves `{turn_data.left_value}` from the interpreted turn-data dict, calls the tool adapter, and passes the result to the LLM or deterministic response.
 
 ---
 
@@ -295,7 +295,7 @@ curl -X POST http://localhost:8000/api/chat \
   -d '{
     "message": "I solved it and checked by substitution.",
     "deterministic_response": true,
-    "evidence_override": {
+    "turn_data_override": {
       "correctness": "correct",
       "frustration_marker_count": 0,
       "step_count": 4,
@@ -320,7 +320,7 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 pip install anthropic
 ```
 
-Then start the server and send requests without `deterministic_response` or `evidence_override`.
+Then start the server and send requests without `deterministic_response` or `turn_data_override`.
 
 ### Run the regression test suite
 
@@ -361,7 +361,7 @@ Tests: health check, stable turn (no escalation), major drift (escalation), CTL 
   "session_id": "optional-uuid",
   "message": "user input text",
   "deterministic_response": false,
-  "evidence_override": null
+  "turn_data_override": null
 }
 ```
 
@@ -416,4 +416,4 @@ Domain packs that involve vulnerable populations (children, patients, etc.) incl
 
 ---
 
-*Last updated: 2026-03-06*
+*Last updated: 2026-03-07*

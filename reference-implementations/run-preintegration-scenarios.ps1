@@ -15,14 +15,14 @@ function Invoke-ChatScenario {
 	param(
 		[string]$SessionId,
 		[string]$Message,
-		[hashtable]$EvidenceOverride
+		[hashtable]$TurnDataOverride
 	)
 
 	$payload = @{
 		session_id = $SessionId
 		message = $Message
 		deterministic_response = $true
-		evidence_override = $EvidenceOverride
+		turn_data_override = $TurnDataOverride
 	} | ConvertTo-Json -Depth 6
 
 	return Invoke-RestMethod -Method Post -Uri "$BaseUrl/api/chat" -ContentType "application/json" -Body $payload
@@ -75,7 +75,7 @@ $stableEvidence = @{
 	step_count = 4
 }
 
-$stable = Invoke-ChatScenario -SessionId $noEscSession -Message "I solved it and checked by substitution." -EvidenceOverride $stableEvidence
+$stable = Invoke-ChatScenario -SessionId $noEscSession -Message "I solved it and checked by substitution." -TurnDataOverride $stableEvidence
 Write-Host "action=$($stable.action) prompt_type=$($stable.prompt_type) escalated=$($stable.escalated)"
 Assert-Condition (-not $stable.escalated) "Expected no escalation in stable scenario"
 
@@ -94,7 +94,7 @@ $escalationEvidence = @{
 	step_count = 4
 }
 
-$escalated = Invoke-ChatScenario -SessionId $escSession -Message "I keep messing this up and I am frustrated." -EvidenceOverride $escalationEvidence
+$escalated = Invoke-ChatScenario -SessionId $escSession -Message "I keep messing this up and I am frustrated." -TurnDataOverride $escalationEvidence
 Write-Host "action=$($escalated.action) prompt_type=$($escalated.prompt_type) escalated=$($escalated.escalated)"
 Assert-Condition ($escalated.escalated) "Expected escalation in major drift scenario"
 
@@ -115,7 +115,7 @@ $loopEvidence = @{
 
 $lastLoopResponse = $null
 for ($turn = 1; $turn -le 4; $turn++) {
-	$lastLoopResponse = Invoke-ChatScenario -SessionId $exhaustSession -Message "loop turn $turn" -EvidenceOverride $loopEvidence
+	$lastLoopResponse = Invoke-ChatScenario -SessionId $exhaustSession -Message "loop turn $turn" -TurnDataOverride $loopEvidence
 	Write-Host "turn=$turn action=$($lastLoopResponse.action) escalated=$($lastLoopResponse.escalated)"
 }
 Assert-Condition ($lastLoopResponse.escalated) "Expected escalation after standing-order max attempts are exhausted"
