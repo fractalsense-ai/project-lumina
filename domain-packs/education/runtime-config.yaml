@@ -26,6 +26,11 @@ runtime:
       - check_equivalence
       - show_work_steps
       - verify_solution
+    current_problem:
+      equation: "2x + 3 = 11"
+      target_variable: "x"
+      expected_answer: "x = 4"
+      status: "in_progress"
 
   domain_step_params:
     min_challenge: 0.3

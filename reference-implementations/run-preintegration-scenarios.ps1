@@ -50,12 +50,15 @@ New-Item -ItemType Directory -Path $ctlDir -Force | Out-Null
 
 $noEscSession = "preint-noesc-" + ([guid]::NewGuid().ToString("N").Substring(0, 8))
 $escSession = "preint-esc-" + ([guid]::NewGuid().ToString("N").Substring(0, 8))
+$exhaustSession = "preint-exhaust-" + ([guid]::NewGuid().ToString("N").Substring(0, 8))
 
 $noEscLedger = Join-Path $ctlDir "session-$noEscSession.jsonl"
 $escLedger = Join-Path $ctlDir "session-$escSession.jsonl"
+$exhaustLedger = Join-Path $ctlDir "session-$exhaustSession.jsonl"
 
 if (Test-Path $noEscLedger) { Remove-Item $noEscLedger -Force }
 if (Test-Path $escLedger) { Remove-Item $escLedger -Force }
+if (Test-Path $exhaustLedger) { Remove-Item $exhaustLedger -Force }
 
 Write-Section "Scenario A: Stable Turn (No Escalation)"
 $stableEvidence = @{
@@ -95,11 +98,35 @@ $escalated = Invoke-ChatScenario -SessionId $escSession -Message "I keep messing
 Write-Host "action=$($escalated.action) prompt_type=$($escalated.prompt_type) escalated=$($escalated.escalated)"
 Assert-Condition ($escalated.escalated) "Expected escalation in major drift scenario"
 
+Write-Section "Scenario C: Standing Order Exhaustion Escalation"
+$loopEvidence = @{
+	correctness = "incorrect"
+	hint_used = $false
+	response_latency_sec = 6.0
+	frustration_marker_count = 0
+	repeated_error = $true
+	off_task_ratio = 0.0
+	equivalence_preserved = $false
+	illegal_operations = @()
+	substitution_check = $true
+	method_recognized = $true
+	step_count = 2
+}
+
+$lastLoopResponse = $null
+for ($turn = 1; $turn -le 4; $turn++) {
+	$lastLoopResponse = Invoke-ChatScenario -SessionId $exhaustSession -Message "loop turn $turn" -EvidenceOverride $loopEvidence
+	Write-Host "turn=$turn action=$($lastLoopResponse.action) escalated=$($lastLoopResponse.escalated)"
+}
+Assert-Condition ($lastLoopResponse.escalated) "Expected escalation after standing-order max attempts are exhausted"
+
 Write-Section "CTL Ledger Presence"
 Assert-Condition (Test-Path $noEscLedger) "No-esc ledger file missing: $noEscLedger"
 Assert-Condition (Test-Path $escLedger) "Esc ledger file missing: $escLedger"
+Assert-Condition (Test-Path $exhaustLedger) "Exhaust ledger file missing: $exhaustLedger"
 Write-Host "No-escalation ledger: $noEscLedger"
 Write-Host "Escalation ledger:   $escLedger"
+Write-Host "Exhaustion ledger:   $exhaustLedger"
 
 Write-Section "Validate CTL Hash Chain"
 & $PythonExe "reference-implementations/ctl-commitment-validator.py" --verify-chain $noEscLedger
@@ -108,12 +135,20 @@ Assert-Condition ($LASTEXITCODE -eq 0) "CTL chain validation failed for non-esca
 & $PythonExe "reference-implementations/ctl-commitment-validator.py" --verify-chain $escLedger
 Assert-Condition ($LASTEXITCODE -eq 0) "CTL chain validation failed for escalation ledger"
 
+& $PythonExe "reference-implementations/ctl-commitment-validator.py" --verify-chain $exhaustLedger
+Assert-Condition ($LASTEXITCODE -eq 0) "CTL chain validation failed for standing-order exhaustion ledger"
+
 Write-Section "Validate EscalationRecord Exists"
 $escRecords = Get-Content $escLedger | ForEach-Object { $_ | ConvertFrom-Json }
 $escCount = @($escRecords | Where-Object { $_.record_type -eq "EscalationRecord" }).Count
 Assert-Condition ($escCount -ge 1) "Expected EscalationRecord in escalation ledger"
 Write-Host "EscalationRecord count: $escCount"
 
+$exhaustRecords = Get-Content $exhaustLedger | ForEach-Object { $_ | ConvertFrom-Json }
+$exhaustEscCount = @($exhaustRecords | Where-Object { $_.record_type -eq "EscalationRecord" }).Count
+Assert-Condition ($exhaustEscCount -ge 1) "Expected EscalationRecord in standing-order exhaustion ledger"
+Write-Host "Exhaustion EscalationRecord count: $exhaustEscCount"
+
 Write-Section "Result"
 Write-Host "Pre-integration scenarios passed."
-Write-Host "Session IDs: $noEscSession, $escSession"
+Write-Host "Session IDs: $noEscSession, $escSession, $exhaustSession"

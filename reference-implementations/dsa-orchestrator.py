@@ -272,9 +272,14 @@ class DSAOrchestrator:
         # Diagnostics for the most recently processed turn (read-only for callers)
         self.last_invariant_results: list[dict[str, Any]] = []
         self.last_sensor_decision: dict[str, Any] = {}
+        self.last_standing_order_id: str | None = None
+        self.last_standing_order_attempt: int | None = None
 
         # Sensor state: managed externally; the engine treats it as opaque.
         self.state = initial_state
+
+        # Standing-order attempts are tracked per standing-order ID.
+        self._standing_order_attempts: dict[str, int] = {}
 
         # Write the session-open CommitmentRecord
         self._write_commitment_record()
@@ -285,6 +290,22 @@ class DSAOrchestrator:
     def ctl_records(self) -> list[dict[str, Any]]:
         """Read-only view of all CTL records written in this session."""
         return list(self._records)
+
+    def set_standing_order_attempts(self, attempts: dict[str, Any] | None) -> None:
+        """Restore standing-order attempts from persisted session state."""
+        restored: dict[str, int] = {}
+        for key, value in (attempts or {}).items():
+            try:
+                parsed = int(value)
+            except (TypeError, ValueError):
+                continue
+            if parsed >= 0:
+                restored[str(key)] = parsed
+        self._standing_order_attempts = restored
+
+    def get_standing_order_attempts(self) -> dict[str, int]:
+        """Expose standing-order attempts for session-state persistence."""
+        return dict(self._standing_order_attempts)
 
     # ── CTL record writers ────────────────────────────────────
 
@@ -351,6 +372,8 @@ class DSAOrchestrator:
                 "sensor_tier": sensor_decision.get("tier"),
                 "drift_pct": sensor_decision.get("drift_pct"),
                 "frustration": sensor_decision.get("frustration"),
+                "standing_order_id": self.last_standing_order_id,
+                "standing_order_attempt": self.last_standing_order_attempt,
                 "invariant_failures": [
                     r["id"] for r in invariant_results if not r["passed"]
                 ],
@@ -455,7 +478,7 @@ class DSAOrchestrator:
         self,
         invariant_results: list[dict[str, Any]],
         sensor_decision: dict[str, Any],
-    ) -> tuple[str | None, bool]:
+    ) -> tuple[str | None, bool, str | None]:
         """
         Determine the final action for this turn.
 
@@ -468,17 +491,24 @@ class DSAOrchestrator:
         frustration is True, the second return value is True (escalate).
 
         Returns:
-            (action, should_escalate)
+            (action, should_escalate, escalation_trigger)
         """
+        self.last_standing_order_id = None
+        self.last_standing_order_attempt = None
+
+        # A clean turn resets standing-order counters.
+        if all(r["passed"] for r in invariant_results):
+            self._standing_order_attempts = {}
+
         # Critical failures first
         for result in invariant_results:
             if not result["passed"] and result["severity"] == "critical":
-                return result["standing_order_on_violation"], False
+                return self._resolve_standing_order_action(result["standing_order_on_violation"])
 
         # Warning failures next
         for result in invariant_results:
             if not result["passed"] and result["severity"] == "warning":
-                return result["standing_order_on_violation"], False
+                return self._resolve_standing_order_action(result["standing_order_on_violation"])
 
         # Fall through to domain sensor decision
         action = sensor_decision.get("action")
@@ -487,7 +517,54 @@ class DSAOrchestrator:
         # is responsible for setting "should_escalate": True when escalation is
         # warranted (e.g., the education ZPD monitor sets this on major drift).
         should_escalate = bool(sensor_decision.get("should_escalate", False))
-        return action, should_escalate
+        escalation_trigger = "sensor_intervene_or_escalate_with_frustration" if should_escalate else None
+        return action, should_escalate, escalation_trigger
+
+    def _resolve_standing_order_action(
+        self, action: str | None
+    ) -> tuple[str | None, bool, str | None]:
+        """
+        Track standing-order attempts and enforce max-attempt escalation policy.
+
+        Returns:
+            (action, should_escalate, escalation_trigger)
+        """
+        if not action:
+            return action, False, None
+
+        standing_orders = self.domain.get("standing_orders", [])
+        if not isinstance(standing_orders, list):
+            return action, False, None
+
+        standing_order: dict[str, Any] | None = None
+        for item in standing_orders:
+            if not isinstance(item, dict):
+                continue
+            if item.get("action") == action or item.get("id") == action:
+                standing_order = item
+                break
+
+        if standing_order is None:
+            return action, False, None
+
+        standing_order_id = str(standing_order.get("id", action))
+        max_attempts_raw = standing_order.get("max_attempts", 1)
+        try:
+            max_attempts = int(max_attempts_raw)
+        except (TypeError, ValueError):
+            max_attempts = 1
+        escalate_on_exhaust = bool(standing_order.get("escalation_on_exhaust", False))
+
+        attempt = self._standing_order_attempts.get(standing_order_id, 0) + 1
+        self._standing_order_attempts[standing_order_id] = attempt
+        self.last_standing_order_id = standing_order_id
+        self.last_standing_order_attempt = attempt
+
+        if max_attempts >= 0 and attempt > max_attempts and escalate_on_exhaust:
+            trigger = f"standing_order_exhausted:{standing_order_id}"
+            return action, True, trigger
+
+        return action, False, None
 
     def _build_prompt_contract(
         self,
@@ -590,7 +667,9 @@ class DSAOrchestrator:
         self.last_sensor_decision = sensor_decision
 
         # 3. Resolve action
-        action, should_escalate = self._resolve_action(invariant_results, sensor_decision)
+        action, should_escalate, escalation_trigger = self._resolve_action(
+            invariant_results, sensor_decision
+        )
 
         # Determine the standing order trigger label for the contract
         standing_order_trigger: str | None = None
@@ -616,7 +695,7 @@ class DSAOrchestrator:
             self._write_escalation_record(
                 task_spec,
                 sensor_decision,
-                "sensor_intervene_or_escalate_with_frustration",
+                escalation_trigger or "sensor_intervene_or_escalate_with_frustration",
             )
 
         resolved_action = action if action is not None else "task_presentation"

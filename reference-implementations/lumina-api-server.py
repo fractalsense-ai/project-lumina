@@ -83,6 +83,100 @@ def _build_persistence_adapter() -> PersistenceAdapter:
 
 PERSISTENCE: PersistenceAdapter = _build_persistence_adapter()
 
+
+def _default_current_problem(task_spec: dict[str, Any]) -> dict[str, Any]:
+    """Create a session-scoped problem context when the task spec omits one."""
+    current_problem = task_spec.get("current_problem")
+    if isinstance(current_problem, dict):
+        return dict(current_problem)
+
+    equation = task_spec.get("equation") or "2x + 3 = 11"
+    target_variable = task_spec.get("target_variable") or "x"
+    expected_answer = task_spec.get("expected_answer") or "x = 4"
+    return {
+        "equation": str(equation),
+        "target_variable": str(target_variable),
+        "expected_answer": str(expected_answer),
+        "status": "in_progress",
+    }
+
+
+def _coerce_bool(value: Any, default: bool = False) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"true", "1", "yes", "y"}:
+            return True
+        if lowered in {"false", "0", "no", "n"}:
+            return False
+    return default
+
+
+def _coerce_int(value: Any, default: int = 0, minimum: int | None = None) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = default
+    if minimum is not None and parsed < minimum:
+        return minimum
+    return parsed
+
+
+def _coerce_float(
+    value: Any, default: float = 0.0, minimum: float | None = None, maximum: float | None = None
+) -> float:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        parsed = default
+    if minimum is not None and parsed < minimum:
+        parsed = minimum
+    if maximum is not None and parsed > maximum:
+        parsed = maximum
+    return parsed
+
+
+def _normalize_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
+    """Normalize extractor output to stable types before invariant checks."""
+    normalized = dict(evidence)
+
+    correctness = normalized.get("correctness")
+    if correctness not in {"correct", "incorrect", "partial"}:
+        normalized["correctness"] = "partial"
+
+    normalized["hint_used"] = _coerce_bool(normalized.get("hint_used"), False)
+    normalized["repeated_error"] = _coerce_bool(normalized.get("repeated_error"), False)
+    normalized["response_latency_sec"] = _coerce_float(
+        normalized.get("response_latency_sec"), default=10.0, minimum=0.0
+    )
+    normalized["frustration_marker_count"] = _coerce_int(
+        normalized.get("frustration_marker_count"), default=0, minimum=0
+    )
+    normalized["off_task_ratio"] = _coerce_float(
+        normalized.get("off_task_ratio"), default=0.0, minimum=0.0, maximum=1.0
+    )
+    normalized["step_count"] = _coerce_int(normalized.get("step_count"), default=0, minimum=0)
+
+    if "equivalence_preserved" in normalized and normalized.get("equivalence_preserved") is not None:
+        normalized["equivalence_preserved"] = _coerce_bool(
+            normalized.get("equivalence_preserved"), False
+        )
+    if "substitution_check" in normalized and normalized.get("substitution_check") is not None:
+        normalized["substitution_check"] = _coerce_bool(normalized.get("substitution_check"), False)
+    if "method_recognized" in normalized and normalized.get("method_recognized") is not None:
+        normalized["method_recognized"] = _coerce_bool(normalized.get("method_recognized"), False)
+
+    illegal_operations = normalized.get("illegal_operations")
+    if isinstance(illegal_operations, list):
+        normalized["illegal_operations"] = [str(item) for item in illegal_operations]
+    else:
+        normalized["illegal_operations"] = []
+
+    return normalized
+
 # ─────────────────────────────────────────────────────────────
 # Logging
 # ─────────────────────────────────────────────────────────────
@@ -281,18 +375,26 @@ def get_or_create_session(session_id: str) -> dict[str, Any]:
         )
 
         task_spec = dict(persisted_state.get("task_spec") or DEFAULT_TASK_SPEC)
+        current_problem = dict(persisted_state.get("current_problem") or _default_current_problem(task_spec))
         turn_count = int(persisted_state.get("turn_count") or 0)
+        standing_order_attempts = persisted_state.get("standing_order_attempts") or {}
+        if not isinstance(standing_order_attempts, dict):
+            standing_order_attempts = {}
+        orch.set_standing_order_attempts(standing_order_attempts)
 
         _sessions[session_id] = {
             "orchestrator": orch,
             "task_spec": task_spec,
+            "current_problem": current_problem,
             "turn_count": turn_count,
         }
         PERSISTENCE.save_session_state(
             session_id,
             {
                 "task_spec": task_spec,
+                "current_problem": current_problem,
                 "turn_count": turn_count,
+                "standing_order_attempts": orch.get_standing_order_attempts(),
             },
         )
         log.info("Created new session: %s", session_id)
@@ -314,18 +416,31 @@ def process_message(
     session = get_or_create_session(session_id)
     orch: DSAOrchestrator = session["orchestrator"]
     task_spec: dict[str, Any] = session["task_spec"]
+    current_problem: dict[str, Any] = session["current_problem"]
 
-    evidence = evidence_override if evidence_override is not None else extract_evidence(input_text, task_spec)
+    task_context = dict(task_spec)
+    task_context["current_problem"] = current_problem
+    evidence = evidence_override if evidence_override is not None else extract_evidence(input_text, task_context)
+    evidence = _normalize_evidence(evidence)
     log.info("[%s] Evidence: %s", session_id, json.dumps(evidence, default=str))
 
     prompt_contract, resolved_action = orch.process_turn(task_spec, evidence)
+
+    if evidence.get("substitution_check") is True and evidence.get("correctness") == "correct":
+        current_problem["status"] = "solved"
+    elif current_problem.get("status") != "solved":
+        current_problem["status"] = "in_progress"
+
+    session["current_problem"] = current_problem
     session["turn_count"] += 1
     PERSISTENCE.save_session_state(
         session_id,
         {
             "task_spec": task_spec,
+            "current_problem": current_problem,
             "turn_count": session["turn_count"],
             "last_action": resolved_action,
+            "standing_order_attempts": orch.get_standing_order_attempts(),
         },
     )
 

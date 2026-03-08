@@ -92,6 +92,20 @@ def extract_evidence(
         context_hint = f"\nCurrent task: {task_context.get('task_id', 'unknown')}"
         if task_context.get("skills_required"):
             context_hint += f"\nSkills: {', '.join(task_context['skills_required'])}"
+    current_problem = task_context.get("current_problem")
+    if isinstance(current_problem, dict):
+        equation = current_problem.get("equation")
+        target_variable = current_problem.get("target_variable")
+        expected_answer = current_problem.get("expected_answer")
+        status = current_problem.get("status")
+        if equation:
+            context_hint += f"\nCurrent problem equation: {equation}"
+        if target_variable:
+            context_hint += f"\nTarget variable: {target_variable}"
+        if expected_answer:
+            context_hint += f"\nExpected solved form: {expected_answer}"
+        if status:
+            context_hint += f"\nProblem status: {status}"
 
     raw_response = call_llm(
         system=prompt_text,
