@@ -29,7 +29,7 @@ agriculture/
 │   └── example-subject.yaml
 ├── prompts/
 │   ├── domain-system-override.md
-│   └── evidence-extraction.md
+│   └── turn-interpretation.md
 └── reference-implementations/
     └── runtime-adapters.py
 ```

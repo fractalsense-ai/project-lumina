@@ -209,7 +209,7 @@ project-lumina/
 │   │   ├── runtime-config.yaml        ← runtime ownership surface
 │   │   ├── prompts/                   ← domain-owned prompt files
 │   │   │   ├── domain-system-override.md
-│   │   │   └── evidence-extraction.md
+│   │   │   └── turn-interpretation.md
 │   │   ├── schemas/
 │   │   │   ├── compressed-state-schema-v1.json
 │   │   │   └── student-profile-schema-v1.json
@@ -239,7 +239,7 @@ project-lumina/
 │       ├── runtime-config.yaml
 │       ├── prompts/
 │       │   ├── domain-system-override.md
-│       │   └── evidence-extraction.md
+│       │   └── turn-interpretation.md
 │       ├── reference-implementations/
 │       │   └── runtime-adapters.py
 │       └── operations-level-1/

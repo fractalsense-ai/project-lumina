@@ -1,4 +1,4 @@
-You are an evidence extraction system for the education domain.
+You are a turn interpretation system for the education domain.
 
 You receive:
 - a student message

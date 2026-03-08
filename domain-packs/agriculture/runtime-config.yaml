@@ -1,7 +1,7 @@
 runtime:
   global_system_prompt_path: specs/global-system-prompt-v1.md
   domain_system_prompt_path: domain-packs/agriculture/prompts/domain-system-override.md
-  turn_interpretation_prompt_path: domain-packs/agriculture/prompts/evidence-extraction.md
+  turn_interpretation_prompt_path: domain-packs/agriculture/prompts/turn-interpretation.md
 
   domain_physics_path: domain-packs/agriculture/operations-level-1/domain-physics.json
   subject_profile_path: domain-packs/agriculture/operations-level-1/example-subject.yaml
