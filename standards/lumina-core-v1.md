@@ -44,6 +44,8 @@ To keep domain ownership explicit and avoid cross-domain coupling, packs must fo
 
 Runtime configuration files are wiring surfaces (paths, adapter bindings, runtime flags). Normative thresholds/tolerances and standing-order semantics belong in module `domain-physics`, not runtime wiring.
 
+Operational policy truth for a module is the module `domain-physics.json` artifact derived from authored YAML. Any material policy update requires: semantic version update, YAML->JSON regeneration, and CTL `CommitmentRecord` hash commitment before activation.
+
 ### 1.1 Domain Physics Requirements
 
 A conformant `domain-physics.yaml` must declare:
@@ -77,6 +79,8 @@ Standing orders define the **bounded automated responses** the orchestrator may 
 ### 1.4 Tool-Physics Linkage
 
 If a module uses tool adapters, its `domain-physics` must declare `tool_adapters` IDs. Each declared ID must resolve to a tool adapter contract file in that module or domain folder. This keeps tool usage bounded by authored domain truth.
+
+Domain-lib runtime components consume structured signals (including tool-adapter outputs) and produce machine-readable state summaries. The orchestrator remains the policy enforcement point that evaluates module invariants and resolves standing-order/escalation outcomes.
 
 ---
 
@@ -163,9 +167,10 @@ Before publishing a domain pack or implementation:
 - [ ] All identifiers are pseudonymous
 - [ ] Terminology conforms to Section 4
 - [ ] If the domain is human-facing (`requires_consent: true`), a consent record is required before the session begins
-- [ ] If the domain uses domain-lib subsystems, the relevant `subsystem_configs` block(s) are present with required thresholds
+- [ ] If module domain-lib subsystems are used, module `domain-physics` declares the relevant `subsystem_configs` block(s) with required thresholds
 - [ ] Module `domain-physics` owns normative thresholds/tolerances and standing-order trigger semantics
 - [ ] Every declared `tool_adapters` ID resolves to an existing tool adapter contract file
+- [ ] Material module policy updates include version bump, YAML->JSON regeneration, and CTL hash commitment before activation
 
 ---
 

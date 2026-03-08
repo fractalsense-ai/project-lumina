@@ -54,6 +54,7 @@ The Domain is the **immutable ruleset** for a session. It is authored by the Dom
 Domains are authored in YAML (human-readable) and converted to JSON (machine-queryable) using the `yaml-to-json-converter.py` reference tool. Both files are committed to Git; the JSON is the authoritative machine-readable form.
 
 The domain pack's current hash must be committed to the CTL as a `CommitmentRecord` before the pack is used operationally.
+Material domain-policy updates require semantic version update, YAML->JSON regeneration, and a new CTL commitment of the updated JSON hash before activation.
 
 ---
 
@@ -86,7 +87,7 @@ Additional state fields may be defined by the domain's subject state schema and 
 
 ### Evidence Inputs
 
-State is never inferred from raw conversation content. Evidence is a structured summary emitted by authorized tool adapters and domain adapters.
+State is never inferred from raw conversation content. Evidence is a structured summary emitted by authorized tool adapters in the domain runtime path.
 
 ```json
 {
@@ -98,7 +99,7 @@ State is never inferred from raw conversation content. Evidence is a structured 
 }
 ```
 
-Each domain defines its own evidence schema and adapter pipeline (for example, agriculture and medical domains use different fields and thresholds).
+Each domain defines its own evidence schema and runtime pipeline (for example, agriculture and medical domains use different fields and thresholds).
 
 ### State Storage
 
@@ -158,9 +159,9 @@ One turn of a D.S.A. session:
 2. [State] Entity profile loaded; compressed state available
 3. [Action] Task presented to entity (within tolerance band)
 4. [Entity] Entity responds
-5. [Action] Evidence summary extracted (tool adapters)
-6. [State] State updated via domain lib
-7. [Domain] Invariant checks run against structured evidence and domain-defined state signals
+5. [Runtime] Structured signals/evidence produced by authorized tool adapters
+6. [State] Domain-lib runtime updates machine-readable state summaries from structured signals
+7. [Domain/Action] Orchestrator evaluates module invariants and state signals, then resolves standing order/escalation decisions
 8. [Action] Decision tier calculated: ok / minor / major / escalate
 9. [Action] Standing order applied if needed
 10. [CTL] TraceEvent appended (state hash + decision + evidence summary)

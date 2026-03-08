@@ -96,6 +96,11 @@ python ../reference-implementations/ctl-commitment-validator.py \
   --ledger path/to/ledger.jsonl
 ```
 
+Every material module policy change requires:
+- semantic version update,
+- YAML -> JSON regeneration,
+- CTL commitment of the updated module `domain-physics.json` hash before activation.
+
 ---
 
 ## Domain Pack Lifecycle
@@ -140,6 +145,8 @@ Examples:
 
 Tool-adapters are **called by the orchestrator** (or by the evidence extractor on behalf of the orchestrator). They provide ground-truth evidence that the LLM cannot fabricate. The LLM should validate its reasoning against tool-adapter output, not the other way around.
 
+Domain-lib runtime components consume structured tool outputs and produce machine-readable state summaries. The orchestrator then enforces module invariants, standing orders, and escalation triggers defined in module `domain-physics.json`.
+
 Tool adapters should be explicitly linked from module `domain-physics` using `tool_adapters` IDs so tooling and governance can verify that only authorized tools are used for that module's physics.
 
 ### When to use which
@@ -151,6 +158,21 @@ Tool adapters should be explicitly linked from module `domain-physics` using `to
 | Is it a specification or reference? | Yes | No |
 | Does the orchestrator invoke it? | No (reads only) | Yes |
 | Does it conform to tool-adapter-schema? | No | Yes |
+
+---
+
+## Execution Flow Contract
+
+The authoritative execution flow is:
+
+1. Module `domain-physics.json` is loaded as machine-authoritative policy truth.
+2. Its hash is verified against the committed CTL `CommitmentRecord`.
+3. Authorized tool-adapters produce structured signals/evidence.
+4. Domain-lib runtime components transform those signals into machine-readable state summaries.
+5. Orchestrator evaluates module invariants and resolves standing-order/escalation outcomes.
+6. CTL records are appended for accountability.
+
+`world-sim/` may shape interaction framing, but it does not define normative thresholds, standing-order policy, or escalation policy.
 
 ---
 
@@ -168,7 +190,7 @@ Packs that fail validation are not usable.
 
 | Domain | Pack | Version | Status |
 |--------|------|---------|--------|
-| Education — Algebra Level 1 | `education/algebra-level-1` | 0.2.0 | Active |
+| Education — Algebra Level 1 | `education/algebra-level-1` | 0.4.0 | Active |
 | Agriculture | `agriculture/` | — | Placeholder |
 
 ---

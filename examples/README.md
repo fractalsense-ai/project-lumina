@@ -28,7 +28,7 @@ This walkthrough traces a single turn of an algebra session with student Alice.
 
 **1. Load and verify domain pack**
 
-The orchestrator loads `domain-physics.json` and verifies its SHA-256 hash against the `CommitmentRecord` in the CTL. If the hash doesn't match, the session is frozen.
+The orchestrator loads module `domain-physics.json` as machine-authoritative policy truth and verifies its SHA-256 hash against the `CommitmentRecord` in the CTL. If the hash doesn't match, the session is frozen.
 
 **2. Task presentation**
 
@@ -61,11 +61,13 @@ Her response is one step with no work shown.
 }
 ```
 
-**6. ZPD monitor step runs**
+**6. Domain-lib state step runs**
 
-The monitor processes the evidence. The answer is correct, so mastery increases. But challenge (0.65) is within Alice's ZPD band [0.3, 0.7], so no ZPD drift.
+The ZPD monitor (education domain-lib runtime component) processes tool-adapter outputs/evidence and updates machine-readable state. The answer is correct, so mastery increases. But challenge (0.65) is within Alice's ZPD band [0.3, 0.7], so no ZPD drift.
 
 **7. Invariant checks**
+
+The orchestrator evaluates module invariants from `domain-physics.json` against structured evidence and updated state signals:
 
 - `equivalence_preserved`: N/A (no step-by-step shown)
 - `solution_verifies`: PASS (substitution check passed)

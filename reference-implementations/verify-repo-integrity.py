@@ -88,6 +88,7 @@ def check_algebra_version_alignment(errors: list[str]) -> None:
     json_path = REPO_ROOT / "domain-packs" / "education" / "algebra-level-1" / "domain-physics.json"
     changelog_path = REPO_ROOT / "domain-packs" / "education" / "algebra-level-1" / "CHANGELOG.md"
     examples_path = REPO_ROOT / "examples" / "README.md"
+    domain_packs_readme_path = REPO_ROOT / "domain-packs" / "README.md"
 
     yaml_version = str(load_yaml(yaml_path).get("version", "")).strip()
 
@@ -112,6 +113,14 @@ def check_algebra_version_alignment(errors: list[str]) -> None:
     expected = f"Algebra Level 1 v{changelog_version}"
     if expected not in examples_text:
         errors.append(f"examples/README.md does not reference latest domain version string: {expected}")
+
+    domain_packs_text = domain_packs_readme_path.read_text(encoding="utf-8")
+    expected_row = f"| Education — Algebra Level 1 | `education/algebra-level-1` | {changelog_version} |"
+    if expected_row not in domain_packs_text:
+        errors.append(
+            "domain-packs/README.md education version row is out of date; "
+            f"expected: {expected_row}"
+        )
 
 
 def _extract_md_links(text: str) -> list[str]:
