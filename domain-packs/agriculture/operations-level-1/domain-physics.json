@@ -39,5 +39,7 @@
   "evidence_summary_types": [
     "ops_signal_summary"
   ],
-  "tool_adapters": []
+  "tool_adapters": [
+    "adapter/agri/collar-sensor/v1"
+  ]
 }

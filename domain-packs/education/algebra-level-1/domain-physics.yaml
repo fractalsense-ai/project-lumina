@@ -209,5 +209,6 @@ evidence_summary_types:
 # ── Tool Adapters ────────────────────────────────────────────
 
 tool_adapters:
+  - adapter/edu/algebra-parser/v1
   - adapter/edu/calculator/v1
   - adapter/edu/substitution-checker/v1

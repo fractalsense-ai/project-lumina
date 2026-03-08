@@ -161,6 +161,52 @@ def check_frontend_essentials(errors: list[str]) -> None:
             errors.append(f"front-end missing required file: {rel}")
 
 
+def check_domain_tool_adapter_linkage(errors: list[str]) -> None:
+    module_physics_files = list((REPO_ROOT / "domain-packs").glob("*/*/domain-physics.json"))
+
+    for physics_path in module_physics_files:
+        try:
+            physics = json.loads(physics_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            errors.append(f"{physics_path.relative_to(REPO_ROOT)} parse error: {exc}")
+            continue
+
+        declared = physics.get("tool_adapters") or []
+        if not isinstance(declared, list):
+            errors.append(f"{physics_path.relative_to(REPO_ROOT)}: tool_adapters must be a list")
+            continue
+
+        declared_ids = [str(x) for x in declared if isinstance(x, str) and x.strip()]
+        if not declared_ids:
+            continue
+
+        module_dir = physics_path.parent
+        adapter_dir = module_dir / "tool-adapters"
+        if not adapter_dir.exists():
+            errors.append(
+                f"{physics_path.relative_to(REPO_ROOT)} declares tool_adapters but {adapter_dir.relative_to(REPO_ROOT)} is missing"
+            )
+            continue
+
+        available_ids: set[str] = set()
+        for adapter_file in adapter_dir.glob("*.yaml"):
+            try:
+                adapter_cfg = load_yaml(adapter_file)
+            except Exception as exc:
+                errors.append(f"{adapter_file.relative_to(REPO_ROOT)} parse error: {exc}")
+                continue
+
+            adapter_id = adapter_cfg.get("id")
+            if isinstance(adapter_id, str) and adapter_id.strip():
+                available_ids.add(adapter_id.strip())
+
+        for adapter_id in declared_ids:
+            if adapter_id not in available_ids:
+                errors.append(
+                    f"{physics_path.relative_to(REPO_ROOT)} declares missing adapter id: {adapter_id}"
+                )
+
+
 def main() -> int:
     errors: list[str] = []
 
@@ -168,6 +214,7 @@ def main() -> int:
     check_algebra_version_alignment(errors)
     check_markdown_relative_links(errors)
     check_frontend_essentials(errors)
+    check_domain_tool_adapter_linkage(errors)
 
     if errors:
         print("[FAIL] Repo integrity checks found issues:")

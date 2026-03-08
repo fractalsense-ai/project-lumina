@@ -5,7 +5,7 @@ Domain packs are the authored rulesets that bound a Project Lumina session to a 
 Each domain owns its own:
 - principles
 - rules and invariants
-- state model and sensors
+- state model and domain-lib estimators
 - domain physics and standing-order vocabulary
 
 Root documentation defines universal engine behavior only.
@@ -42,6 +42,7 @@ domain-packs/
 │       ├── domain-physics.yaml    (source — human-authored)
 │       ├── domain-physics.json    (derived — machine-authoritative)
 │       ├── tool-adapters/
+│       │   ├── algebra-parser-adapter-v1.yaml
 │       │   ├── calculator-adapter-v1.yaml
 │       │   └── substitution-checker-adapter-v1.yaml
 │       ├── student-profile-template.yaml
@@ -117,7 +118,7 @@ Each domain pack may contain two distinct component types. Understanding the dis
 
 ### Domain-Lib (Passive Specifications)
 
-The `domain-lib/` folder holds **passive reference documents** — specifications, estimation models, threshold tables, and sensor profiles that the orchestrator and LLM *read* but never *execute*.
+The `domain-lib/` folder holds **passive reference documents** — specifications, estimation models, threshold tables, and subsystem profiles that the orchestrator and LLM *read* but never *execute*.
 
 Examples:
 - A ZPD monitor specification that defines zone boundaries and drift thresholds
@@ -125,6 +126,8 @@ Examples:
 - A pH sensor profile specifying operating ranges and tolerance bands
 
 Domain-lib files have **no callable entry point**. They are consumed by the LLM as context or by the orchestrator as configuration lookup. They describe *what* the domain measures, not *how* to compute it.
+
+`world-sim/` content is a separate optional layer for interaction framing. It is not the source of normative thresholds or standing-order policy.
 
 ### Tool-Adapters (Active Deterministic Tools)
 
@@ -136,6 +139,8 @@ Examples:
 - A unit-conversion calculator that converts between measurement systems
 
 Tool-adapters are **called by the orchestrator** (or by the evidence extractor on behalf of the orchestrator). They provide ground-truth evidence that the LLM cannot fabricate. The LLM should validate its reasoning against tool-adapter output, not the other way around.
+
+Tool adapters should be explicitly linked from module `domain-physics` using `tool_adapters` IDs so tooling and governance can verify that only authorized tools are used for that module's physics.
 
 ### When to use which
 

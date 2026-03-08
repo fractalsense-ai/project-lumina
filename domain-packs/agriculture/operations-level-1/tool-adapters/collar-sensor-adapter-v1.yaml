@@ -1,0 +1,57 @@
+# collar-sensor-adapter-v1.yaml
+# Project Lumina — Tool Adapter Definition
+
+id: adapter/agri/collar-sensor/v1
+version: "1.0.0"
+tool_name: "Cattle Collar Sensor Reader"
+description: >
+  Deterministic adapter that ingests structured collar telemetry and
+  returns normalized operational signals used by agriculture invariants.
+
+domain_id: domain/agriculture/operations-level-1/v1
+
+call_types:
+  - read_collar_signal
+  - check_tolerance
+
+input_schema:
+  type: object
+  required: [call_type]
+  properties:
+    call_type:
+      type: string
+      enum: [read_collar_signal, check_tolerance]
+    sensor_payload:
+      type: object
+      additionalProperties: true
+      description: "Structured collar telemetry payload"
+    tolerance_band:
+      type: object
+      properties:
+        min:
+          type: number
+        max:
+          type: number
+
+output_schema:
+  type: object
+  properties:
+    ok:
+      type: boolean
+    within_tolerance:
+      type: boolean
+    normalized_signal:
+      type: number
+    error:
+      type: [string, "null"]
+
+authorization:
+  who_may_call:
+    - orchestrator
+  requires_entity_consent: false
+  max_calls_per_session: 200
+  logged_in_ctl: true
+
+error_handling:
+  on_failure: fallback_to_standing_order
+  fallback_standing_order_id: request_more_steps

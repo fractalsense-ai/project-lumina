@@ -50,9 +50,11 @@ Domain-lib outputs must map to fields defined in the domain's own subject state 
 
 ### 5. Domain Lib Directory
 
-Each domain pack must include a state-estimation directory (commonly `sensors/` in legacy packs) containing:
+Each domain pack must include a `domain-lib/` directory containing:
 - A `README.md` listing the domain-lib components and their purpose
 - One specification file per component
+
+`world-sim/` artifacts remain separate from `domain-lib/`. World-sim documents interaction framing and narrative context; domain-lib documents deterministic state estimation logic and thresholds used by domain subsystems.
 
 ---
 

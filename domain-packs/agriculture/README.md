@@ -26,7 +26,9 @@ agriculture/
 ├── runtime-config.yaml
 ├── operations-level-1/
 │   ├── domain-physics.json
-│   └── example-subject.yaml
+│   ├── example-subject.yaml
+│   └── tool-adapters/
+│       └── collar-sensor-adapter-v1.yaml
 ├── prompts/
 │   ├── domain-system-override.md
 │   └── turn-interpretation.md

@@ -160,6 +160,7 @@
     "zpd_drift_summary"
   ],
   "tool_adapters": [
+    "adapter/edu/algebra-parser/v1",
     "adapter/edu/calculator/v1",
     "adapter/edu/substitution-checker/v1"
   ]

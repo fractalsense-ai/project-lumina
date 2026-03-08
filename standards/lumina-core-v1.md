@@ -32,6 +32,18 @@ Optional but recommended:
 
 > **Subject profile schema note:** Each domain pack defines its own subject profile schema in its `schemas/` directory (e.g., [`domain-packs/education/schemas/student-profile-schema-v1.json`](../domain-packs/education/schemas/student-profile-schema-v1.json) for education). The entity profile template is named according to the domain's own conventions (e.g., `student-profile-template.yaml` for education, `operator-profile-template.yaml` for agriculture) and must validate against that domain-specific schema.
 
+### 1.0 Domain Structure Contract
+
+To keep domain ownership explicit and avoid cross-domain coupling, packs must follow this contract:
+
+- **Pack-level domain folder** (`domain-packs/{domain}/`) owns domain-wide context and contracts.
+- **Module-level folder** (`domain-packs/{domain}/{module}/`) owns module truth: invariants, standing orders, escalation triggers, thresholds/tolerances.
+- **`domain-lib/`** holds deterministic domain estimation/reference specifications used by domain-lib implementations.
+- **`world-sim/`** is optional and separate from `domain-lib/`; it provides interaction/world framing, not normative thresholds.
+- **`tool-adapters/`** are active deterministic tools and must be explicitly linked from module `domain-physics` via `tool_adapters` IDs.
+
+Runtime configuration files are wiring surfaces (paths, adapter bindings, runtime flags). Normative thresholds/tolerances and standing-order semantics belong in module `domain-physics`, not runtime wiring.
+
 ### 1.1 Domain Physics Requirements
 
 A conformant `domain-physics.yaml` must declare:
@@ -61,6 +73,10 @@ Standing orders define the **bounded automated responses** the orchestrator may 
 - `action`: the specific automated action (e.g., `request_more_steps`, `reduce_challenge`)
 - `max_attempts`: how many times this order may be applied before escalation
 - `escalation_on_exhaust`: whether to escalate when `max_attempts` is reached
+
+### 1.4 Tool-Physics Linkage
+
+If a module uses tool adapters, its `domain-physics` must declare `tool_adapters` IDs. Each declared ID must resolve to a tool adapter contract file in that module or domain folder. This keeps tool usage bounded by authored domain truth.
 
 ---
 
@@ -148,6 +164,8 @@ Before publishing a domain pack or implementation:
 - [ ] Terminology conforms to Section 4
 - [ ] If the domain is human-facing (`requires_consent: true`), a consent record is required before the session begins
 - [ ] If the domain uses domain-lib subsystems, the relevant `subsystem_configs` block(s) are present with required thresholds
+- [ ] Module `domain-physics` owns normative thresholds/tolerances and standing-order trigger semantics
+- [ ] Every declared `tool_adapters` ID resolves to an existing tool adapter contract file
 
 ---
 
