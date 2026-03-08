@@ -10,6 +10,7 @@ Generic runtime host for D.S.A. orchestration:
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
 import logging
 import os
@@ -60,6 +61,7 @@ ANTHROPIC_MODEL = os.environ.get("LUMINA_ANTHROPIC_MODEL", "claude-sonnet-4-2025
 RUNTIME_CONFIG_PATH = os.environ.get("LUMINA_RUNTIME_CONFIG_PATH")
 PERSISTENCE_BACKEND = os.environ.get("LUMINA_PERSISTENCE_BACKEND", "filesystem").strip().lower()
 DB_URL = os.environ.get("LUMINA_DB_URL")
+ENFORCE_POLICY_COMMITMENT = os.environ.get("LUMINA_ENFORCE_POLICY_COMMITMENT", "true").strip().lower() not in {"0", "false", "no"}
 
 RUNTIME = load_runtime_context(_REPO_ROOT, runtime_config_path=RUNTIME_CONFIG_PATH)
 
@@ -68,6 +70,7 @@ SUBJECT_PROFILE_PATH = Path(RUNTIME["subject_profile_path"])
 DEFAULT_TASK_SPEC = dict(RUNTIME["default_task_spec"])
 SYSTEM_PROMPT = RUNTIME["system_prompt"]
 TURN_INTERPRETATION_PROMPT = RUNTIME["turn_interpretation_prompt"]
+RUNTIME_PROVENANCE = dict(RUNTIME.get("runtime_provenance") or {})
 
 CTL_DIR = Path(tempfile.gettempdir()) / "lumina-ctl"
 CTL_DIR.mkdir(parents=True, exist_ok=True)
@@ -99,6 +102,41 @@ def _default_current_problem(task_spec: dict[str, Any]) -> dict[str, Any]:
         "expected_answer": str(expected_answer),
         "status": "in_progress",
     }
+
+
+def _canonical_sha256(value: Any) -> str:
+    if isinstance(value, str):
+        payload = value.encode("utf-8")
+    else:
+        payload = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _policy_commitment_payload() -> dict[str, Any]:
+    return {
+        "subject_id": str(RUNTIME_PROVENANCE.get("domain_pack_id", "")),
+        "subject_version": str(RUNTIME_PROVENANCE.get("domain_pack_version", "")),
+        "subject_hash": str(RUNTIME_PROVENANCE.get("domain_physics_hash", "")),
+    }
+
+
+def _assert_policy_commitment() -> None:
+    if not ENFORCE_POLICY_COMMITMENT:
+        return
+    payload = _policy_commitment_payload()
+    if not payload["subject_id"] or not payload["subject_hash"]:
+        raise RuntimeError("Runtime provenance missing subject_id/subject_hash for policy commitment enforcement")
+
+    has_commitment = PERSISTENCE.has_policy_commitment(
+        subject_id=payload["subject_id"],
+        subject_version=payload.get("subject_version") or None,
+        subject_hash=payload["subject_hash"],
+    )
+    if not has_commitment:
+        raise RuntimeError(
+            "Policy commitment mismatch: active module domain-physics hash is not CTL-committed. "
+            "Commit the module domain-physics.json hash before activation."
+        )
 
 
 def _coerce_bool(value: Any, default: bool = False) -> bool:
@@ -385,6 +423,7 @@ _sessions: dict[str, dict[str, Any]] = {}
 
 def get_or_create_session(session_id: str) -> dict[str, Any]:
     if session_id not in _sessions:
+        _assert_policy_commitment()
         domain = PERSISTENCE.load_domain_physics(str(DOMAIN_PHYSICS_PATH))
         profile = PERSISTENCE.load_subject_profile(str(SUBJECT_PROFILE_PATH))
         ledger_path = PERSISTENCE.get_ctl_ledger_path(session_id)
@@ -404,6 +443,7 @@ def get_or_create_session(session_id: str) -> dict[str, Any]:
             domain_lib_step_fn=lambda state, task, ev: domain_step(state, task, ev, domain_params),
             initial_state=initial_state,
             action_prompt_type_map=RUNTIME.get("action_prompt_type_map") or {},
+            policy_commitment=_policy_commitment_payload(),
             ctl_append_callback=lambda sid, record: PERSISTENCE.append_ctl_record(
                 sid,
                 record,
@@ -461,7 +501,14 @@ def process_message(
     turn_data = _normalize_turn_data(turn_data, RUNTIME.get("turn_input_schema") or {})
     log.info("[%s] Turn Data: %s", session_id, json.dumps(turn_data, default=str))
 
-    prompt_contract, resolved_action = orch.process_turn(task_spec, turn_data)
+    turn_provenance: dict[str, Any] = dict(RUNTIME_PROVENANCE)
+    turn_provenance["turn_data_hash"] = _canonical_sha256(turn_data)
+
+    prompt_contract, resolved_action = orch.process_turn(
+        task_spec,
+        turn_data,
+        provenance_metadata=turn_provenance,
+    )
 
     reported_status = turn_data.get("problem_status")
     if isinstance(reported_status, str) and reported_status.strip():
@@ -501,6 +548,9 @@ def process_message(
     )
 
     if deterministic_response:
+        llm_payload = dict(prompt_contract)
+        if tool_results:
+            llm_payload["tool_results"] = tool_results
         llm_response = render_contract_response(prompt_contract)
     else:
         llm_payload = dict(prompt_contract)
@@ -512,6 +562,18 @@ def process_message(
         )
 
     log.info("[%s] Response length: %s chars", session_id, len(llm_response))
+
+    post_payload_provenance = dict(turn_provenance)
+    post_payload_provenance["prompt_contract_hash"] = _canonical_sha256(prompt_contract)
+    post_payload_provenance["tool_results_hash"] = _canonical_sha256(tool_results)
+    post_payload_provenance["llm_payload_hash"] = _canonical_sha256(llm_payload)
+    post_payload_provenance["response_hash"] = _canonical_sha256(llm_response)
+    orch.append_provenance_trace(
+        task_id=str(task_spec.get("task_id", "")),
+        action=resolved_action,
+        prompt_type=str(prompt_contract.get("prompt_type", "task_presentation")),
+        metadata=post_payload_provenance,
+    )
 
     return {
         "response": llm_response,

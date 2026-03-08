@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
+import json
 import sys
 from pathlib import Path
 from typing import Any, Callable
@@ -34,6 +36,16 @@ def _read_text(repo_root: Path, rel_path: str) -> str:
     if not path.exists():
         raise RuntimeError(f"Configured file not found: {rel_path}")
     return path.read_text(encoding="utf-8")
+
+
+def _sha256_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _canonical_json_hash(path: Path) -> str:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    canonical = json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
 
 
 def _require_dict(value: Any, key_name: str) -> dict[str, Any]:
@@ -140,9 +152,29 @@ def load_runtime_context(repo_root: Path, runtime_config_path: str | None = None
 
     runtime_cfg, adapters_cfg = _validate_runtime_config(repo_root, cfg, cfg_path)
 
-    global_prompt = _read_text(repo_root, runtime_cfg.get("global_system_prompt_path", "specs/global-system-prompt-v1.md"))
-    domain_prompt = _read_text(repo_root, runtime_cfg["domain_system_prompt_path"])
-    turn_interpretation_prompt = _read_text(repo_root, runtime_cfg["turn_interpretation_prompt_path"])
+    global_prompt_path = repo_root / runtime_cfg.get("global_system_prompt_path", "specs/global-system-prompt-v1.md")
+    domain_prompt_path = repo_root / runtime_cfg["domain_system_prompt_path"]
+    turn_prompt_path = repo_root / runtime_cfg["turn_interpretation_prompt_path"]
+    domain_physics_path = repo_root / runtime_cfg["domain_physics_path"]
+
+    global_prompt = global_prompt_path.read_text(encoding="utf-8")
+    domain_prompt = domain_prompt_path.read_text(encoding="utf-8")
+    turn_interpretation_prompt = turn_prompt_path.read_text(encoding="utf-8")
+
+    system_prompt = f"{global_prompt.strip()}\n\n# DOMAIN CONFIGURATION\n{domain_prompt.strip()}"
+    domain_physics = json.loads(domain_physics_path.read_text(encoding="utf-8"))
+    if not isinstance(domain_physics, dict):
+        raise RuntimeError("Configured domain physics JSON must parse to an object")
+
+    runtime_provenance = {
+        "domain_physics_hash": _canonical_json_hash(domain_physics_path),
+        "global_prompt_hash": _sha256_text(global_prompt),
+        "domain_prompt_hash": _sha256_text(domain_prompt),
+        "turn_interpretation_prompt_hash": _sha256_text(turn_interpretation_prompt),
+        "system_prompt_hash": _sha256_text(system_prompt),
+        "domain_pack_id": str(domain_physics.get("id", "")),
+        "domain_pack_version": str(domain_physics.get("version", "")),
+    }
 
     state_builder_cfg = adapters_cfg["state_builder"]
     domain_step_cfg = adapters_cfg["domain_step"]
@@ -185,7 +217,7 @@ def load_runtime_context(repo_root: Path, runtime_config_path: str | None = None
         raise RuntimeError("'ui_manifest' must be a mapping/dict when provided")
 
     return {
-        "domain_physics_path": str(repo_root / runtime_cfg["domain_physics_path"]),
+        "domain_physics_path": str(domain_physics_path),
         "subject_profile_path": str(repo_root / runtime_cfg["subject_profile_path"]),
         "default_task_spec": runtime_cfg.get("default_task_spec") or {},
         "domain_step_params": runtime_cfg.get("domain_step_params") or {},
@@ -195,8 +227,9 @@ def load_runtime_context(repo_root: Path, runtime_config_path: str | None = None
         "deterministic_templates": deterministic_templates,
         "tool_call_policies": tool_call_policies,
         "ui_manifest": ui_manifest,
-        "system_prompt": f"{global_prompt.strip()}\n\n# DOMAIN CONFIGURATION\n{domain_prompt.strip()}",
+        "system_prompt": system_prompt,
         "turn_interpretation_prompt": turn_interpretation_prompt,
+        "runtime_provenance": runtime_provenance,
         "state_builder_fn": state_builder_fn,
         "domain_step_fn": domain_step_fn,
         "turn_interpreter_fn": turn_interpreter_fn,

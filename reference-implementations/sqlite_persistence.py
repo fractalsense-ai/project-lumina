@@ -194,6 +194,50 @@ class SQLitePersistenceAdapter(PersistenceAdapter):
             "results": results,
         }
 
+    def has_policy_commitment(
+        self,
+        subject_id: str,
+        subject_version: str | None,
+        subject_hash: str,
+    ) -> bool:
+        return asyncio.run(
+            self._has_policy_commitment_async(
+                subject_id=subject_id,
+                subject_version=subject_version,
+                subject_hash=subject_hash,
+            )
+        )
+
+    async def _has_policy_commitment_async(
+        self,
+        subject_id: str,
+        subject_version: str | None,
+        subject_hash: str,
+    ) -> bool:
+        from sqlalchemy import select
+
+        async with self._engine.connect() as conn:
+            result = await conn.execute(
+                select(self._CtlRecord.payload_json).where(self._CtlRecord.record_type == "CommitmentRecord")
+            )
+            payloads = result.scalars().all()
+
+        for payload in payloads:
+            try:
+                record = json.loads(payload)
+            except Exception:
+                continue
+            if not isinstance(record, dict):
+                continue
+            if record.get("subject_id") != subject_id:
+                continue
+            if record.get("subject_hash") != subject_hash:
+                continue
+            rec_version = record.get("subject_version")
+            if subject_version is None or rec_version == subject_version:
+                return True
+        return False
+
     async def _load_ctl_records_async(self, session_id: str) -> list[dict[str, Any]]:
         from sqlalchemy import select
 

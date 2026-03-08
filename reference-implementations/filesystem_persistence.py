@@ -93,6 +93,26 @@ class FilesystemPersistenceAdapter(PersistenceAdapter):
             "results": results,
         }
 
+    def has_policy_commitment(
+        self,
+        subject_id: str,
+        subject_version: str | None,
+        subject_hash: str,
+    ) -> bool:
+        for sid in self.list_ctl_session_ids():
+            records = self._load_ledger_records(Path(self.get_ctl_ledger_path(sid)))
+            for record in records:
+                if record.get("record_type") != "CommitmentRecord":
+                    continue
+                if record.get("subject_id") != subject_id:
+                    continue
+                if record.get("subject_hash") != subject_hash:
+                    continue
+                rec_version = record.get("subject_version")
+                if subject_version is None or rec_version == subject_version:
+                    return True
+        return False
+
     def _load_ledger_records(self, path: Path) -> list[dict[str, Any]]:
         if not path.exists():
             return []

@@ -39,6 +39,15 @@ class PersistenceAdapter(ABC):
     def validate_ctl_chain(self, session_id: str | None = None) -> dict[str, Any]:
         """Validate CTL hash-chain integrity for one session or all sessions."""
 
+    @abstractmethod
+    def has_policy_commitment(
+        self,
+        subject_id: str,
+        subject_version: str | None,
+        subject_hash: str,
+    ) -> bool:
+        """Return True when CTL contains a matching policy CommitmentRecord."""
+
 
 class NullPersistenceAdapter(PersistenceAdapter):
     """No-op adapter mainly used for tests; keeps session state in-memory only."""
@@ -95,3 +104,11 @@ class NullPersistenceAdapter(PersistenceAdapter):
             "intact": True,
             "results": [],
         }
+
+    def has_policy_commitment(
+        self,
+        subject_id: str,
+        subject_version: str | None,
+        subject_hash: str,
+    ) -> bool:
+        return True

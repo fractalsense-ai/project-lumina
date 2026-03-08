@@ -94,6 +94,11 @@ def hash_record(record: dict[str, Any]) -> str:
     return hashlib.sha256(canonical_json(record)).hexdigest()
 
 
+def hash_payload(payload: dict[str, Any]) -> str:
+    """Hash arbitrary structured payload with canonical JSON rules."""
+    return hashlib.sha256(canonical_json(payload)).hexdigest()
+
+
 # ─────────────────────────────────────────────────────────────
 # Domain Physics Loader
 # ─────────────────────────────────────────────────────────────
@@ -234,6 +239,7 @@ class DSAOrchestrator:
         domain_lib_step_fn: Callable[..., tuple[Any, dict[str, Any]]] | None = None,
         initial_state: Any | None = None,
         action_prompt_type_map: dict[str, str] | None = None,
+        policy_commitment: dict[str, Any] | None = None,
         ctl_append_callback: Callable[[str, dict[str, Any]], None] | None = None,
     ) -> None:
         """
@@ -257,6 +263,9 @@ class DSAOrchestrator:
             action_prompt_type_map: Optional action-to-prompt_type mapping loaded
                              from domain runtime config. Unknown actions still
                              pass through as prompt_type values.
+            policy_commitment: Optional policy commitment metadata containing
+                             authoritative subject/version/hash values used when
+                             writing session-open CommitmentRecord.
         """
         self.domain = domain_physics
         self.profile = subject_profile
@@ -268,6 +277,7 @@ class DSAOrchestrator:
         self._action_prompt_type_map: dict[str | None, str] = dict(_DEFAULT_ACTION_TO_PROMPT_TYPE)
         for action, prompt_type in (action_prompt_type_map or {}).items():
             self._action_prompt_type_map[str(action)] = str(prompt_type)
+        self._policy_commitment = dict(policy_commitment or {})
         self._ctl_append_callback = ctl_append_callback
 
         # Diagnostics for the most recently processed turn (read-only for callers)
@@ -326,8 +336,9 @@ class DSAOrchestrator:
 
     def _write_commitment_record(self) -> None:
         """Write the session-open CommitmentRecord to the CTL."""
-        domain_id = self.domain.get("id", "unknown")
-        domain_version = self.domain.get("version", "unknown")
+        domain_id = self._policy_commitment.get("subject_id", self.domain.get("id", "unknown"))
+        domain_version = self._policy_commitment.get("subject_version", self.domain.get("version", "unknown"))
+        domain_hash = self._policy_commitment.get("subject_hash", "unknown")
         domain_authority = self.domain.get("domain_authority") or {}
         actor_id = domain_authority.get("pseudonymous_id", "unknown")
         record: dict[str, Any] = {
@@ -340,10 +351,10 @@ class DSAOrchestrator:
             "commitment_type": "domain_pack_activation",
             "subject_id": domain_id,
             "subject_version": domain_version,
-            "subject_hash": "demo_session",
+            "subject_hash": domain_hash,
             "summary": (
                 f"Session {self.session_id} opened — domain pack "
-                f"{domain_id} v{domain_version}"
+                f"{domain_id} v{domain_version} hash={str(domain_hash)[:12]}..."
             ),
             "references": [],
             "metadata": {"session_id": self.session_id},
@@ -357,6 +368,7 @@ class DSAOrchestrator:
         domain_lib_decision: dict[str, Any],
         action: str | None,
         prompt_contract: dict[str, Any],
+        provenance_metadata: dict[str, Any] | None = None,
     ) -> None:
         """Append a TraceEvent record to the CTL for this turn."""
         record: dict[str, Any] = {
@@ -381,7 +393,7 @@ class DSAOrchestrator:
             },
             "task_id": task_spec.get("task_id", ""),
             "prompt_type": prompt_contract.get("prompt_type"),
-            "metadata": {},
+            "metadata": dict(provenance_metadata or {}),
         }
         self._append_ctl_record(record)
 
@@ -390,6 +402,7 @@ class DSAOrchestrator:
         task_spec: dict[str, Any],
         domain_lib_decision: dict[str, Any],
         trigger: str,
+        provenance_metadata: dict[str, Any] | None = None,
     ) -> None:
         """Append an EscalationRecord to the CTL."""
         record: dict[str, Any] = {
@@ -410,7 +423,7 @@ class DSAOrchestrator:
             },
             "target_role": "domain_authority",
             "sla_minutes": 30,
-            "metadata": {},
+            "metadata": dict(provenance_metadata or {}),
         }
         self._append_ctl_record(record)
 
@@ -614,6 +627,7 @@ class DSAOrchestrator:
         self,
         task_spec: dict[str, Any],
         evidence: dict[str, Any],
+        provenance_metadata: dict[str, Any] | None = None,
     ) -> tuple[dict[str, Any], str]:
         """
         Process one session turn through the full D.S.A. loop.
@@ -675,9 +689,17 @@ class DSAOrchestrator:
             task_spec, action, domain_lib_decision, standing_order_trigger
         )
 
+        trace_metadata = dict(provenance_metadata or {})
+        trace_metadata["prompt_contract_hash"] = hash_payload(prompt_contract)
+
         # 5. Append TraceEvent to CTL
         self._write_trace_event(
-            task_spec, invariant_results, domain_lib_decision, action, prompt_contract
+            task_spec,
+            invariant_results,
+            domain_lib_decision,
+            action,
+            prompt_contract,
+            trace_metadata,
         )
 
         # 6. Append EscalationRecord if warranted
@@ -686,7 +708,32 @@ class DSAOrchestrator:
                 task_spec,
                 domain_lib_decision,
                 escalation_trigger or "domain_lib_escalation_event",
+                trace_metadata,
             )
 
         resolved_action = action if action is not None else "task_presentation"
         return prompt_contract, resolved_action
+
+    def append_provenance_trace(
+        self,
+        task_id: str,
+        action: str,
+        prompt_type: str,
+        metadata: dict[str, Any],
+    ) -> None:
+        """Append an auxiliary TraceEvent carrying post-payload provenance hashes."""
+        record: dict[str, Any] = {
+            "record_type": "TraceEvent",
+            "record_id": str(uuid.uuid4()),
+            "prev_record_hash": self._prev_hash,
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+            "session_id": self.session_id,
+            "event_type": "other",
+            "actor_id": self.profile.get("subject_id", self.profile.get("student_id", "unknown")),
+            "actor_role": "subject",
+            "decision": action,
+            "task_id": task_id,
+            "prompt_type": prompt_type,
+            "metadata": dict(metadata),
+        }
+        self._append_ctl_record(record)
