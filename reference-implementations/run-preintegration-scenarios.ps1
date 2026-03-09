@@ -166,7 +166,10 @@ Write-Host "API status: $($health.status) provider=$($health.provider)"
 Assert-Condition ($health.status -eq "ok") "API health check failed"
 
 $tempDir = [System.IO.Path]::GetTempPath()
-$ctlDir = Join-Path $tempDir "lumina-ctl"
+$ctlDir = $env:LUMINA_CTL_DIR
+if ([string]::IsNullOrWhiteSpace($ctlDir)) {
+	$ctlDir = Join-Path $tempDir "lumina-ctl"
+}
 New-Item -ItemType Directory -Path $ctlDir -Force | Out-Null
 
 $noEscSession = "preint-noesc-" + ([guid]::NewGuid().ToString("N").Substring(0, 8))

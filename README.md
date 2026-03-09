@@ -401,6 +401,14 @@ c:\Users\dxn00\Lumina\project-lumina\.venv\Scripts\python.exe -m pip install -r 
 c:\Users\dxn00\Lumina\project-lumina\.venv\Scripts\python.exe -m pytest tests -q
 ```
 
+### Run backend coverage gate (>=85%)
+
+```powershell
+c:\Users\dxn00\Lumina\project-lumina\.venv\Scripts\python.exe -m pytest tests -q --cov=auth --cov=permissions --cov=persistence_adapter --cov-report=term-missing --cov-fail-under=85
+```
+
+This initial gate targets core auth/permission/persistence abstractions. Coverage scope will expand to additional backend modules as test depth increases.
+
 Current baseline includes:
 - Unit tests for `reference-implementations/auth.py`
 - Unit tests for `reference-implementations/permissions.py`
@@ -413,6 +421,14 @@ Current baseline includes:
 ```powershell
 Push-Location .\front-end
 npm.cmd run test:unit
+Pop-Location
+```
+
+### Run frontend coverage report (non-blocking)
+
+```powershell
+Push-Location .\front-end
+npm.cmd run test:coverage
 Pop-Location
 ```
 

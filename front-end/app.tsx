@@ -33,6 +33,7 @@ interface UiManifest {
   consent_text: string
   consent_button_label: string
   placeholder_text: string
+  input_placeholder?: string
   theme?: {
     primary?: string
     accent?: string
@@ -302,7 +303,7 @@ function ChatInterface({ manifest }: { manifest: UiManifest }) {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder={manifest.input_placeholder}
+              placeholder={manifest.input_placeholder ?? manifest.placeholder_text}
               disabled={isLoading}
               className="flex-1 text-base"
             />

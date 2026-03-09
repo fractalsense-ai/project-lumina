@@ -28,8 +28,14 @@ jobs:
         shell: pwsh
         run: ./reference-implementations/check-local-secret-hygiene.ps1
 
-      - name: Backend tests
-        run: python -m pytest tests -q
+      - name: Backend tests + coverage gate (>=85%)
+        run: >
+          python -m pytest tests -q
+          --cov=auth
+          --cov=permissions
+          --cov=persistence_adapter
+          --cov-report=term-missing
+          --cov-fail-under=85
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -45,6 +51,11 @@ jobs:
       - name: Frontend unit tests
         working-directory: front-end
         run: npm run test:unit
+
+      - name: Frontend coverage report (non-blocking)
+        working-directory: front-end
+        run: npm run test:coverage
+        continue-on-error: true
 
       - name: Install Playwright browser
         working-directory: front-end

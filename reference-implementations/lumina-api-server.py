@@ -90,7 +90,8 @@ SYSTEM_PROMPT = RUNTIME["system_prompt"]
 TURN_INTERPRETATION_PROMPT = RUNTIME["turn_interpretation_prompt"]
 RUNTIME_PROVENANCE = dict(RUNTIME.get("runtime_provenance") or {})
 
-CTL_DIR = Path(tempfile.gettempdir()) / "lumina-ctl"
+_DEFAULT_CTL_DIR = Path(tempfile.gettempdir()) / "lumina-ctl"
+CTL_DIR = Path(os.environ.get("LUMINA_CTL_DIR", str(_DEFAULT_CTL_DIR)))
 CTL_DIR.mkdir(parents=True, exist_ok=True)
 
 

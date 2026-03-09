@@ -19,5 +19,10 @@ export default defineConfig({
     setupFiles: './src/test/setup.ts',
     css: false,
     exclude: ['tests/e2e/**', 'node_modules/**'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      reportsDirectory: './coverage',
+    },
   },
 })

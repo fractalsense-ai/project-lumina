@@ -41,6 +41,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+if hasattr(sys.stdout, "reconfigure"):
+    # Avoid Windows cp1252 encoding failures for unicode status symbols.
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 
 # ─────────────────────────────────────────────────────────────
 # Hash Utilities

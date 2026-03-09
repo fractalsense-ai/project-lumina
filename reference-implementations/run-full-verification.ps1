@@ -117,6 +117,10 @@ if (-not $SkipApiScenarios) {
     $apiStderrLog = $null
     $startedApiServer = $false
     $previousLuminaPort = $env:LUMINA_PORT
+    $previousRuntimeConfigPath = $env:LUMINA_RUNTIME_CONFIG_PATH
+    $previousJwtSecret = $env:LUMINA_JWT_SECRET
+    $previousCtlDir = $env:LUMINA_CTL_DIR
+    $previousEnforcePolicyCommitment = $env:LUMINA_ENFORCE_POLICY_COMMITMENT
 
     try {
         if (-not (Test-ApiHealth -BaseUrl $ApiBaseUrl)) {
@@ -125,6 +129,29 @@ if (-not $SkipApiScenarios) {
 
             Write-Host "API not reachable at $ApiBaseUrl. Starting local server on port $apiPort..."
             $env:LUMINA_PORT = "$apiPort"
+
+            if ([string]::IsNullOrWhiteSpace($env:LUMINA_RUNTIME_CONFIG_PATH)) {
+                $defaultRuntimeConfig = "domain-packs/education/runtime-config.yaml"
+                Write-Host "LUMINA_RUNTIME_CONFIG_PATH not set; defaulting to '$defaultRuntimeConfig' for local API startup."
+                $env:LUMINA_RUNTIME_CONFIG_PATH = $defaultRuntimeConfig
+            }
+
+            if ([string]::IsNullOrWhiteSpace($env:LUMINA_JWT_SECRET)) {
+                $defaultJwtSecret = "lumina-local-verification-secret-32bytes-min"
+                Write-Host "LUMINA_JWT_SECRET not set; using local verification secret for API startup."
+                $env:LUMINA_JWT_SECRET = $defaultJwtSecret
+            }
+
+            if ([string]::IsNullOrWhiteSpace($env:LUMINA_CTL_DIR)) {
+                $isolatedCtlDir = Join-Path ([System.IO.Path]::GetTempPath()) ("lumina-ctl-verify-" + [guid]::NewGuid().ToString("N"))
+                Write-Host "LUMINA_CTL_DIR not set; using isolated CTL dir '$isolatedCtlDir' for local API startup."
+                $env:LUMINA_CTL_DIR = $isolatedCtlDir
+            }
+
+            if ([string]::IsNullOrWhiteSpace($env:LUMINA_ENFORCE_POLICY_COMMITMENT)) {
+                Write-Host "LUMINA_ENFORCE_POLICY_COMMITMENT not set; disabling policy commitment enforcement for local pre-integration scenarios."
+                $env:LUMINA_ENFORCE_POLICY_COMMITMENT = "false"
+            }
 
             $logToken = [guid]::NewGuid().ToString("N")
             $apiStdoutLog = Join-Path ([System.IO.Path]::GetTempPath()) ("lumina-api-" + $logToken + "-out.log")
@@ -149,6 +176,34 @@ if (-not $SkipApiScenarios) {
         }
         else {
             $env:LUMINA_PORT = $previousLuminaPort
+        }
+
+        if ($null -eq $previousRuntimeConfigPath) {
+            Remove-Item Env:LUMINA_RUNTIME_CONFIG_PATH -ErrorAction SilentlyContinue
+        }
+        else {
+            $env:LUMINA_RUNTIME_CONFIG_PATH = $previousRuntimeConfigPath
+        }
+
+        if ($null -eq $previousJwtSecret) {
+            Remove-Item Env:LUMINA_JWT_SECRET -ErrorAction SilentlyContinue
+        }
+        else {
+            $env:LUMINA_JWT_SECRET = $previousJwtSecret
+        }
+
+        if ($null -eq $previousCtlDir) {
+            Remove-Item Env:LUMINA_CTL_DIR -ErrorAction SilentlyContinue
+        }
+        else {
+            $env:LUMINA_CTL_DIR = $previousCtlDir
+        }
+
+        if ($null -eq $previousEnforcePolicyCommitment) {
+            Remove-Item Env:LUMINA_ENFORCE_POLICY_COMMITMENT -ErrorAction SilentlyContinue
+        }
+        else {
+            $env:LUMINA_ENFORCE_POLICY_COMMITMENT = $previousEnforcePolicyCommitment
         }
 
         if ($startedApiServer -and $apiProcess -and -not $apiProcess.HasExited) {

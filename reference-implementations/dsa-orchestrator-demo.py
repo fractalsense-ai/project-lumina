@@ -29,6 +29,12 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+if hasattr(sys.stdout, "reconfigure"):
+    # Avoid Windows cp1252 encoding failures when printing box-drawing chars.
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 # Allow running from repo root or from the reference-implementations directory
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -96,10 +102,10 @@ load_ledger = _ctl_mod.load_ledger
 
 _REPO_ROOT = Path(__file__).parent.parent
 _DOMAIN_PHYSICS_PATH = (
-    _REPO_ROOT / "domain-packs" / "education" / "algebra-level-1" / "domain-physics.json"
+    _REPO_ROOT / "domain-packs" / "education" / "modules" / "algebra-level-1" / "domain-physics.json"
 )
 _ALICE_PROFILE_PATH = (
-    _REPO_ROOT / "domain-packs" / "education" / "algebra-level-1" / "example-student-alice.yaml"
+    _REPO_ROOT / "domain-packs" / "education" / "modules" / "algebra-level-1" / "example-student-alice.yaml"
 )
 
 
