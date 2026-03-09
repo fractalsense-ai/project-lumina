@@ -444,7 +444,7 @@ class SQLitePersistenceAdapter(PersistenceAdapter):
             await conn.execute(
                 update(self._User).where(self._User.user_id == user_id).values(**values)
             )
-        return asyncio.run(self._get_user_async(user_id))
+        return await self._get_user_async(user_id)
 
     def deactivate_user(self, user_id: str) -> bool:
         return asyncio.run(self._deactivate_user_async(user_id))

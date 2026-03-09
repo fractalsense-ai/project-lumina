@@ -21,3 +21,4 @@ front-end/dist/
 front-end/.env
 front-end/.env.*
 front-end/*.tsbuildinfo
+front-end/lib/openaikey.md

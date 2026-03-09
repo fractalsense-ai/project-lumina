@@ -374,6 +374,16 @@ pip install anthropic
 
 Then start the server and send requests without `deterministic_response` or `turn_data_override`.
 
+### Local secret file workflow (Windows)
+
+If you keep your key in `front-end/lib/openaikey.md`, ensure it remains ignored by git (the repository includes this ignore rule) and load it into the shell environment at runtime:
+
+```powershell
+$env:OPENAI_API_KEY = (Get-Content .\front-end\lib\openaikey.md -Raw).Trim()
+```
+
+This keeps application code unchanged while still supplying `OPENAI_API_KEY` to the API process.
+
 ### Run the regression test suite
 
 ```powershell
@@ -383,6 +393,22 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```
 
 Tests: health check, stable turn (no escalation), major drift (escalation), standing-order exhaustion, CTL hash-chain integrity, EscalationRecord presence, and provenance metadata lineage checks.
+
+### Run backend unit + integration tests (pytest)
+
+```powershell
+c:\Users\dxn00\Lumina\project-lumina\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+c:\Users\dxn00\Lumina\project-lumina\.venv\Scripts\python.exe -m pytest tests -q
+```
+
+Current baseline includes:
+- Unit tests for `reference-implementations/auth.py`
+- Unit tests for `reference-implementations/permissions.py`
+- Unit tests for persistence adapters (`Null`, `Filesystem`, `SQLite`)
+- Integration tests for auth endpoints in `reference-implementations/lumina-api-server.py`
+- Integration tests for `/api/chat`, `/api/tool/{tool_id}`, and `/api/ctl/validate`
+
+The full verification script also runs secret hygiene checks for local key storage at `front-end/lib/openaikey.md`.
 
 ### Explore the architecture
 

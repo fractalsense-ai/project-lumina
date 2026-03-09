@@ -65,6 +65,12 @@ if (-not (Test-Path $PythonExe)) {
 }
 Write-Host "Python: $PythonExe"
 
+Write-Section "Secret Hygiene"
+& "reference-implementations/check-local-secret-hygiene.ps1"
+if ($LASTEXITCODE -ne 0) {
+    throw "check-local-secret-hygiene.ps1 failed"
+}
+
 if (-not $SkipFrontend) {
     Assert-Command -Name "npm.cmd" -Hint "Install Node.js and ensure npm is in PATH."
     Write-Host "npm: available"

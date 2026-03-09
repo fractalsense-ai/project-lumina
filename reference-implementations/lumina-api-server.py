@@ -907,7 +907,7 @@ async def login(req: LoginRequest) -> TokenResponse:
 
 @app.post("/api/auth/refresh", response_model=TokenResponse)
 async def refresh(
-    credentials: HTTPAuthorizationCredentials = _bearer_scheme,  # type: ignore[assignment]
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
 ) -> TokenResponse:
     """Issue a fresh token for an authenticated user."""
     current = await get_current_user(credentials)
@@ -932,7 +932,7 @@ async def refresh(
 
 @app.get("/api/auth/me", response_model=UserResponse)
 async def me(
-    credentials: HTTPAuthorizationCredentials = _bearer_scheme,  # type: ignore[assignment]
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
 ) -> UserResponse:
     """Return the profile of the currently authenticated user."""
     current = await get_current_user(credentials)
@@ -951,7 +951,7 @@ async def me(
 
 @app.get("/api/auth/users", response_model=list[UserResponse])
 async def list_all_users(
-    credentials: HTTPAuthorizationCredentials = _bearer_scheme,  # type: ignore[assignment]
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
 ) -> list[UserResponse]:
     """List all users (root and it_support only)."""
     current = await get_current_user(credentials)
