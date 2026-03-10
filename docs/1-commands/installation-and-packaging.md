@@ -2,6 +2,8 @@
 
 Installation and packaging workflows for Project Lumina.
 
+Before running live LLM mode, configure runtime secrets and environment settings: [secrets-and-runtime-config](../8-admin/secrets-and-runtime-config.md).
+
 ## Requirements files workflow (pip)
 
 Runtime dependencies:

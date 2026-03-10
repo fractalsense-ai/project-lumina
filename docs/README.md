@@ -23,7 +23,7 @@ Documentation is organized using the UNIX man-page section convention.
 4. **Commands** — Start with [installation and packaging](1-commands/installation-and-packaging.md), then use the [YAML converter](1-commands/yaml-to-json-converter.md) and [CTL validator](1-commands/ctl-commitment-validator.md)
 5. **API** — Browse the [API server reference](2-syscalls/lumina-api-server.md)
 6. **Examples** — Study the [causal learning trace](../examples/causal-learning-trace-example.json)
-7. **Admin** — Configure [RBAC roles](8-admin/rbac-administration.md) and [audit policy](../governance/audit-and-rollback.md)
+7. **Admin** — Configure [runtime secrets](8-admin/secrets-and-runtime-config.md), [RBAC roles](8-admin/rbac-administration.md), and [audit policy](../governance/audit-and-rollback.md)
 
 ---
 

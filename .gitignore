@@ -4,6 +4,9 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.env
+.env.*
+!.env.example
 
 # Test ledger files
 /tmp/

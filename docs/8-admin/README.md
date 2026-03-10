@@ -4,6 +4,7 @@ Governance, RBAC configuration, audit policy, and operational procedures.
 
 | Topic | Description |
 |-------|-------------|
+| [secrets-and-runtime-config](secrets-and-runtime-config.md) | Secret handling, environment setup, and production runtime configuration |
 | [rbac-administration](rbac-administration.md) | Role management and permission configuration |
 | [audit-and-rollback](../../governance/audit-and-rollback.md) | Audit log and rollback procedures |
 | [domain-authority-roles](../../governance/domain-authority-roles.md) | Role definitions and governance hierarchy |

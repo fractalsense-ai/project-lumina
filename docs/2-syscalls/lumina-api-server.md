@@ -18,9 +18,11 @@ Generic runtime host for D.S.A. orchestration with built-in JWT authentication. 
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `LUMINA_LLM_PROVIDER` | `openai` | LLM backend: `openai` or `anthropic` |
+| `LUMINA_LLM_PROVIDER` | `openai` | LLM backend: `openai` or `anthropic` (used for live mode) |
 | `LUMINA_OPENAI_MODEL` | `gpt-4o` | OpenAI model name |
 | `LUMINA_ANTHROPIC_MODEL` | `claude-sonnet-4-20250514` | Anthropic model name |
+| `OPENAI_API_KEY` | — | Required when `LUMINA_LLM_PROVIDER=openai` and live mode is used |
+| `ANTHROPIC_API_KEY` | — | Required when `LUMINA_LLM_PROVIDER=anthropic` and live mode is used |
 | `LUMINA_RUNTIME_CONFIG_PATH` | — | Override path to runtime-config.yaml |
 | `LUMINA_PERSISTENCE_BACKEND` | `filesystem` | `filesystem` or `sqlite` |
 | `LUMINA_DB_URL` | `sqlite+aiosqlite:///lumina.db` | SQLAlchemy database URL |
@@ -31,6 +33,12 @@ Generic runtime host for D.S.A. orchestration with built-in JWT authentication. 
 | `LUMINA_JWT_ALGORITHM` | `HS256` | JWT signing algorithm |
 | `LUMINA_CORS_ORIGINS` | `http://localhost:3000` | Comma-separated allowed CORS origins |
 | `LUMINA_BOOTSTRAP_MODE` | `true` | First registered user auto-promoted to root |
+
+Notes:
+
+- Deterministic mode (`deterministic_response=true`) does not require provider API keys.
+- Live mode requires the provider key for the selected backend.
+- Production secret handling guidance: [secrets-and-runtime-config](../8-admin/secrets-and-runtime-config.md)
 
 ---
 
