@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "domain-registry-schema-v1.json",
+  "title": "Lumina Domain Registry",
+  "description": "Maps domain identifiers to their runtime configuration paths for multi-domain deployments.",
+  "type": "object",
+  "required": ["domains"],
+  "properties": {
+    "default_domain": {
+      "type": "string",
+      "description": "Domain ID used when no explicit domain_id is provided in a request. Must reference a key in 'domains'."
+    },
+    "domains": {
+      "type": "object",
+      "description": "Mapping of domain_id to domain entry.",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["runtime_config_path"],
+        "properties": {
+          "runtime_config_path": {
+            "type": "string",
+            "description": "Repo-relative path to the domain's runtime-config.yaml."
+          },
+          "label": {
+            "type": "string",
+            "description": "Human-readable display name for the domain."
+          },
+          "description": {
+            "type": "string",
+            "description": "Short description of the domain's purpose."
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -23,7 +23,8 @@ Generic runtime host for D.S.A. orchestration with built-in JWT authentication. 
 | `LUMINA_ANTHROPIC_MODEL` | `claude-sonnet-4-20250514` | Anthropic model name |
 | `OPENAI_API_KEY` | — | Required when `LUMINA_LLM_PROVIDER=openai` and live mode is used |
 | `ANTHROPIC_API_KEY` | — | Required when `LUMINA_LLM_PROVIDER=anthropic` and live mode is used |
-| `LUMINA_RUNTIME_CONFIG_PATH` | — | Override path to runtime-config.yaml |
+| `LUMINA_RUNTIME_CONFIG_PATH` | — | Override path to runtime-config.yaml (single-domain mode) |
+| `LUMINA_DOMAIN_REGISTRY_PATH` | — | Path to domain-registry.yaml (multi-domain mode) |
 | `LUMINA_PERSISTENCE_BACKEND` | `filesystem` | `filesystem` or `sqlite` |
 | `LUMINA_DB_URL` | `sqlite+aiosqlite:///lumina.db` | SQLAlchemy database URL |
 | `LUMINA_PORT` | `8000` | HTTP listen port |
@@ -48,11 +49,13 @@ Notes:
 
 Process a conversational turn through the D.S.A. pipeline.
 
-**Request:** `ChatRequest` — `session_id`, `message`, `deterministic_response`, `turn_data_override`
+**Request:** `ChatRequest` — `session_id`, `message`, `deterministic_response`, `turn_data_override`, `domain_id`
 
-**Response:** `ChatResponse` — `session_id`, `response`, `action`, `prompt_type`, `escalated`, `tool_results`
+**Response:** `ChatResponse` — `session_id`, `response`, `action`, `prompt_type`, `escalated`, `tool_results`, `domain_id`
 
-**Auth:** Optional Bearer token. When provided, module execute permission is checked.
+**Auth:** Optional Bearer token. When provided, module execute permission is checked against the resolved domain.
+
+**Notes:** `domain_id` selects which domain context to use. When omitted, the default domain is used. Sessions are immutably bound to their initial domain.
 
 ---
 
@@ -62,9 +65,19 @@ Returns `{"status": "ok", "provider": "<llm_provider>"}`.
 
 ---
 
+### GET /api/domains
+
+List available domains in a multi-domain deployment.
+
+**Response:** Array of `{domain_id, label, description, is_default}`.
+
+---
+
 ### GET /api/domain-info
 
 Returns domain ID, version, and UI manifest for front-end theming.
+
+**Query parameters:** `domain_id` (optional — uses default when omitted).
 
 ---
 

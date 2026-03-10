@@ -42,6 +42,7 @@ from auth import (
     verify_jwt,
     verify_password,
 )
+from domain_registry import DomainNotFoundError, DomainRegistry
 from filesystem_persistence import FilesystemPersistenceAdapter
 from permissions import Operation, check_permission
 from persistence_adapter import PersistenceAdapter
@@ -71,6 +72,7 @@ LLM_PROVIDER = os.environ.get("LUMINA_LLM_PROVIDER", "openai")
 OPENAI_MODEL = os.environ.get("LUMINA_OPENAI_MODEL", "gpt-4o")
 ANTHROPIC_MODEL = os.environ.get("LUMINA_ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
 RUNTIME_CONFIG_PATH = os.environ.get("LUMINA_RUNTIME_CONFIG_PATH")
+DOMAIN_REGISTRY_PATH = os.environ.get("LUMINA_DOMAIN_REGISTRY_PATH")
 PERSISTENCE_BACKEND = os.environ.get("LUMINA_PERSISTENCE_BACKEND", "filesystem").strip().lower()
 DB_URL = os.environ.get("LUMINA_DB_URL")
 ENFORCE_POLICY_COMMITMENT = os.environ.get("LUMINA_ENFORCE_POLICY_COMMITMENT", "true").strip().lower() not in {"0", "false", "no"}
@@ -81,14 +83,16 @@ CORS_ORIGINS: list[str] = [
 ]
 BOOTSTRAP_MODE: bool = os.environ.get("LUMINA_BOOTSTRAP_MODE", "true").strip().lower() not in {"0", "false", "no"}
 
-RUNTIME = load_runtime_context(_REPO_ROOT, runtime_config_path=RUNTIME_CONFIG_PATH)
+# ─────────────────────────────────────────────────────────────
+# Domain Registry (replaces single-domain RUNTIME singleton)
+# ─────────────────────────────────────────────────────────────
 
-DOMAIN_PHYSICS_PATH = Path(RUNTIME["domain_physics_path"])
-SUBJECT_PROFILE_PATH = Path(RUNTIME["subject_profile_path"])
-DEFAULT_TASK_SPEC = dict(RUNTIME["default_task_spec"])
-SYSTEM_PROMPT = RUNTIME["system_prompt"]
-TURN_INTERPRETATION_PROMPT = RUNTIME["turn_interpretation_prompt"]
-RUNTIME_PROVENANCE = dict(RUNTIME.get("runtime_provenance") or {})
+DOMAIN_REGISTRY = DomainRegistry(
+    repo_root=_REPO_ROOT,
+    registry_path=DOMAIN_REGISTRY_PATH,
+    single_config_path=RUNTIME_CONFIG_PATH,
+    load_runtime_context_fn=load_runtime_context,
+)
 
 _DEFAULT_CTL_DIR = Path(tempfile.gettempdir()) / "lumina-ctl"
 CTL_DIR = Path(os.environ.get("LUMINA_CTL_DIR", str(_DEFAULT_CTL_DIR)))
@@ -131,18 +135,19 @@ def _canonical_sha256(value: Any) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def _policy_commitment_payload() -> dict[str, Any]:
+def _policy_commitment_payload(runtime: dict[str, Any]) -> dict[str, Any]:
+    provenance = dict(runtime.get("runtime_provenance") or {})
     return {
-        "subject_id": str(RUNTIME_PROVENANCE.get("domain_pack_id", "")),
-        "subject_version": str(RUNTIME_PROVENANCE.get("domain_pack_version", "")),
-        "subject_hash": str(RUNTIME_PROVENANCE.get("domain_physics_hash", "")),
+        "subject_id": str(provenance.get("domain_pack_id", "")),
+        "subject_version": str(provenance.get("domain_pack_version", "")),
+        "subject_hash": str(provenance.get("domain_physics_hash", "")),
     }
 
 
-def _assert_policy_commitment() -> None:
+def _assert_policy_commitment(runtime: dict[str, Any]) -> None:
     if not ENFORCE_POLICY_COMMITMENT:
         return
-    payload = _policy_commitment_payload()
+    payload = _policy_commitment_payload(runtime)
     if not payload["subject_id"] or not payload["subject_hash"]:
         raise RuntimeError("Runtime provenance missing subject_id/subject_hash for policy commitment enforcement")
 
@@ -347,11 +352,11 @@ def call_llm(system: str, user: str, model: str | None = None) -> str:
 # ─────────────────────────────────────────────────────────────
 
 
-def render_contract_response(prompt_contract: dict[str, Any]) -> str:
+def render_contract_response(prompt_contract: dict[str, Any], runtime: dict[str, Any]) -> str:
     """Deterministic fallback driven by domain runtime config templates."""
     prompt_type = str(prompt_contract.get("prompt_type", "default"))
     task_id = str(prompt_contract.get("task_id", "task"))
-    templates = RUNTIME["deterministic_templates"]
+    templates = runtime["deterministic_templates"]
 
     template = templates.get(prompt_type) or templates.get("default") or "Continue with {task_id}."
     try:
@@ -360,20 +365,20 @@ def render_contract_response(prompt_contract: dict[str, Any]) -> str:
         return template
 
 
-def interpret_turn_input(input_text: str, task_context: dict[str, Any]) -> dict[str, Any]:
-    interpreter = RUNTIME["turn_interpreter_fn"]
+def interpret_turn_input(input_text: str, task_context: dict[str, Any], runtime: dict[str, Any]) -> dict[str, Any]:
+    interpreter = runtime["turn_interpreter_fn"]
     return interpreter(
         call_llm=call_llm,
         input_text=input_text,
         task_context=task_context,
-        prompt_text=TURN_INTERPRETATION_PROMPT,
-        default_fields=RUNTIME["turn_input_defaults"],
-        tool_fns=RUNTIME.get("tool_fns"),
+        prompt_text=runtime["turn_interpretation_prompt"],
+        default_fields=runtime["turn_input_defaults"],
+        tool_fns=runtime.get("tool_fns"),
     )
 
 
-def invoke_runtime_tool(tool_id: str, payload: dict[str, Any]) -> dict[str, Any]:
-    tool_fns: dict[str, Any] = RUNTIME.get("tool_fns") or {}
+def invoke_runtime_tool(tool_id: str, payload: dict[str, Any], runtime: dict[str, Any]) -> dict[str, Any]:
+    tool_fns: dict[str, Any] = runtime.get("tool_fns") or {}
     tool_fn = tool_fns.get(tool_id)
     if tool_fn is None:
         raise RuntimeError(f"Unknown tool adapter: {tool_id}")
@@ -424,8 +429,9 @@ def apply_tool_call_policy(
     prompt_contract: dict[str, Any],
     turn_data: dict[str, Any],
     task_spec: dict[str, Any],
+    runtime: dict[str, Any],
 ) -> list[dict[str, Any]]:
-    policies: dict[str, Any] = RUNTIME.get("tool_call_policies") or {}
+    policies: dict[str, Any] = runtime.get("tool_call_policies") or {}
     entries = policies.get(resolved_action) or []
     if not isinstance(entries, list):
         return []
@@ -447,72 +453,93 @@ def apply_tool_call_policy(
         payload = _render_template_value(entry.get("payload") or {}, context)
         if not isinstance(payload, dict):
             payload = {}
-        tool_result = invoke_runtime_tool(tool_id, payload)
+        tool_result = invoke_runtime_tool(tool_id, payload, runtime)
         results.append({"tool_id": tool_id, "payload": payload, "result": tool_result})
     return results
 
 
 # ─────────────────────────────────────────────────────────────
-# Session Manager
+# Session Manager (domain-aware)
 # ─────────────────────────────────────────────────────────────
 
 _sessions: dict[str, dict[str, Any]] = {}
+# Maps session_id -> domain_id for immutable binding
+_session_domains: dict[str, str] = {}
 
 
-def get_or_create_session(session_id: str) -> dict[str, Any]:
-    if session_id not in _sessions:
-        _assert_policy_commitment()
-        domain = PERSISTENCE.load_domain_physics(str(DOMAIN_PHYSICS_PATH))
-        profile = PERSISTENCE.load_subject_profile(str(SUBJECT_PROFILE_PATH))
-        ledger_path = PERSISTENCE.get_ctl_ledger_path(session_id)
-        persisted_state = PERSISTENCE.load_session_state(session_id) or {}
+def get_or_create_session(session_id: str, domain_id: str | None = None) -> dict[str, Any]:
+    # If session already exists, enforce immutable domain binding
+    if session_id in _sessions:
+        bound_domain = _session_domains.get(session_id)
+        if domain_id and bound_domain and domain_id != bound_domain:
+            raise RuntimeError(
+                f"Session '{session_id}' is bound to domain '{bound_domain}'. "
+                f"Cannot switch to '{domain_id}' mid-session."
+            )
+        return _sessions[session_id]
 
-        state_builder = RUNTIME["state_builder_fn"]
-        domain_step = RUNTIME["domain_step_fn"]
-        domain_params = dict(RUNTIME["domain_step_params"])
+    # Resolve domain for new session
+    resolved_domain_id = DOMAIN_REGISTRY.resolve_domain_id(domain_id)
+    runtime = DOMAIN_REGISTRY.get_runtime_context(resolved_domain_id)
 
-        initial_state = state_builder(profile)
+    _assert_policy_commitment(runtime)
+    domain_physics_path = Path(runtime["domain_physics_path"])
+    subject_profile_path = Path(runtime["subject_profile_path"])
+    domain = PERSISTENCE.load_domain_physics(str(domain_physics_path))
+    profile = PERSISTENCE.load_subject_profile(str(subject_profile_path))
+    ledger_path = PERSISTENCE.get_ctl_ledger_path(session_id)
+    persisted_state = PERSISTENCE.load_session_state(session_id) or {}
 
-        orch = DSAOrchestrator(
-            domain_physics=domain,
-            subject_profile=profile,
+    state_builder = runtime["state_builder_fn"]
+    domain_step = runtime["domain_step_fn"]
+    domain_params = dict(runtime["domain_step_params"])
+
+    initial_state = state_builder(profile)
+
+    orch = DSAOrchestrator(
+        domain_physics=domain,
+        subject_profile=profile,
+        ledger_path=str(ledger_path),
+        session_id=session_id,
+        domain_lib_step_fn=lambda state, task, ev: domain_step(state, task, ev, domain_params),
+        initial_state=initial_state,
+        action_prompt_type_map=runtime.get("action_prompt_type_map") or {},
+        policy_commitment=_policy_commitment_payload(runtime),
+        ctl_append_callback=lambda sid, record: PERSISTENCE.append_ctl_record(
+            sid,
+            record,
             ledger_path=str(ledger_path),
-            session_id=session_id,
-            domain_lib_step_fn=lambda state, task, ev: domain_step(state, task, ev, domain_params),
-            initial_state=initial_state,
-            action_prompt_type_map=RUNTIME.get("action_prompt_type_map") or {},
-            policy_commitment=_policy_commitment_payload(),
-            ctl_append_callback=lambda sid, record: PERSISTENCE.append_ctl_record(
-                sid,
-                record,
-                ledger_path=str(ledger_path),
-            ),
-        )
+        ),
+    )
 
-        task_spec = dict(persisted_state.get("task_spec") or DEFAULT_TASK_SPEC)
-        current_problem = dict(persisted_state.get("current_problem") or _default_current_problem(task_spec))
-        turn_count = int(persisted_state.get("turn_count") or 0)
-        standing_order_attempts = persisted_state.get("standing_order_attempts") or {}
-        if not isinstance(standing_order_attempts, dict):
-            standing_order_attempts = {}
-        orch.set_standing_order_attempts(standing_order_attempts)
+    default_task_spec = dict(runtime["default_task_spec"])
+    task_spec = dict(persisted_state.get("task_spec") or default_task_spec)
+    current_problem = dict(persisted_state.get("current_problem") or _default_current_problem(task_spec))
+    turn_count = int(persisted_state.get("turn_count") or 0)
+    standing_order_attempts = persisted_state.get("standing_order_attempts") or {}
+    if not isinstance(standing_order_attempts, dict):
+        standing_order_attempts = {}
+    orch.set_standing_order_attempts(standing_order_attempts)
 
-        _sessions[session_id] = {
-            "orchestrator": orch,
+    _session_domains[session_id] = resolved_domain_id
+    _sessions[session_id] = {
+        "orchestrator": orch,
+        "task_spec": task_spec,
+        "current_problem": current_problem,
+        "turn_count": turn_count,
+        "domain_id": resolved_domain_id,
+    }
+    PERSISTENCE.save_session_state(
+        session_id,
+        {
             "task_spec": task_spec,
             "current_problem": current_problem,
             "turn_count": turn_count,
-        }
-        PERSISTENCE.save_session_state(
-            session_id,
-            {
-                "task_spec": task_spec,
-                "current_problem": current_problem,
-                "turn_count": turn_count,
-                "standing_order_attempts": orch.get_standing_order_attempts(),
-            },
-        )
-        log.info("Created new session: %s", session_id)
+            "standing_order_attempts": orch.get_standing_order_attempts(),
+            "domain_id": resolved_domain_id,
+        },
+    )
+    log.info("Created new session: %s (domain=%s)", session_id, resolved_domain_id)
 
     return _sessions[session_id]
 
@@ -527,19 +554,26 @@ def process_message(
     input_text: str,
     turn_data_override: dict[str, Any] | None = None,
     deterministic_response: bool = False,
+    domain_id: str | None = None,
 ) -> dict[str, Any]:
-    session = get_or_create_session(session_id)
+    session = get_or_create_session(session_id, domain_id=domain_id)
     orch: DSAOrchestrator = session["orchestrator"]
     task_spec: dict[str, Any] = session["task_spec"]
     current_problem: dict[str, Any] = session["current_problem"]
 
+    # Resolve per-session runtime context
+    resolved_domain_id = session["domain_id"]
+    runtime = DOMAIN_REGISTRY.get_runtime_context(resolved_domain_id)
+    runtime_provenance = dict(runtime.get("runtime_provenance") or {})
+    system_prompt = runtime["system_prompt"]
+
     task_context = dict(task_spec)
     task_context["current_problem"] = current_problem
-    turn_data = turn_data_override if turn_data_override is not None else interpret_turn_input(input_text, task_context)
-    turn_data = _normalize_turn_data(turn_data, RUNTIME.get("turn_input_schema") or {})
+    turn_data = turn_data_override if turn_data_override is not None else interpret_turn_input(input_text, task_context, runtime)
+    turn_data = _normalize_turn_data(turn_data, runtime.get("turn_input_schema") or {})
     log.info("[%s] Turn Data: %s", session_id, json.dumps(turn_data, default=str))
 
-    turn_provenance: dict[str, Any] = dict(RUNTIME_PROVENANCE)
+    turn_provenance: dict[str, Any] = dict(runtime_provenance)
     turn_provenance["turn_data_hash"] = _canonical_sha256(turn_data)
 
     prompt_contract, resolved_action = orch.process_turn(
@@ -562,6 +596,7 @@ def process_message(
             "turn_count": session["turn_count"],
             "last_action": resolved_action,
             "standing_order_attempts": orch.get_standing_order_attempts(),
+            "domain_id": resolved_domain_id,
         },
     )
 
@@ -583,19 +618,20 @@ def process_message(
         prompt_contract=prompt_contract,
         turn_data=turn_data,
         task_spec=task_spec,
+        runtime=runtime,
     )
 
     if deterministic_response:
         llm_payload = dict(prompt_contract)
         if tool_results:
             llm_payload["tool_results"] = tool_results
-        llm_response = render_contract_response(prompt_contract)
+        llm_response = render_contract_response(prompt_contract, runtime)
     else:
         llm_payload = dict(prompt_contract)
         if tool_results:
             llm_payload["tool_results"] = tool_results
         llm_response = call_llm(
-            system=SYSTEM_PROMPT,
+            system=system_prompt,
             user=json.dumps(llm_payload, indent=2, ensure_ascii=False),
         )
 
@@ -619,6 +655,7 @@ def process_message(
         "prompt_type": prompt_contract.get("prompt_type", "task_presentation"),
         "escalated": escalated,
         "tool_results": tool_results,
+        "domain_id": resolved_domain_id,
     }
 
 
@@ -628,8 +665,8 @@ def process_message(
 
 app = FastAPI(
     title="Project Lumina API",
-    description="D.S.A. Orchestrator + LLM Conversational Interface",
-    version="0.2.0",
+    description="D.S.A. Orchestrator + LLM Conversational Interface (multi-domain)",
+    version="0.3.0",
 )
 
 app.add_middleware(
@@ -646,6 +683,7 @@ class ChatRequest(BaseModel):
     message: str
     deterministic_response: bool = False
     turn_data_override: dict[str, Any] | None = None
+    domain_id: str | None = None
 
 
 class ChatResponse(BaseModel):
@@ -655,6 +693,7 @@ class ChatResponse(BaseModel):
     prompt_type: str
     escalated: bool
     tool_results: list[dict[str, Any]] | None = None
+    domain_id: str | None = None
 
 
 class ToolRequest(BaseModel):
@@ -746,12 +785,20 @@ async def chat(
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
+    # Resolve domain early so permission check uses the correct domain physics
+    try:
+        resolved_domain_id = DOMAIN_REGISTRY.resolve_domain_id(req.domain_id)
+    except DomainNotFoundError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
     # Resolve authenticated user (optional — unauthenticated allowed when bootstrap)
     user = await get_current_user(credentials)
 
-    # When auth is provided, check module-level execute permission
+    # When auth is provided, check module-level execute permission against resolved domain
     if user is not None:
-        domain = await run_in_threadpool(PERSISTENCE.load_domain_physics, str(DOMAIN_PHYSICS_PATH))
+        runtime = DOMAIN_REGISTRY.get_runtime_context(resolved_domain_id)
+        domain_physics_path = runtime["domain_physics_path"]
+        domain = await run_in_threadpool(PERSISTENCE.load_domain_physics, str(domain_physics_path))
         module_perms = domain.get("permissions")
         if module_perms:
             has_access = check_permission(
@@ -770,7 +817,10 @@ async def chat(
             req.message,
             req.turn_data_override,
             req.deterministic_response,
+            resolved_domain_id,
         )
+    except DomainNotFoundError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         log.exception("Error processing message for session %s", session_id)
         raise HTTPException(status_code=500, detail=str(exc))
@@ -782,6 +832,7 @@ async def chat(
         prompt_type=result["prompt_type"],
         escalated=result["escalated"],
         tool_results=result.get("tool_results") or None,
+        domain_id=result.get("domain_id"),
     )
 
 
@@ -790,11 +841,23 @@ async def health() -> dict[str, str]:
     return {"status": "ok", "provider": LLM_PROVIDER}
 
 
+@app.get("/api/domains")
+async def list_domains() -> list[dict[str, Any]]:
+    """Return catalog of available domains for multi-domain deployments."""
+    return DOMAIN_REGISTRY.list_domains()
+
+
 @app.get("/api/domain-info")
-async def domain_info() -> dict[str, Any]:
+async def domain_info(domain_id: str | None = None) -> dict[str, Any]:
     """Return domain UI manifest and identity for front-end theming."""
-    domain = PERSISTENCE.load_domain_physics(str(DOMAIN_PHYSICS_PATH))
-    manifest = RUNTIME.get("ui_manifest") or {}
+    try:
+        resolved = DOMAIN_REGISTRY.resolve_domain_id(domain_id)
+    except DomainNotFoundError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    runtime = DOMAIN_REGISTRY.get_runtime_context(resolved)
+    domain_physics_path = runtime["domain_physics_path"]
+    domain = PERSISTENCE.load_domain_physics(str(domain_physics_path))
+    manifest = runtime.get("ui_manifest") or {}
     return {
         "domain_id": domain.get("id", "unknown"),
         "domain_version": domain.get("version", "unknown"),
@@ -802,16 +865,29 @@ async def domain_info() -> dict[str, Any]:
     }
 
 
+class ToolRequestWithDomain(BaseModel):
+    payload: dict[str, Any]
+    domain_id: str | None = None
+
+
 @app.post("/api/tool/{tool_id}", response_model=ToolResponse)
 async def run_tool(
     tool_id: str,
-    req: ToolRequest,
+    req: ToolRequestWithDomain,
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
 ) -> ToolResponse:
+    try:
+        resolved = DOMAIN_REGISTRY.resolve_domain_id(req.domain_id)
+    except DomainNotFoundError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    runtime = DOMAIN_REGISTRY.get_runtime_context(resolved)
+
     # Tool invocation requires at least execute permission
     user = await get_current_user(credentials)
     if user is not None:
-        domain = await run_in_threadpool(PERSISTENCE.load_domain_physics, str(DOMAIN_PHYSICS_PATH))
+        domain_physics_path = runtime["domain_physics_path"]
+        domain = await run_in_threadpool(PERSISTENCE.load_domain_physics, str(domain_physics_path))
         module_perms = domain.get("permissions")
         if module_perms and not check_permission(
             user_id=user["sub"],
@@ -821,7 +897,7 @@ async def run_tool(
         ):
             raise HTTPException(status_code=403, detail="Module access denied")
     try:
-        result = await run_in_threadpool(invoke_runtime_tool, tool_id, req.payload)
+        result = await run_in_threadpool(invoke_runtime_tool, tool_id, req.payload, runtime)
     except Exception as exc:
         log.exception("Tool invocation failed for %s", tool_id)
         raise HTTPException(status_code=400, detail=str(exc))
@@ -995,9 +1071,12 @@ if __name__ == "__main__":
 
     port = int(os.environ.get("LUMINA_PORT", "8000"))
     log.info("Starting Lumina API on port %s | LLM: %s", port, LLM_PROVIDER)
-    log.info("Runtime config: %s", RUNTIME_CONFIG_PATH)
-    log.info("Domain physics: %s", DOMAIN_PHYSICS_PATH)
-    log.info("Subject profile: %s", SUBJECT_PROFILE_PATH)
+    if DOMAIN_REGISTRY.is_multi_domain:
+        log.info("Multi-domain mode: %d domain(s)", len(DOMAIN_REGISTRY.list_domains()))
+        for d in DOMAIN_REGISTRY.list_domains():
+            log.info("  Domain: %s (%s)%s", d["domain_id"], d["label"], " [default]" if d["is_default"] else "")
+    else:
+        log.info("Single-domain mode: %s", RUNTIME_CONFIG_PATH)
     log.info("CTL directory: %s", CTL_DIR)
     log.info("Bootstrap mode: %s", BOOTSTRAP_MODE)
     log.info("CORS origins: %s", CORS_ORIGINS)

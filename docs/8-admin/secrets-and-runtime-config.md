@@ -14,7 +14,7 @@ Use environment injection for secrets in staging/production, never committed sec
 
 ## Required production variables
 
-- `LUMINA_RUNTIME_CONFIG_PATH`
+- `LUMINA_RUNTIME_CONFIG_PATH` (single-domain) **or** `LUMINA_DOMAIN_REGISTRY_PATH` (multi-domain)
 - `LUMINA_JWT_SECRET`
 
 Conditionally required:
@@ -73,6 +73,49 @@ python -c "import secrets; print(secrets.token_hex(32))"
 - Do not store provider keys or JWT secrets in committed files.
 - Rotate `LUMINA_JWT_SECRET` and provider keys periodically and after incidents.
 - Keep `LUMINA_BOOTSTRAP_MODE=false` after initial provisioning.
+
+## Multi-domain deployment
+
+A single Lumina instance can serve multiple departments or domains
+(for example math, science, PE, literature) by using a **domain registry**
+instead of a single `LUMINA_RUNTIME_CONFIG_PATH`.
+
+1. Create a `domain-registry.yaml` mapping each `domain_id` to its
+   `runtime-config.yaml`:
+
+   ```yaml
+   default_domain: education
+   domains:
+     education:
+       runtime_config_path: domain-packs/education/runtime-config.yaml
+       label: Education — Algebra Level 1
+     agriculture:
+       runtime_config_path: domain-packs/agriculture/runtime-config.yaml
+       label: Agriculture — Operations
+   ```
+
+2. Set the environment variable:
+
+   ```bash
+   export LUMINA_DOMAIN_REGISTRY_PATH="domain-registry.yaml"
+   ```
+
+3. Remove or unset `LUMINA_RUNTIME_CONFIG_PATH` (registry takes precedence
+   when both are set, but only one should be active).
+
+4. Clients select a domain per chat request via the `domain_id` field:
+
+   ```json
+   {"message": "solve 2x + 3 = 11", "domain_id": "education"}
+   ```
+
+5. Sessions are **immutably bound** to the domain chosen on their first turn.
+   Attempting to switch `domain_id` mid-session returns an error.
+
+6. Use `GET /api/domains` to list available domains and
+   `GET /api/domain-info?domain_id=education` for per-domain UI manifests.
+
+Schema: `standards/domain-registry-schema-v1.json`
 
 ## Related docs
 
