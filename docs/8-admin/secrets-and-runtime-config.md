@@ -10,6 +10,7 @@ Use environment injection for secrets in staging/production, never committed sec
 
 - Deterministic mode: no provider API key required (`deterministic_response=true`).
 - Live LLM mode: provider API key is required (`OPENAI_API_KEY` or `ANTHROPIC_API_KEY`).
+- Live mode guardrail: runtime rejects live provider calls when the selected provider key is missing.
 
 ## Required production variables
 
