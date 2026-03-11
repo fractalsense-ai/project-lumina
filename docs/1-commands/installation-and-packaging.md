@@ -12,18 +12,16 @@ Runtime dependencies:
 pip install -r requirements.txt
 ```
 
-Runtime + development dependencies (includes spaCy for NLP):
+Runtime + development dependencies:
 
 ```bash
 pip install -r requirements-dev.txt
-python -m spacy download en_core_web_sm
 ```
 
 ## One-liner developer setup (uv)
 
 ```bash
 uv venv && uv pip install -r requirements-dev.txt
-python -m spacy download en_core_web_sm
 ```
 
 ## Editable install (pyproject)
@@ -34,7 +32,7 @@ Use editable install when you want command entrypoints and local package iterati
 # Minimal (FastAPI + uvicorn only)
 python -m pip install -e .
 
-# With NLP support (spaCy glossary detection)
+# With NLP support (spaCy glossary detection) — Python 3.12/3.13 only
 python -m pip install -e ".[nlp]"
 python -m spacy download en_core_web_sm
 
@@ -55,7 +53,7 @@ uv pip install -e ".[nlp,providers,sqlite]"
 
 | Extra | Installs | When needed |
 |-------|----------|-------------|
-| `nlp` | `spacy>=3.7.0` | Glossary-term detection in turn data |
+| `nlp` | `spacy>=3.7.0` | Glossary-term detection in turn data — **requires Python 3.12 or 3.13** (spaCy is not yet compatible with Python 3.14+) |
 | `providers` | `openai`, `anthropic` | Live LLM mode |
 | `sqlite` | `sqlalchemy[asyncio]`, `aiosqlite` | SQLite persistence backend |
 | `dev` | `pytest`, `pytest-cov` | Running the test suite |
