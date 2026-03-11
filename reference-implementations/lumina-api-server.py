@@ -173,6 +173,17 @@ def _canonical_sha256(value: Any) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+_LATEX_INLINE_RE = re.compile(r"\\\((.+?)\\\)", re.DOTALL)
+_LATEX_DISPLAY_RE = re.compile(r"\\\[(.+?)\\\]", re.DOTALL)
+
+
+def _strip_latex_delimiters(text: str) -> str:
+    """Remove LaTeX inline \\( \\) and display \\[ \\] delimiters, keeping inner content."""
+    text = _LATEX_INLINE_RE.sub(r"\1", text)
+    text = _LATEX_DISPLAY_RE.sub(r"\1", text)
+    return text
+
+
 def _policy_commitment_payload(runtime: dict[str, Any]) -> dict[str, Any]:
     provenance = dict(runtime.get("runtime_provenance") or {})
     return {
@@ -714,6 +725,8 @@ def process_message(
             system=system_prompt,
             user=json.dumps(llm_payload, indent=2, ensure_ascii=False),
         )
+
+    llm_response = _strip_latex_delimiters(llm_response)
 
     log.info("[%s] Response length: %s chars", session_id, len(llm_response))
 
