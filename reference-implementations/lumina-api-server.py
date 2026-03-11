@@ -184,6 +184,75 @@ def _strip_latex_delimiters(text: str) -> str:
     return text
 
 
+# ── Glossary query detection ─────────────────────────────────
+
+_GLOSSARY_QUERY_RE = re.compile(
+    r"(?:what\s+(?:is|are|does)\s+(?:a|an|the)?\s*)"
+    r"|(?:what\s+does\s+.+?\s+mean)"
+    r"|(?:define\s+)"
+    r"|(?:meaning\s+of\s+)"
+    r"|(?:what(?:'s| is)\s+)",
+    re.IGNORECASE,
+)
+
+
+def _detect_glossary_query(
+    message: str,
+    glossary: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    """Match a student message against the domain glossary.
+
+    Returns the matched glossary entry dict or None.
+    Matching is case-insensitive against ``term`` and ``aliases``.
+    """
+    if not glossary:
+        return None
+
+    text = message.strip()
+    if not _GLOSSARY_QUERY_RE.search(text):
+        return None
+
+    # Build a lookup index: lowered term/alias → glossary entry
+    index: dict[str, dict[str, Any]] = {}
+    for entry in glossary:
+        key = str(entry.get("term", "")).lower().strip()
+        if key:
+            index[key] = entry
+        for alias in entry.get("aliases") or []:
+            akey = str(alias).lower().strip()
+            if akey:
+                index[akey] = entry
+
+    # Normalise the question to extract the candidate term.
+    candidate = text.lower()
+    # Strip trailing punctuation
+    candidate = re.sub(r"[?.!]+$", "", candidate).strip()
+    # Strip common question prefixes
+    candidate = re.sub(
+        r"^(?:what\s+(?:is|are|does)\s+(?:a|an|the)?\s*"
+        r"|what\s+does\s+|what(?:'s| is)\s+"
+        r"|define\s+|meaning\s+of\s+)",
+        "",
+        candidate,
+        flags=re.IGNORECASE,
+    ).strip()
+    # Strip trailing "mean" from "what does X mean"
+    candidate = re.sub(r"\s+mean$", "", candidate).strip()
+
+    if not candidate:
+        return None
+
+    # Exact match
+    if candidate in index:
+        return index[candidate]
+
+    # Plural fallback: strip trailing 's'
+    if candidate.endswith("s") and candidate[:-1] in index:
+        return index[candidate[:-1]]
+
+    return None
+
+
 def _policy_commitment_payload(runtime: dict[str, Any]) -> dict[str, Any]:
     provenance = dict(runtime.get("runtime_provenance") or {})
     return {
@@ -616,6 +685,53 @@ def process_message(
     runtime = DOMAIN_REGISTRY.get_runtime_context(resolved_domain_id)
     runtime_provenance = dict(runtime.get("runtime_provenance") or {})
     system_prompt = runtime["system_prompt"]
+
+    # ── Glossary interception (neutral turn — no mastery/affect change) ──
+    domain_physics = runtime.get("domain") or {}
+    glossary = domain_physics.get("glossary") or []
+    glossary_match = _detect_glossary_query(input_text, glossary)
+    if glossary_match is not None:
+        prompt_contract = {
+            "prompt_type": "definition_lookup",
+            "domain_pack_id": str(domain_physics.get("id", "")),
+            "domain_pack_version": str(domain_physics.get("version", "")),
+            "task_id": str(task_spec.get("task_id", "")),
+            "glossary_entry": {
+                "term": glossary_match.get("term", ""),
+                "definition": glossary_match.get("definition", ""),
+                "example_in_context": glossary_match.get("example_in_context", ""),
+                "related_terms": glossary_match.get("related_terms") or [],
+            },
+        }
+        llm_payload = dict(prompt_contract)
+        llm_payload["current_problem"] = current_problem
+
+        if deterministic_response:
+            template = runtime.get("deterministic_templates", {}).get("definition_lookup")
+            if template:
+                llm_response = template.format(**prompt_contract.get("glossary_entry", {}))
+            else:
+                entry = prompt_contract["glossary_entry"]
+                llm_response = (
+                    f"{entry['term'].title()}: {entry['definition']} "
+                    f"Example: {entry['example_in_context']}"
+                )
+        else:
+            llm_response = call_llm(
+                system=system_prompt,
+                user=json.dumps(llm_payload, indent=2, ensure_ascii=False),
+            )
+
+        llm_response = _strip_latex_delimiters(llm_response)
+        session["turn_count"] += 1
+        return {
+            "response": llm_response,
+            "action": "definition_lookup",
+            "prompt_type": "definition_lookup",
+            "escalated": False,
+            "tool_results": None,
+            "domain_id": resolved_domain_id,
+        }
 
     task_context = dict(task_spec)
     task_context["current_problem"] = current_problem

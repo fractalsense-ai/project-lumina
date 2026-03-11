@@ -137,3 +137,35 @@ def test_ctl_validate_role_gating(client: TestClient) -> None:
     allowed = client.get("/api/ctl/validate", headers={"Authorization": f"Bearer {root_token}"})
     assert allowed.status_code == 200
     assert allowed.json()["result"]["intact"] is True
+
+
+@pytest.mark.integration
+def test_chat_glossary_lookup_returns_definition(client: TestClient) -> None:
+    resp = client.post(
+        "/api/chat",
+        json={
+            "message": "what is a coefficient?",
+            "deterministic_response": True,
+        },
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["prompt_type"] == "definition_lookup"
+    assert body["action"] == "definition_lookup"
+    assert "coefficient" in body["response"].lower()
+    assert not body["escalated"]
+
+
+@pytest.mark.integration
+def test_chat_glossary_no_match_falls_through(client: TestClient) -> None:
+    resp = client.post(
+        "/api/chat",
+        json={
+            "message": "what is a flurblesnork?",
+            "deterministic_response": True,
+        },
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    # Should NOT be definition_lookup — unknown term falls through to normal flow
+    assert body["prompt_type"] != "definition_lookup"

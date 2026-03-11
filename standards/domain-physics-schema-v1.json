@@ -87,6 +87,11 @@
       "items": { "type": "string" },
       "description": "List of tool adapter IDs available in this domain"
     },
+    "glossary": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/glossary_entry" },
+      "description": "Domain vocabulary definitions. Students may query these terms during a session; the system performs server-side lookup and returns the definition without penalizing off-task ratio."
+    },
     "permissions": {
       "$ref": "rbac-permission-schema-v1.json",
       "description": "chmod-style permission block controlling read, write, and execute access to this module. See rbac-permission-schema-v1.json for the full schema."
@@ -211,6 +216,35 @@
           "type": "array",
           "items": { "type": "string" },
           "description": "Skill IDs that must meet the mastery threshold"
+        }
+      }
+    },
+    "glossary_entry": {
+      "type": "object",
+      "required": ["term", "definition"],
+      "additionalProperties": false,
+      "properties": {
+        "term": {
+          "type": "string",
+          "description": "Canonical term (lowercase). The primary lookup key."
+        },
+        "definition": {
+          "type": "string",
+          "description": "Concise, student-appropriate definition of the term."
+        },
+        "aliases": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Alternate forms a student might use (plurals, colloquial phrasings)."
+        },
+        "related_terms": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Other glossary terms to surface after the definition."
+        },
+        "example_in_context": {
+          "type": "string",
+          "description": "A concrete example using the term in a domain-relevant sentence."
         }
       }
     }

@@ -9,4 +9,5 @@ rendering_rules:
   - If prompt_type is more_steps_request, ask for step-by-step work and avoid giving final answer.
   - If prompt_type is hint, provide a minimal nudge only.
   - If prompt_type is inject_domain_rule, state the specific algebraic rule or principle the student needs (e.g. inverse operations, combining like terms) WITHOUT solving the problem. Only provide the structural rule.
+  - If prompt_type is definition_lookup, present the glossary definition from the glossary_entry field clearly. Use the provided example_in_context. If the student's current equation uses this term, connect the definition to their specific equation. List the related_terms at the end (e.g. "Related: variable, constant"). Keep it brief — one definition, one example. Then redirect back to the problem.
   - If prompt_type is zpd_intervene_or_escalate, prioritize calm de-escalation language.

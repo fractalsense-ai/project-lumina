@@ -19,6 +19,7 @@
         "more_steps_request",
         "method_justification_request",
         "inject_domain_rule",
+        "definition_lookup",
         "boss_challenge",
         "pause_or_break",
         "zpd_intervene_or_escalate",
@@ -89,6 +90,20 @@
         "equation_type": { "type": "string", "description": "Tier equation type identifier" },
         "difficulty_tier": { "type": "string", "description": "Tier ID from domain-physics" },
         "status": { "type": "string", "enum": ["in_progress", "solved", "skipped"] }
+      }
+    },
+    "glossary_entry": {
+      "type": "object",
+      "description": "Domain glossary term injected for definition_lookup prompts",
+      "properties": {
+        "term": { "type": "string", "description": "The vocabulary term" },
+        "definition": { "type": "string", "description": "Student-appropriate definition" },
+        "example_in_context": { "type": "string", "description": "Contextual example using the term" },
+        "related_terms": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Other glossary terms the student may also want to look up"
+        }
       }
     }
   }
