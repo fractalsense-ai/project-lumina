@@ -65,10 +65,10 @@ invariants:
 
   - id: show_work_minimum
     description: >
-      Solutions must show at least three distinct transformation steps.
-      A single-step jump from problem to answer is not acceptable.
+      Solutions must show at least two distinct transformation steps.
+      A bare answer with no work shown is not acceptable.
     severity: warning
-    check: "step_count >= 3"
+    check: "step_count >= 2"
     standing_order_on_violation: request_more_steps
 
   - id: zpd_drift_minor

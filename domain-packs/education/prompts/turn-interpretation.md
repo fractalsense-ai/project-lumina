@@ -26,12 +26,19 @@ Algebra grounding rules:
 - `equivalence_preserved` is false only when a transformation clearly breaks equality.
 - `substitution_check` is true only when student explicitly verifies or demonstrates a valid substitution result.
 - `method_recognized` is true for standard isolate-variable workflows (add/subtract both sides, then multiply/divide both sides).
-- `step_count` counts distinct algebraic transformation steps stated in the student message.
+- `step_count` counts each individual algebraic operation the student applies. One "step" = one operation applied to both sides (add, subtract, multiply, divide, combine like terms). Intermediate results (e.g., "2x = 8") are NOT steps — they are outcomes of steps.
+  Examples:
+  - "2x + 3 = 11, subtract 3 from both sides, 2x = 8, divide by 2, x = 4" → step_count = 2 (subtract 3, divide by 2)
+  - "2x + 3 - 3 = 11 - 3 then 2x = 8 then x = 8/2 so x = 4" → step_count = 2 (subtract 3, divide by 2)
+  - "x + 7 = 15 so x = 15 - 7 = 8" → step_count = 1 (subtract 7)
+  - "x = 4" with no work shown → step_count = 0
+  - "3x + 2 = 14, 3x = 12, x = 4" → step_count = 2 (subtract 2, divide by 3)
 
 Classification rules:
-- `correctness` is `correct` only if the student result and reasoning match the active problem context.
-- `correctness` is `partial` when some valid reasoning exists but is incomplete or unverified.
-- `correctness` is `incorrect` when steps or result conflict with the active problem.
+- `correctness` is `correct` when the student's final numeric answer matches the `expected_answer` from the task context, regardless of how neatly the work is presented.
+- `correctness` is `correct` when the student demonstrates valid algebraic reasoning that reaches the right answer.
+- `correctness` is `partial` when some valid reasoning exists but the student has not yet stated a final answer, or the work is incomplete.
+- `correctness` is `incorrect` when the student's final answer is a different value from `expected_answer`, or when steps contain clear algebraic errors.
 
 Output rules:
 - Output only valid JSON (no markdown fences, no prose).

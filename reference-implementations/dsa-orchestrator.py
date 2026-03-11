@@ -510,19 +510,41 @@ class DSAOrchestrator:
         self.last_standing_order_id = None
         self.last_standing_order_attempt = None
 
-        # A clean turn resets standing-order counters.
-        if all(r["passed"] for r in invariant_results):
-            self._standing_order_attempts = {}
+        # Per-invariant reset: clear the standing-order counter for each
+        # invariant that passes this turn.  Counters for still-failing
+        # invariants are preserved.  This is domain-agnostic — it uses the
+        # standing_order_on_violation field from domain physics.
+        for result in invariant_results:
+            if result["passed"]:
+                so_key = result.get("standing_order_on_violation")
+                if so_key and so_key in self._standing_order_attempts:
+                    del self._standing_order_attempts[so_key]
 
         # Critical failures first
+        escalation_from_exhaustion: tuple[str | None, bool, str | None] | None = None
         for result in invariant_results:
             if not result["passed"] and result["severity"] == "critical":
-                return self._resolve_standing_order_action(result["standing_order_on_violation"])
+                action_result = self._resolve_standing_order_action(result["standing_order_on_violation"])
+                if action_result[0] is not None:
+                    return action_result
+                # Standing order exhausted — remember escalation if any,
+                # but continue to next critical invariant.
+                if action_result[1] and escalation_from_exhaustion is None:
+                    escalation_from_exhaustion = action_result
 
         # Warning failures next
         for result in invariant_results:
             if not result["passed"] and result["severity"] == "warning":
-                return self._resolve_standing_order_action(result["standing_order_on_violation"])
+                action_result = self._resolve_standing_order_action(result["standing_order_on_violation"])
+                if action_result[0] is not None:
+                    return action_result
+                if action_result[1] and escalation_from_exhaustion is None:
+                    escalation_from_exhaustion = action_result
+
+        # If all standing orders are exhausted but one triggered escalation,
+        # return the escalation signal (no action, but should_escalate=True).
+        if escalation_from_exhaustion is not None:
+            return escalation_from_exhaustion
 
         # Fall through to domain-lib decision
         action = domain_lib_decision.get("action")
@@ -574,9 +596,11 @@ class DSAOrchestrator:
         self.last_standing_order_id = standing_order_id
         self.last_standing_order_attempt = attempt
 
-        if max_attempts >= 0 and attempt > max_attempts and escalate_on_exhaust:
+        if max_attempts >= 0 and attempt > max_attempts:
             trigger = f"standing_order_exhausted:{standing_order_id}"
-            return action, True, trigger
+            # Exhausted: stop firing the corrective action.
+            # Escalate if configured, otherwise silently suppress.
+            return None, escalate_on_exhaust, trigger if escalate_on_exhaust else None
 
         return action, False, None
 
