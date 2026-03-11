@@ -68,7 +68,14 @@ LLM_PROVIDER = os.environ.get("LUMINA_LLM_PROVIDER", "openai")
 OPENAI_MODEL = os.environ.get("LUMINA_OPENAI_MODEL", "gpt-4o")
 ANTHROPIC_MODEL = os.environ.get("LUMINA_ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
 RUNTIME_CONFIG_PATH = os.environ.get("LUMINA_RUNTIME_CONFIG_PATH")
-DOMAIN_REGISTRY_PATH = os.environ.get("LUMINA_DOMAIN_REGISTRY_PATH")
+_explicit_registry = os.environ.get("LUMINA_DOMAIN_REGISTRY_PATH")
+# Default to the standard registry path only when neither explicit config is set.
+# If LUMINA_RUNTIME_CONFIG_PATH is set, honour single-domain mode (registry=None).
+DOMAIN_REGISTRY_PATH: str | None = (
+    _explicit_registry
+    if _explicit_registry
+    else (None if RUNTIME_CONFIG_PATH else "cfg/domain-registry.yaml")
+)
 PERSISTENCE_BACKEND = os.environ.get("LUMINA_PERSISTENCE_BACKEND", "filesystem").strip().lower()
 DB_URL = os.environ.get("LUMINA_DB_URL")
 ENFORCE_POLICY_COMMITMENT = os.environ.get("LUMINA_ENFORCE_POLICY_COMMITMENT", "true").strip().lower() not in {"0", "false", "no"}
