@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any, Callable
@@ -164,14 +165,6 @@ def interpret_turn_input(
                 lines.append(line)
             lines.append("Use these as starting values. Override if your analysis disagrees.")
             context_hint += "\n" + "\n".join(lines)
-        if equation:
-            context_hint += f"\nCurrent problem equation: {equation}"
-        if target_variable:
-            context_hint += f"\nTarget variable: {target_variable}"
-        if expected_answer:
-            context_hint += f"\nExpected solved form: {expected_answer}"
-        if status:
-            context_hint += f"\nProblem status: {status}"
 
     # ── Deterministic algebra parser (primary source) ──────────
     parser_result: dict[str, Any] | None = None
@@ -190,7 +183,11 @@ def interpret_turn_input(
                     "expected_answer": exp_ans,
                     "student_work": input_text,
                 })
-            except Exception:
+            except Exception as exc:
+                import logging as _logging
+                _logging.getLogger("edu_runtime_adapters").warning(
+                    "Algebra parser failed: %s", exc,
+                )
                 parser_result = None
 
     # ── LLM extraction (fallback / supplementary) ─────────────
@@ -231,5 +228,15 @@ def interpret_turn_input(
             evidence["substitution_check"] = parser_result["substitution_check"]
         if parser_result.get("method_recognized") is not None:
             evidence["method_recognized"] = True
+
+        # Override correctness when parser confirms substitution and the
+        # student's text contains the expected answer value.
+        exp_answer = current_problem.get("expected_answer", "") if isinstance(current_problem, dict) else ""
+        if parser_result.get("substitution_check") is True and exp_answer:
+            ans_match = re.search(r"=\s*([+-]?\d+\.?\d*)", exp_answer)
+            if ans_match:
+                expected_num = ans_match.group(1)
+                if re.search(r"(?:^|\s|=)" + re.escape(expected_num) + r"(?:\s|$|[.,;])", input_text):
+                    evidence["correctness"] = "correct"
 
     return evidence

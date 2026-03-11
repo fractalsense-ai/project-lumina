@@ -843,12 +843,14 @@ def process_message(
     if deterministic_response:
         llm_payload = dict(prompt_contract)
         llm_payload["current_problem"] = current_problem
+        llm_payload["student_message"] = input_text
         if tool_results:
             llm_payload["tool_results"] = tool_results
         llm_response = render_contract_response(prompt_contract, runtime)
     else:
         llm_payload = dict(prompt_contract)
         llm_payload["current_problem"] = current_problem
+        llm_payload["student_message"] = input_text
         if tool_results:
             llm_payload["tool_results"] = tool_results
         llm_response = call_llm(

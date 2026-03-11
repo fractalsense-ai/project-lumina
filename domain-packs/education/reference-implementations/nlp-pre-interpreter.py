@@ -51,6 +51,11 @@ def extract_answer_match(
 
     expected_value = _try_parse_number(expected_answer)
     if expected_value is None:
+        # Try extracting numeric value from forms like "x = 4"
+        eq_match = re.search(r"=\s*([+-]?\d+\.?\d*)", expected_answer)
+        if eq_match:
+            expected_value = _try_parse_number(eq_match.group(1))
+    if expected_value is None:
         return {
             "correctness": None,
             "confidence": 0.0,
