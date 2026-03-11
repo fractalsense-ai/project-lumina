@@ -77,7 +77,7 @@ See [`specs/dsa-framework-v1.md`](specs/dsa-framework-v1.md) for the full specif
 
 ## Modular Runtime
 
-The core engine (`lumina-api-server.py`) is a **generic runtime host** with zero domain-specific logic. Domain behavior is loaded at startup from a domain pack's `runtime-config.yaml`, which declares prompt files, state adapters, tool policies, and deterministic templates.
+The core engine (`src/lumina/api/server.py`) is a **generic runtime host** with zero domain-specific logic. Domain behavior is loaded at startup from a domain pack's `cfg/runtime-config.yaml`, which declares prompt files, state adapters, tool policies, and deterministic templates.
 
 At startup, the runtime computes policy/prompt hashes and enforces a **policy commitment gate** — the active domain-physics hash must match a committed CTL `CommitmentRecord` before any session can execute. During each turn, provenance lineage hashes are carried in CTL metadata for packet-level auditability without storing transcript content.
 
@@ -86,8 +86,8 @@ At startup, the runtime computes policy/prompt hashes and enforces a **policy co
 No server code changes required. Set one environment variable:
 
 ```bash
-export LUMINA_RUNTIME_CONFIG_PATH="domain-packs/education/runtime-config.yaml"   # Education
-export LUMINA_RUNTIME_CONFIG_PATH="domain-packs/agriculture/runtime-config.yaml"  # Agriculture
+export LUMINA_RUNTIME_CONFIG_PATH="domain-packs/education/cfg/runtime-config.yaml"   # Education
+export LUMINA_RUNTIME_CONFIG_PATH="domain-packs/agriculture/cfg/runtime-config.yaml"  # Agriculture
 ```
 
 ### Tool mediation
@@ -136,9 +136,26 @@ See [`specs/principles-v1.md`](specs/principles-v1.md) for the full specificatio
 
 ```
 project-lumina/
-├── front-end/                  ← Vite + React reference UI
-├── reference-implementations/  ← core D.S.A. engine (FastAPI, domain-agnostic)
+├── src/
+│   ├── lumina/                 ← core D.S.A. engine (FastAPI, domain-agnostic)
+│   │   ├── api/                ← FastAPI server and route handlers
+│   │   ├── auth/               ← authentication and token management
+│   │   ├── cli/                ← command-line interface
+│   │   ├── core/               ← orchestrator, DSA engine, prompt assembly
+│   │   ├── ctl/                ← Causal Trace Ledger writer
+│   │   ├── orchestrator/       ← turn pipeline and commitment gating
+│   │   ├── persistence/        ← storage adapters (SQLite, filesystem)
+│   │   └── systools/           ← repo integrity verifier and admin utilities
+│   └── web/                    ← Vite + React reference UI
+├── cfg/                        ← runtime registry (domain-registry.yaml)
+├── scripts/                    ← PowerShell verification and maintenance scripts
 ├── domain-packs/               ← domain-specific everything (education, agriculture, ...)
+│   └── <domain>/
+│       ├── cfg/                ← runtime-config.yaml for this domain
+│       ├── docs/               ← domain-scoped reference documentation
+│       ├── modules/            ← worked module packs
+│       ├── prompts/            ← domain physics and prompt templates
+│       └── systools/           ← domain-specific tool adapters
 ├── specs/                      ← architecture specifications (DSA, principles, prompts)
 ├── standards/                  ← universal engine schemas and contracts
 ├── ledger/                     ← CTL JSON schemas (trace events, commitments, escalations)
@@ -171,10 +188,10 @@ source .venv/bin/activate  # or .\.venv\Scripts\activate on Windows
 pip install -r requirements.txt
 
 # 3. Set the runtime config (required — no silent defaults)
-export LUMINA_RUNTIME_CONFIG_PATH="domain-packs/education/runtime-config.yaml"
+export LUMINA_RUNTIME_CONFIG_PATH="domain-packs/education/cfg/runtime-config.yaml"
 
 # 4. Start the server
-python reference-implementations/lumina-api-server.py
+python -m lumina.api.server
 
 # 5. In another terminal, send a deterministic request
 curl -X POST http://localhost:8000/api/chat \
@@ -213,7 +230,7 @@ Then start the server and send requests without `deterministic_response` or `tur
 
 ```bash
 # Repository integrity check (markdown links, schema linkage, version alignment)
-python reference-implementations/verify-repo-integrity.py
+python -m lumina.systools.verify_repo
 
 # Backend unit + integration tests
 # Install runtime + dev dependencies
@@ -222,7 +239,7 @@ pip install -r requirements-dev.txt
 python -m pytest tests -q
 
 # Full verification flow (integrity + orchestrator + optional API/FE)
-# PowerShell:  .\reference-implementations\run-full-verification.ps1
+# PowerShell:  .\scripts\run-full-verification.ps1
 ```
 
 See [`docs/1-commands/`](docs/1-commands/README.md) for detailed command references and [`docs/2-syscalls/`](docs/2-syscalls/README.md) for API endpoint documentation.
@@ -231,7 +248,7 @@ See [`docs/1-commands/`](docs/1-commands/README.md) for detailed command referen
 
 1. [`specs/principles-v1.md`](specs/principles-v1.md) — the non-negotiables
 2. [`specs/dsa-framework-v1.md`](specs/dsa-framework-v1.md) — the D.S.A. framework specification
-3. [`domain-packs/education/runtime-config.yaml`](domain-packs/education/runtime-config.yaml) — how a domain owns its runtime behavior
+3. [`domain-packs/education/cfg/runtime-config.yaml`](domain-packs/education/cfg/runtime-config.yaml) — how a domain owns its runtime behavior
 4. [`domain-packs/education/modules/algebra-level-1/`](domain-packs/education/modules/algebra-level-1/) — a complete worked domain pack
 5. [`examples/README.md`](examples/README.md) — full interaction traces
 
@@ -253,4 +270,4 @@ Domain packs that involve vulnerable populations (children, patients, etc.) incl
 
 ---
 
-*Last updated: 2026-03-10*
+*Last updated: 2026-03-11*
