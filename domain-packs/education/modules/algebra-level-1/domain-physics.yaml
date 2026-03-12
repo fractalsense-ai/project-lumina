@@ -65,10 +65,11 @@ invariants:
 
   - id: show_work_minimum
     description: >
-      Solutions must show at least two distinct transformation steps.
+      Solutions must show at least the number of distinct transformation steps
+      required by the problem type (set by the problem generator as min_steps).
       A bare answer with no work shown is not acceptable.
     severity: warning
-    check: "step_count >= 2"
+    check: "step_count >= min_steps"
     standing_order_on_violation: request_more_steps
 
   - id: zpd_drift_minor

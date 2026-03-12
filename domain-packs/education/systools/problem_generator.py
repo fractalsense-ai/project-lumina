@@ -51,6 +51,7 @@ def _generate_single_step_isolation() -> dict[str, Any]:
         "equation": f"x + {a} = {b}",
         "target_variable": "x",
         "expected_answer": f"x = {answer}",
+        "min_steps": 1,
     }
 
 
@@ -68,6 +69,7 @@ def _generate_variable_consolidation() -> dict[str, Any]:
         "equation": f"{a}x = {b}",
         "target_variable": "x",
         "expected_answer": f"x = {answer}",
+        "min_steps": 1,
     }
 
 
@@ -94,6 +96,7 @@ def _generate_multi_step_linear() -> dict[str, Any]:
         "equation": equation,
         "target_variable": "x",
         "expected_answer": f"x = {answer}",
+        "min_steps": 2,
     }
 
 

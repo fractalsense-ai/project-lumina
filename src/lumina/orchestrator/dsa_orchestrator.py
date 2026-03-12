@@ -182,6 +182,12 @@ def _evaluate_check_expr(check_expr: str, evidence: dict[str, Any]) -> bool | No
             return None
         ev_val = evidence[field]
         rhs = _parse_check_literal(raw_val)
+        # If the RHS parsed as a plain string it may be a field reference
+        # (e.g. "step_count >= min_steps"). Resolve it from evidence.
+        if isinstance(rhs, str):
+            if raw_val not in evidence:
+                return None
+            rhs = evidence[raw_val]
         if op == "==":
             return ev_val == rhs
         if op == "!=":

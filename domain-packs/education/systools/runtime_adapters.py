@@ -143,6 +143,9 @@ def interpret_turn_input(
             context_hint += f"\nExpected solved form: {expected_answer}"
         if status:
             context_hint += f"\nProblem status: {status}"
+        min_steps = current_problem.get("min_steps")
+        if min_steps is not None:
+            context_hint += f"\nMinimum steps required: {min_steps}"
 
     # ── NLP pre-interpreter (deterministic anchors) ────────────
     nlp_evidence: dict[str, Any] | None = None
@@ -205,6 +208,7 @@ def interpret_turn_input(
 
     defaults = dict(default_fields or {})
     if not defaults:
+        _min_steps = int(current_problem.get("min_steps", 1)) if isinstance(current_problem, dict) else 1
         defaults = {
             "correctness": "partial",
             "hint_used": False,
@@ -213,6 +217,7 @@ def interpret_turn_input(
             "repeated_error": False,
             "off_task_ratio": 0.0,
             "step_count": 0,
+            "min_steps": _min_steps,
         }
 
     for key, default_val in defaults.items():
