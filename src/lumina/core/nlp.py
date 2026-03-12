@@ -54,6 +54,14 @@ def get_nlp() -> Any | None:
         _spacy_available = False
         log.info("spaCy model en_core_web_sm not found — core NLP using regex fallbacks")
         return None
+    except Exception as exc:
+        _spacy_available = False
+        log.warning(
+            "spaCy failed to load (%s: %s) — core NLP using regex fallbacks",
+            type(exc).__name__,
+            exc,
+        )
+        return None
 
 
 # ── Text primitives ──────────────────────────────────────────
