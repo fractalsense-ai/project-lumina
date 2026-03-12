@@ -16,6 +16,15 @@ from lumina.core.yaml_loader import load_yaml
 def _load_callable(repo_root: Path, module_path: str, callable_name: str) -> Callable[..., Any]:
     abs_module_path = repo_root / module_path
     module_key = f"runtime_module_{abs_module_path.stem}_{abs_module_path.stat().st_mtime_ns}"
+
+    # Re-use an already-executed module to avoid repeated module-level side
+    # effects (e.g. multiple re.compile() calls, pydantic model re-registration)
+    # when several callables are loaded from the same file.
+    if module_key in sys.modules:
+        cached_fn = getattr(sys.modules[module_key], callable_name, None)
+        if cached_fn is not None and callable(cached_fn):
+            return cached_fn
+
     spec = importlib.util.spec_from_file_location(module_key, str(abs_module_path))
     mod = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
     sys.modules[module_key] = mod

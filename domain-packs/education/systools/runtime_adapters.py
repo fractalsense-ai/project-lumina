@@ -185,8 +185,9 @@ def interpret_turn_input(
                 })
             except Exception as exc:
                 import logging as _logging
+                import traceback as _tb
                 _logging.getLogger("edu_runtime_adapters").warning(
-                    "Algebra parser failed: %s", exc,
+                    "Algebra parser failed: %s\n%s", exc, _tb.format_exc(),
                 )
                 parser_result = None
 
