@@ -423,6 +423,13 @@ artifacts:
     last_updated: 2026-03-12
     sha256: 52280d0cb65d8eed60e9127db3084972fcb53cfd2125d673bdea533fe0ce0f60
 
+  - path: cfg/system-physics.json
+    type: config
+    doc_version: 1.0.0
+    status: active
+    last_updated: 2026-03-12
+    sha256: 3ecff6ab535eb39c47167f201df9154ad0dd16802d491f30219512c1cf664639
+
   # ── Retrieval Schemas ──────────────────────────────────────────────────────
 
   - path: retrieval/retrieval-index-schema-v1.json

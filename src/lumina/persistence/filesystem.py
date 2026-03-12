@@ -155,6 +155,14 @@ class FilesystemPersistenceAdapter(PersistenceAdapter):
             result = self._verify_records(records)
             all_intact = all_intact and bool(result.get("intact"))
             results.append({"session_id": sid, **result})
+
+        # Also verify the system-physics CTL chain
+        sys_path = Path(self.get_system_ctl_ledger_path())
+        sys_records = self._load_ledger_records(sys_path)
+        sys_result = self._verify_records(sys_records)
+        all_intact = all_intact and bool(sys_result.get("intact"))
+        results.append({"session_id": "system", **sys_result})
+
         return {
             "scope": "all",
             "sessions_checked": len(results),
@@ -181,6 +189,27 @@ class FilesystemPersistenceAdapter(PersistenceAdapter):
                 if subject_version is None or rec_version == subject_version:
                     return True
         return False
+
+    def get_system_ctl_ledger_path(self) -> str:
+        return str(self.ctl_dir / "system" / "system.jsonl")
+
+    def has_system_physics_commitment(self, system_physics_hash: str) -> bool:
+        path = Path(self.get_system_ctl_ledger_path())
+        for record in self._load_ledger_records(path):
+            if record.get("record_type") != "CommitmentRecord":
+                continue
+            if record.get("commitment_type") != "system_physics_activation":
+                continue
+            if record.get("subject_hash") == system_physics_hash:
+                return True
+        return False
+
+    def append_system_ctl_record(self, record: dict[str, Any]) -> None:
+        target_path = Path(self.get_system_ctl_ledger_path())
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(target_path, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False))
+            fh.write("\n")
 
     def _load_ledger_records(self, path: Path) -> list[dict[str, Any]]:
         if not path.exists():

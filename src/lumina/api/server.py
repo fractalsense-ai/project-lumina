@@ -80,6 +80,17 @@ DOMAIN_REGISTRY_PATH: str | None = (
 PERSISTENCE_BACKEND = os.environ.get("LUMINA_PERSISTENCE_BACKEND", "filesystem").strip().lower()
 DB_URL = os.environ.get("LUMINA_DB_URL")
 ENFORCE_POLICY_COMMITMENT = os.environ.get("LUMINA_ENFORCE_POLICY_COMMITMENT", "true").strip().lower() not in {"0", "false", "no"}
+
+_SYSTEM_PHYSICS_PATH = Path(os.environ.get("LUMINA_SYSTEM_PHYSICS_PATH", str(_REPO_ROOT / "cfg" / "system-physics.json")))
+try:
+    with open(_SYSTEM_PHYSICS_PATH, encoding="utf-8") as _fh:
+        _system_physics_data = json.load(_fh)
+    SYSTEM_PHYSICS_HASH: str | None = hashlib.sha256(
+        json.dumps(_system_physics_data, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+except Exception:
+    log.warning("Could not load system-physics.json from %s; system-physics gate disabled.", _SYSTEM_PHYSICS_PATH)
+    SYSTEM_PHYSICS_HASH = None
 CORS_ORIGINS: list[str] = [
     o.strip()
     for o in os.environ.get("LUMINA_CORS_ORIGINS", "http://localhost:3000").split(",")
@@ -296,6 +307,18 @@ def _assert_policy_commitment(runtime: dict[str, Any]) -> None:
         raise RuntimeError(
             "Policy commitment mismatch: active module domain-physics hash is not CTL-committed. "
             "Commit the module domain-physics.json hash before activation."
+        )
+
+
+def _assert_system_physics_commitment() -> None:
+    if not ENFORCE_POLICY_COMMITMENT:
+        return
+    if SYSTEM_PHYSICS_HASH is None:
+        return
+    if not PERSISTENCE.has_system_physics_commitment(SYSTEM_PHYSICS_HASH):
+        raise RuntimeError(
+            "System-physics commitment missing: the active system-physics.json hash is not present in "
+            "the system CTL. Run scripts/seed-system-physics-ctl.ps1 before starting the server."
         )
 
 
@@ -725,6 +748,7 @@ def _build_domain_context(
             record,
             ledger_path=str(ledger_path),
         ),
+        system_physics_hash=SYSTEM_PHYSICS_HASH,
     )
 
     default_task_spec = dict(runtime["default_task_spec"])
@@ -2327,6 +2351,7 @@ async def _session_idle_cleanup() -> None:
 
 @app.on_event("startup")
 async def _start_idle_cleanup() -> None:
+    _assert_system_physics_commitment()
     if SESSION_IDLE_TIMEOUT_MINUTES > 0:
         asyncio.create_task(_session_idle_cleanup())
         log.info("Session idle timeout enabled: %d minutes", SESSION_IDLE_TIMEOUT_MINUTES)

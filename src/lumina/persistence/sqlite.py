@@ -259,6 +259,39 @@ class SQLitePersistenceAdapter(PersistenceAdapter):
                 return True
         return False
 
+    def get_system_ctl_ledger_path(self) -> str:
+        return "sqlite://ctl/system"
+
+    def has_system_physics_commitment(self, system_physics_hash: str) -> bool:
+        return asyncio.run(self._has_system_physics_commitment_async(system_physics_hash))
+
+    async def _has_system_physics_commitment_async(self, system_physics_hash: str) -> bool:
+        from sqlalchemy import select
+
+        async with self._engine.connect() as conn:
+            result = await conn.execute(
+                select(self._CtlRecord.payload_json)
+                .where(self._CtlRecord.session_id == "system")
+                .where(self._CtlRecord.record_type == "CommitmentRecord")
+            )
+            payloads = result.scalars().all()
+
+        for payload in payloads:
+            try:
+                record = json.loads(payload)
+            except Exception:
+                continue
+            if not isinstance(record, dict):
+                continue
+            if record.get("commitment_type") != "system_physics_activation":
+                continue
+            if record.get("subject_hash") == system_physics_hash:
+                return True
+        return False
+
+    def append_system_ctl_record(self, record: dict[str, Any]) -> None:
+        self.append_ctl_record("system", record)
+
     async def _load_ctl_records_async(self, session_id: str) -> list[dict[str, Any]]:
         from sqlalchemy import select
 

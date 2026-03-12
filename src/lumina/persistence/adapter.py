@@ -57,6 +57,18 @@ class PersistenceAdapter(ABC):
     ) -> bool:
         """Return True when CTL contains a matching policy CommitmentRecord."""
 
+    @abstractmethod
+    def get_system_ctl_ledger_path(self) -> str:
+        """Return the ledger path for the system-physics CTL."""
+
+    @abstractmethod
+    def has_system_physics_commitment(self, system_physics_hash: str) -> bool:
+        """Return True when the system CTL contains a CommitmentRecord for this system-physics hash."""
+
+    @abstractmethod
+    def append_system_ctl_record(self, record: dict[str, Any]) -> None:
+        """Append one record to the system-physics CTL."""
+
     # ── User / Auth persistence ──────────────────────────────
 
     @abstractmethod
@@ -198,6 +210,15 @@ class NullPersistenceAdapter(PersistenceAdapter):
         subject_hash: str,
     ) -> bool:
         return True
+
+    def get_system_ctl_ledger_path(self) -> str:
+        return "system/system.jsonl"
+
+    def has_system_physics_commitment(self, system_physics_hash: str) -> bool:
+        return True
+
+    def append_system_ctl_record(self, record: dict[str, Any]) -> None:
+        return None
 
     # ── User / Auth (in-memory) ──────────────────────────────
 

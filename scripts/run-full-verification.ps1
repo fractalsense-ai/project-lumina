@@ -128,6 +128,13 @@ if (-not $SkipApiScenarios) {
     $previousCtlDir = $env:LUMINA_CTL_DIR
     $previousEnforcePolicyCommitment = $env:LUMINA_ENFORCE_POLICY_COMMITMENT
 
+    # Ensure system-physics CTL commitment is seeded before server startup
+    Write-Host "Seeding system-physics CTL commitment..."
+    & "scripts\seed-system-physics-ctl.ps1" -PythonExe $PythonExe
+    if ($LASTEXITCODE -ne 0) {
+        throw "seed-system-physics-ctl.ps1 failed"
+    }
+
     try {
         if (-not (Test-ApiHealth -BaseUrl $ApiBaseUrl)) {
             $apiUri = [System.Uri]$ApiBaseUrl

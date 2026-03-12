@@ -43,6 +43,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -363,6 +364,45 @@ def cmd_rollback(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_verify_system_chain(args: argparse.Namespace) -> int:
+    """Verify the system-physics CTL chain and optionally check a specific hash is committed."""
+    ctl_dir = Path(args.ctl_dir)
+    system_ledger = ctl_dir / "system" / "system.jsonl"
+    records = load_ledger(system_ledger)
+    print(f"System CTL: {system_ledger}  ({len(records)} records)")
+    result = verify_chain(records)
+
+    if result["intact"]:
+        print(f"System chain integrity: INTACT \u2713  ({result['records_checked']} records verified)")
+    else:
+        print(f"System chain integrity: BROKEN \u2717", file=sys.stderr)
+        print(f"  First broken at index {result['first_broken_index']}, "
+              f"record_id={result['first_broken_id']!r}", file=sys.stderr)
+        print(f"  Error: {result['error']}", file=sys.stderr)
+        return 1
+
+    # Optional: verify that a specific system-physics.json hash is committed
+    if args.system_physics_file:
+        physics_path = Path(args.system_physics_file)
+        if not physics_path.exists():
+            print(f"ERROR: system-physics file not found: {physics_path}", file=sys.stderr)
+            return 1
+        expected_hash = canonical_file_hash(physics_path)
+        committed = any(
+            r.get("record_type") == "CommitmentRecord"
+            and r.get("commitment_type") == "system_physics_activation"
+            and r.get("subject_hash") == expected_hash
+            for r in records
+        )
+        if committed:
+            print(f"Hash commitment: FOUND \u2713  ({expected_hash[:16]}...)")
+        else:
+            print(f"Hash commitment: MISSING \u2717  ({expected_hash[:16]}...)", file=sys.stderr)
+            return 1
+
+    return 0
+
+
 def cmd_print_ledger(args: argparse.Namespace) -> int:
     ledger_path = Path(args.print_ledger)
     records = load_ledger(ledger_path)
@@ -424,6 +464,11 @@ def main() -> None:
         metavar="LEDGER",
         help="Path to the JSONL ledger file. Prints records in human-readable form.",
     )
+    group.add_argument(
+        "--verify-system-chain",
+        action="store_true",
+        help="Verify the system-physics CTL chain. Requires --ctl-dir.",
+    )
 
     parser.add_argument("--ledger", metavar="LEDGER", help="Path to the JSONL ledger file.")
     parser.add_argument("--actor-id", metavar="ID", help="Pseudonymous actor ID (for --commit).")
@@ -435,6 +480,17 @@ def main() -> None:
     )
     parser.add_argument("--summary", metavar="TEXT", help="Human-readable summary (for --commit).")
     parser.add_argument("--reason", metavar="TEXT", help="Reason for rollback (for --rollback).")
+    parser.add_argument(
+        "--ctl-dir",
+        metavar="DIR",
+        default=os.environ.get("LUMINA_CTL_DIR", str(Path(sys.argv[0]).resolve().parents[3] / "ctl")),
+        help="CTL root directory (for --verify-system-chain). Defaults to LUMINA_CTL_DIR env var.",
+    )
+    parser.add_argument(
+        "--system-physics-file",
+        metavar="JSON_FILE",
+        help="Path to system-physics.json to verify its hash is committed (for --verify-system-chain).",
+    )
 
     args = parser.parse_args()
 
@@ -462,6 +518,8 @@ def main() -> None:
     elif args.print_ledger:
         args.ledger = args.print_ledger
         sys.exit(cmd_print_ledger(args))
+    elif args.verify_system_chain:
+        sys.exit(cmd_verify_system_chain(args))
 
 
 if __name__ == "__main__":

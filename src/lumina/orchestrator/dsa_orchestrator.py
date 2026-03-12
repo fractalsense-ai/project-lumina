@@ -247,6 +247,7 @@ class DSAOrchestrator:
         action_prompt_type_map: dict[str, str] | None = None,
         policy_commitment: dict[str, Any] | None = None,
         ctl_append_callback: Callable[[str, dict[str, Any]], None] | None = None,
+        system_physics_hash: str | None = None,
     ) -> None:
         """
         Initialise the orchestrator.
@@ -285,6 +286,7 @@ class DSAOrchestrator:
             self._action_prompt_type_map[str(action)] = str(prompt_type)
         self._policy_commitment = dict(policy_commitment or {})
         self._ctl_append_callback = ctl_append_callback
+        self._system_physics_hash = system_physics_hash
 
         # Diagnostics for the most recently processed turn (read-only for callers)
         self.last_invariant_results: list[dict[str, Any]] = []
@@ -401,6 +403,8 @@ class DSAOrchestrator:
             "prompt_type": prompt_contract.get("prompt_type"),
             "metadata": dict(provenance_metadata or {}),
         }
+        if self._system_physics_hash is not None:
+            record["metadata"]["system_physics_hash"] = self._system_physics_hash
         self._append_ctl_record(record)
 
     def _write_escalation_record(
@@ -431,6 +435,8 @@ class DSAOrchestrator:
             "sla_minutes": 30,
             "metadata": dict(provenance_metadata or {}),
         }
+        if self._system_physics_hash is not None:
+            record["metadata"]["system_physics_hash"] = self._system_physics_hash
         self._append_ctl_record(record)
 
     # ── Core decision logic ───────────────────────────────────
