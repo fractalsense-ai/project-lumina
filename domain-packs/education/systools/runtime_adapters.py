@@ -245,4 +245,14 @@ def interpret_turn_input(
                 if re.search(r"(?:^|\s|=)" + re.escape(expected_num) + r"(?:\s|$|[.,;])", input_text):
                     evidence["correctness"] = "correct"
 
+    # A problem is fully solved when correctness is confirmed by substitution
+    # and the step-count minimum has been met. This flag is consumed by the
+    # core engine's problem-advancement gate and must not reference domain
+    # field names outside this adapter.
+    evidence["problem_solved"] = (
+        evidence.get("correctness") == "correct"
+        and evidence.get("substitution_check") is True
+        and evidence.get("step_count", 0) >= evidence.get("min_steps", 1)
+    )
+
     return evidence

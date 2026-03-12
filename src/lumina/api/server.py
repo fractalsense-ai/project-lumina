@@ -949,24 +949,8 @@ def process_message(
         fluency_decision = domain_lib_decision["fluency"]
 
     should_advance = fluency_decision.get("advanced", False)
-    correctness = turn_data.get("correctness", "partial")
 
-    # A problem is considered solved when the algebra parser confirms the answer
-    # (correctness + substitution) and no constraint violation is still active.
-    # We block only the two actions that indicate genuine unsolved state:
-    #   - request_more_steps: equivalence broken or insufficient work shown
-    #   - request_verification_retry: substitution_check is False (gate already fails)
-    # All other actions (task_presentation, trigger_targeted_hint,
-    # request_method_justification, zpd_scaffold, …) are compatible with a
-    # correct solve — the student has solved the problem and should get a new one.
-    _blocking_actions = {"request_more_steps", "request_verification_retry"}
-    problem_solved = (
-        correctness == "correct"
-        and turn_data.get("substitution_check") is True
-        and resolved_action not in _blocking_actions
-    )
-
-    if should_advance or problem_solved:
+    if should_advance or turn_data.get("problem_solved") is True:
         domain = (runtime.get("domain") or {}).get("subsystem_configs") or {}
         tiers = domain.get("equation_difficulty_tiers")
         if isinstance(tiers, list) and tiers:

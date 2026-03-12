@@ -59,6 +59,7 @@ runtime:
     repeated_error: false
     off_task_ratio: 0.0
     step_count: 0
+    problem_solved: false
 
   turn_input_schema:
     correctness:
@@ -103,6 +104,9 @@ runtime:
     illegal_operations:
       type: list
       default: []
+    problem_solved:
+      type: bool
+      default: false
 
   action_prompt_type_map:
     request_more_steps: more_steps_request
