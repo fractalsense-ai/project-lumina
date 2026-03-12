@@ -10,13 +10,13 @@ TCP/IP assembles packets from layered protocols — each layer adds its headers,
 
 The **D.S.A. engine** assembles a **dynamic prompt contract** from layered components — global rules, domain policy, module state, and turn context. Only what is needed is added at each layer. The LLM processes this contract. Tool-adapters verify the output. The Causal Trace Ledger logs the decision.
 
-The LLM is the **processing unit**, not the authority. The chat interface is the **GUI**, not the system. Everything surrounding the probabilistic LLM is **deterministic and verifiable**.
+The LLM is the **processing unit**, not the authority. The input interface is the **surface**, not the system — it can be a chat session, a sensor feed, a lab instrument stream, or any structured event source. Everything surrounding the probabilistic LLM is **deterministic and verifiable**.
 
 ```
 ┌─────────────────────────────────────────────┐
-│  Chat Interface                             │  ← the GUI (human-facing surface)
+│  Input Interface                            │  ← the surface (chat session, sensor feed, event stream, or API call)
 ├─────────────────────────────────────────────┤
-│  Domain Adapter — NLP Pre-Processing (A)    │  ← domain-owned; extracts structured signals
+│  Domain Adapter — Input Normalization (A)   │  ← domain-owned; normalizes inputs to structured signals
 ├─────────────────────────────────────────────┤
 │  Global Base Prompt                         │  ← universal rules (like IP headers)
 ├─────────────────────────────────────────────┤
@@ -255,8 +255,9 @@ See [`docs/1-commands/`](docs/1-commands/README.md) for detailed command referen
 1. [`specs/principles-v1.md`](specs/principles-v1.md) — the non-negotiables
 2. [`specs/dsa-framework-v1.md`](specs/dsa-framework-v1.md) — the D.S.A. framework specification
 3. [`domain-packs/education/cfg/runtime-config.yaml`](domain-packs/education/cfg/runtime-config.yaml) — how a domain owns its runtime behavior
-4. [`domain-packs/education/modules/algebra-level-1/`](domain-packs/education/modules/algebra-level-1/) — a complete worked domain pack
-5. [`examples/README.md`](examples/README.md) — full interaction traces
+4. [`domain-packs/education/modules/algebra-level-1/`](domain-packs/education/modules/algebra-level-1/) — a complete worked domain pack (education)
+5. [`domain-packs/agriculture/modules/operations-level-1/`](domain-packs/agriculture/modules/operations-level-1/) — a sensor/field operations domain pack
+6. [`examples/README.md`](examples/README.md) — full interaction traces
 
 ---
 
