@@ -54,6 +54,23 @@ tool. Do not use this script to manage CTL ledger integrity.
 - `0` — Hash values written successfully
 - `1` — An error prevented writing (e.g., MANIFEST.yaml parse failure)
 
+## PERMISSIONS
+
+**Required permission:** Write (w)
+
+| Context | Details |
+|---------|---------|
+| Allowed roles | `root`, `domain_authority` |
+| Denied roles | `it_support`, `qa`, `auditor`, `user` |
+| API endpoint | `POST /api/manifest/regen` |
+| Auth required | Yes (JWT) |
+
+This is a write operation that modifies `docs/MANIFEST.yaml` in-place. It is restricted to roles
+that carry authoring authority over repository artifacts. Auditors and QA personnel may inspect
+the manifest via `integrity-check(1)` (`GET /api/manifest/check`) but may not rewrite it.
+
+All API invocations are recorded as a CTL `TraceEvent` on the `_admin` ledger for auditability.
+
 ## ENVIRONMENT
 
 `PYTHON` — Override the Python interpreter used by the Bash script. Defaults to `python3`.

@@ -88,6 +88,36 @@ curl -H "Authorization: Bearer <token>" /api/auth/me
 curl -H "Authorization: Bearer <token>" /api/auth/users
 ```
 
+## Manifest Integrity
+
+The manifest integrity systools apply role-based restrictions separate from the module-level octal
+permission model. These are system-level operations that act on `docs/MANIFEST.yaml` directly.
+
+| Operation | API Endpoint | Permission | Allowed Roles |
+|-----------|--------------|------------|---------------|
+| Check integrity (read) | `GET /api/manifest/check` | Read (r) | `root`, `domain_authority`, `qa`, `auditor` |
+| Regenerate hashes (write) | `POST /api/manifest/regen` | Write (w) | `root`, `domain_authority` |
+
+The `auditor` role may inspect the manifest (read) but may **not** regenerate hashes (write). Regen
+is a write operation that modifies `docs/MANIFEST.yaml` — it is restricted to roles with authoring
+authority (`root` and `domain_authority`).
+
+All `POST /api/manifest/regen` calls are recorded as a CTL `TraceEvent` on the `_admin` ledger for
+full auditability.
+
+From the command line, any authenticated user in an allowed role may also invoke the systools
+directly:
+
+```bash
+# Check (auditor-accessible)
+lumina-integrity-check
+python -m lumina.systools.manifest_integrity check
+
+# Regen (root / domain_authority only)
+lumina-manifest-regen
+python -m lumina.systools.manifest_integrity regen
+```
+
 ## SEE ALSO
 
 - [rbac-spec-v1](../../specs/rbac-spec-v1.md) — Full RBAC specification

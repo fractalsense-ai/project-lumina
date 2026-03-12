@@ -51,6 +51,7 @@ from lumina.persistence.filesystem import FilesystemPersistenceAdapter
 from lumina.core.permissions import Operation, check_permission
 from lumina.persistence.adapter import PersistenceAdapter
 from lumina.core.runtime_loader import load_runtime_context
+from lumina.systools.manifest_integrity import check_manifest_report, regen_manifest_report
 
 # ─────────────────────────────────────────────────────────────
 # Resolve paths and imports
@@ -1119,6 +1120,21 @@ class CtlValidateResponse(BaseModel):
     result: dict[str, Any]
 
 
+class ManifestCheckResponse(BaseModel):
+    passed: bool
+    ok_count: int
+    pending_count: int
+    missing_count: int
+    mismatch_count: int
+    entries: list[dict[str, Any]]
+
+
+class ManifestRegenResponse(BaseModel):
+    updated_count: int
+    missing_paths: list[str]
+    manifest_path: str
+
+
 # ── Auth request/response models ─────────────────────────────
 
 class RegisterRequest(BaseModel):
@@ -2147,6 +2163,67 @@ async def audit_log(
         "records": records if format == "json" else [],
         "generated_by": user_data["sub"],
     }
+
+
+@app.get("/api/manifest/check", response_model=ManifestCheckResponse)
+async def manifest_check(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+) -> ManifestCheckResponse:
+    """Verify SHA-256 hashes for all artifacts in docs/MANIFEST.yaml.
+
+    Accessible to: ``root``, ``domain_authority``, ``qa``, ``auditor``.
+    Returns a structured integrity report; does not modify any files.
+    """
+    current = await get_current_user(credentials)
+    user_data = require_auth(current)
+    require_role(user_data, "root", "domain_authority", "qa", "auditor")
+    try:
+        report = await run_in_threadpool(check_manifest_report, _REPO_ROOT)
+    except Exception as exc:
+        log.exception("Manifest integrity check failed")
+        raise HTTPException(status_code=500, detail=str(exc))
+    return ManifestCheckResponse(**report)
+
+
+@app.post("/api/manifest/regen", response_model=ManifestRegenResponse)
+async def manifest_regen(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+) -> ManifestRegenResponse:
+    """Recompute and rewrite SHA-256 hashes in docs/MANIFEST.yaml.
+
+    Restricted to: ``root`` and ``domain_authority`` only.
+    Writes a CTL TraceEvent for the audit trail.
+    """
+    current = await get_current_user(credentials)
+    user_data = require_auth(current)
+    require_role(user_data, "root", "domain_authority")
+    try:
+        report = await run_in_threadpool(regen_manifest_report, _REPO_ROOT)
+    except Exception as exc:
+        log.exception("Manifest regen failed")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    # Write audit trail event
+    event = build_trace_event(
+        session_id="admin",
+        actor_id=user_data["sub"],
+        event_type="other",
+        decision=f"manifest_regen: updated {report['updated_count']} artifact(s)",
+        evidence_summary={
+            "updated_count": report["updated_count"],
+            "missing_paths": report["missing_paths"],
+            "actor_role": user_data["role"],
+        },
+    )
+    try:
+        PERSISTENCE.append_ctl_record(
+            "admin", event,
+            ledger_path=PERSISTENCE.get_ctl_ledger_path("admin", domain_id="_admin"),
+        )
+    except Exception:
+        log.debug("Could not write manifest_regen trace event")
+
+    return ManifestRegenResponse(**report)
 
 
 @app.get("/api/ctl/records")

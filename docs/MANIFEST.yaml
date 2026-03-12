@@ -70,7 +70,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-12
-    sha256: 9c708546d799b9f90a4fad4b0c9b2994ea222c6d5096a18772802db7171b7000
+    sha256: aebd1f79e90d097273dd809d2030c0c6c1e66789ce023f2f8629478d210ea5ff
 
   - path: docs/1-commands/manifest-regenerate.md
     type: doc
@@ -78,7 +78,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-12
-    sha256: 553dc2f60be7c400b459794ae78c082862aa53f93a2d30f550b3fd2be5cf0529
+    sha256: c018c044734fdec6691136c212814fd3dc0b1f328365eea71a2a78c33af29a5b
 
   # ── Section 2: System Calls ────────────────────────────────────────────────
 
@@ -228,7 +228,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-12
-    sha256: c7e7e4b545412ead6fed575cab9e554729321ceb9621beaf6f6a84fa509e9b8c
+    sha256: 2f00075da71805835d8444ff7f79aaff740c271c14812da2f6a6890472fe328e
 
   - path: docs/8-admin/secrets-and-runtime-config.md
     type: doc
@@ -259,7 +259,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-09
-    sha256: 2207cb835d9ffec94620b789a509082e9fa22b06f22c37b12a2c508d311148f6
+    sha256: add4c6c4e91e92b7d02e6715620fba18c7328674340bd552e8837f1450a07b5e
 
   - path: specs/audit-log-spec-v1.md
     type: spec

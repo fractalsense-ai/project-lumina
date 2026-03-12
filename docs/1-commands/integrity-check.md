@@ -55,6 +55,23 @@ this tool. See `ctl-commitment-validator(1)`.
 - `0` — All hashes match (PENDING and MISSING entries produce warnings, exit is still 0)
 - `1` — One or more MISMATCH entries detected
 
+## PERMISSIONS
+
+**Required permission:** Read (r)
+
+| Context | Details |
+|---------|---------|
+| Allowed roles | `root`, `domain_authority`, `qa`, `auditor` |
+| Denied roles | `it_support`, `user` |
+| API endpoint | `GET /api/manifest/check` |
+| Auth required | Yes (JWT) |
+
+This is a read-only operation. It does not modify `docs/MANIFEST.yaml` or any artifact on disk.
+Auditors may use this tool to verify manifest integrity as part of compliance reviews, consistent
+with their read-only access to CTL records and audit logs.
+
+The `user` and `it_support` roles are excluded — manifest inspection is a governance-level read.
+
 ## ENVIRONMENT
 
 `PYTHON` — Override the Python interpreter used by the Bash script. Defaults to `python3`.

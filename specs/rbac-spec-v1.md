@@ -94,6 +94,8 @@ These are the **recommended** defaults when a Domain Authority creates a new mod
 | `GET /api/ctl/validate` | Read (r) | Viewing CTL integrity data is a read operation |
 | Domain pack authoring | Write (w) | Creating or modifying domain-physics files |
 | CTL record review | Read (r) | Audit trail inspection |
+| `GET /api/manifest/check` | Read (r) | Manifest integrity inspection — read-only; accessible to auditors |
+| `POST /api/manifest/regen` | Write (w) | Rewriting artifact hashes modifies the version-control manifest |
 
 ---
 

@@ -235,6 +235,115 @@ def regen_manifest(repo_root: Path = REPO_ROOT) -> int:
 # Entry point
 # ─────────────────────────────────────────────────────────────
 
+# ─────────────────────────────────────────────────────────────
+# API-compatible report functions (return dicts; no side-effects)
+# ─────────────────────────────────────────────────────────────
+
+def check_manifest_report(repo_root: Path = REPO_ROOT) -> dict:
+    """Return a structured integrity report without printing or exiting.
+
+    Used by the API layer (``GET /api/manifest/check``) to expose manifest
+    health to authenticated callers.  The ``passed`` field mirrors the
+    exit-0 / exit-1 logic of :func:`check_manifest`.
+    """
+    manifest_path = repo_root / "docs" / "MANIFEST.yaml"
+    artifacts = _parse_artifacts(manifest_path)
+
+    ok_count = mismatch_count = pending_count = missing_count = 0
+    entries: list[dict] = []
+
+    for entry in artifacts:
+        rel_path = str(entry.get("path", "")).strip()
+        if not rel_path:
+            entries.append({"path": "", "status": _MISSING})
+            missing_count += 1
+            continue
+
+        recorded = str(entry.get("sha256", "")).strip()
+        abs_path = repo_root / rel_path
+
+        if not abs_path.exists():
+            entries.append({"path": rel_path, "status": _MISSING})
+            missing_count += 1
+            continue
+
+        actual = _sha256_file(abs_path)
+
+        if recorded == "pending":
+            entries.append({"path": rel_path, "status": _PENDING})
+            pending_count += 1
+        elif recorded == actual:
+            entries.append({"path": rel_path, "status": _OK})
+            ok_count += 1
+        else:
+            entries.append({"path": rel_path, "status": _MISMATCH})
+            mismatch_count += 1
+
+    return {
+        "passed": mismatch_count == 0,
+        "ok_count": ok_count,
+        "pending_count": pending_count,
+        "missing_count": missing_count,
+        "mismatch_count": mismatch_count,
+        "entries": entries,
+    }
+
+
+def regen_manifest_report(repo_root: Path = REPO_ROOT) -> dict:
+    """Recompute all SHA-256 hashes in-place and return a summary dict.
+
+    Used by the API layer (``POST /api/manifest/regen``) to trigger a
+    manifest refresh from an authenticated API call.
+    """
+    manifest_path = repo_root / "docs" / "MANIFEST.yaml"
+    artifacts = _parse_artifacts(manifest_path)
+
+    hash_map: dict[str, str] = {}
+    missing: list[str] = []
+    for entry in artifacts:
+        rel_path = str(entry.get("path", "")).strip()
+        if not rel_path:
+            continue
+        abs_path = repo_root / rel_path
+        if abs_path.exists():
+            hash_map[rel_path] = _sha256_file(abs_path)
+        else:
+            missing.append(rel_path)
+
+    raw_lines = manifest_path.read_text(encoding="utf-8").splitlines(keepends=True)
+    out_lines: list[str] = []
+    current_path: str | None = None
+    today = date.today().isoformat()
+
+    for line in raw_lines:
+        m = _LAST_UPDATED_TOP_RE.match(line)
+        if m and not line[0].isspace():
+            out_lines.append(m.group(1) + today + line[m.end():])
+            continue
+
+        m = _PATH_LINE_RE.match(line)
+        if m:
+            current_path = m.group(1).strip()
+            out_lines.append(line)
+            continue
+
+        m = _SHA256_LINE_RE.match(line)
+        if m and current_path is not None and current_path in hash_map:
+            out_lines.append(m.group(1) + hash_map[current_path] + line[m.end():])
+            current_path = None
+            continue
+
+        out_lines.append(line)
+
+    manifest_path.write_text("".join(out_lines), encoding="utf-8")
+
+    return {
+        "updated_count": len(hash_map),
+        "missing_paths": missing,
+        "manifest_path": str(manifest_path.relative_to(repo_root)),
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="manifest_integrity",
