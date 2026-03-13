@@ -20,7 +20,6 @@ JSON schemas, data structures, and file format specifications.
 | [escalation-record-schema.json](../../ledger/escalation-record-schema.json) | EscalationRecord schema |
 | [trace-event-schema.json](../../ledger/trace-event-schema.json) | Trace event schema |
 | [retrieval-index-schema-v1.json](../../retrieval/retrieval-index-schema-v1.json) | RAG retrieval index schema |
-
 | [artifact-manifest-format](artifact-manifest-format.md) | Format specification for `docs/MANIFEST.yaml` — the core artifact registry |
 | [tool-adapter-versioning](tool-adapter-versioning.md) | Version lifecycle for tool adapter YAML declarations |
 
