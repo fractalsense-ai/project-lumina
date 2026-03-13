@@ -144,7 +144,7 @@ When a domain physics invariant with a `signal_type` field fires (fails), the or
 Resolution of novel synthesis events uses a **two-key verification gate**:
 
 1. **Key 1 (LLM/Domain):** The domain invariant fires and the orchestrator propagates the signal. This is automatic.
-2. **Key 2 (Human-in-the-Loop):** The Domain Authority reviews the escalation and issues a CommitmentRecord with `commitment_type` of either `novel_synthesis_verified` or `novel_synthesis_rejected`.
+2. **Key 2 (Human-in-the-Loop):** The Domain Authority reviews the escalation and issues a CommitmentRecord with `commitment_type` of either `novel_synthesis_verified` or `novel_synthesis_rejected`. When issuing `novel_synthesis_rejected`, the CommitmentRecord `metadata` **MUST** include a `denial_rationale` object with `reason_category` (enum) and `authority_note` (string ≤ 512 chars) \u2014 see `commitment-record-schema` for the full field contract.
 
 The system **MUST NOT** record a novel synthesis as validated until Key 2 has been turned. Escalation records for novel synthesis review **SHOULD** use `trigger_type: novel_synthesis_review`.
 

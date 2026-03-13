@@ -58,7 +58,18 @@ The second key turns when the Domain Authority reviews the escalation and issues
 | Verdict | CommitmentRecord `commitment_type` | Effect |
 |---------|--------------------------------------|--------|
 | Accepted | `novel_synthesis_verified` | Innovation recorded; domain physics may be updated to recognize the pattern in future |
-| Rejected | `novel_synthesis_rejected` | Flagged as false positive; model may be flagged for reliability concerns |
+| Rejected | `novel_synthesis_rejected` | Flagged as false positive; `metadata` **MUST** include `denial_rationale` (category + authority note — see below); model may be flagged for reliability concerns |
+
+#### Rejection Denial Rationale
+
+When issuing a `novel_synthesis_rejected` CommitmentRecord, the Domain Authority **must** supply a `denial_rationale` object inside `metadata`:
+
+| Field | Type | Constraints |
+|-------|------|-------------|
+| `reason_category` | enum | `hallucination` · `out_of_domain` · `logical_error` · `insufficient_evidence` · `duplicate_of_known_pattern` · `other` |
+| `authority_note` | string | Authority's written explanation of the denial; max 512 chars |
+
+The `reason_category` gives the SLM a structured signal for corpus indexing and similarity matching. The `authority_note` is the human rationale that the SLM surfaces as prompt context when it detects similar reasoning in a later datastream (see [Section G](#g-rejection-corpus-slm-negative-pre-filter)).
 
 The system does **not** learn the new concept until Key 2 turns. This prevents hallucinated "innovations" from polluting the domain knowledge base.
 
@@ -104,7 +115,7 @@ The system does **not** learn the new concept until Key 2 turns. This prevents h
   │                                                         │   │
   └─────────────────────────────────────────────────────────┘   │
 ```
-
+> **Downstream corpora:** Each verdict feeds a domain-scoped corpus. `novel_synthesis_verified` records form the **Verified Synthesis Corpus** (Section H); `novel_synthesis_rejected` records — including their `denial_rationale` — form the **Rejection Corpus** (Section G). The SLM taps both corpora before dispatching to the LLM on subsequent turns.
 ---
 
 ## C. System-Level Telemetry
@@ -143,6 +154,19 @@ By providing the domain's "truth" up front via the prompt contract — invariant
 - **Novel synthesis tracking** to identify where a model adds genuine value beyond the grounding material.
 
 The efficiency argument: if Model A produces the same novel synthesis rate as Model B but costs 10x more, the grounding anchors have made the cheaper model equally capable for that domain. The telemetry makes this comparison possible.
+
+### Tier 3 — Novel Synthesis Corpus Intercept
+
+The novel synthesis framework adds a third efficiency tier at the SLM layer, completing the cost stack:
+
+| Tier | Mechanism | LLM dispatched? |
+|------|-----------|-----------------|
+| 1 | Glossary intercept — deterministic definition returned before LLM is invoked | Never |
+| 2 | Grounding anchors — smaller/cheaper model guided by domain physics truth | Yes, but cheaper |
+| 3 | Novel synthesis corpus — SLM replays verified insights; pre-filters rejected reasoning | Never (on hit) |
+
+- **Rejection corpus pre-filter (Section G):** If the outbound reasoning resembles a previously rejected synthesis in the active domain corpus, the SLM attaches the prior `denial_rationale` as prompt context before the LLM call. No compute spent re-traversing logic already determined false.
+- **Verified synthesis replay (Section H):** If the outbound reasoning matches a confirmed novel synthesis in the active domain corpus, the SLM serves the verified insight directly without invoking the LLM. No compute spent rediscovering a known truth.
 
 ---
 
@@ -231,6 +255,109 @@ escalation_triggers:
 ```
 
 No changes to `src/lumina/` are required. The engine's generic `signal_type` propagation handles any domain that wires these fields.
+
+---
+
+## G. Rejection Corpus: SLM Negative Pre-Filter
+
+When Key 2 produces a `novel_synthesis_rejected` CommitmentRecord, that record — including its `denial_rationale` — is indexed into an **active-domain-scoped** rejection corpus available to the SLM.
+
+### Purpose
+
+An LLM that produced a false-positive synthesis once will, operating on the same or similar input, likely produce it again. Without a record of the rejection and its rationale, the system would:
+
+1. Invoke an expensive LLM call.
+2. Receive the same flawed reasoning.
+3. Escalate to the Domain Authority again for an identical verdict.
+
+The rejection corpus short-circuits this loop.
+
+### SLM Intercept Behaviour
+
+Before the SLM forwards a datastream to a high-weight LLM call, it performs a similarity check against the domain's rejection corpus:
+
+| Outcome | Action |
+|---------|--------|
+| **No match** | Datastream proceeds to LLM normally |
+| **Match (default policy)** | SLM prepends the prior `denial_rationale` summary as prompt context; TraceEvent `metadata` carries `prior_rejection_match: true` |
+| **Match (block policy)** | LLM call is suppressed entirely; SLM returns the denial rationale summary directly as the response |
+
+The default policy is **flag + attach context** — the LLM is still invoked but now sees the prior verdict as a grounding anchor, steering it away from the rejected line of reasoning.
+
+### Domain Physics Opt-In for Hard Block
+
+A domain author can escalate from attach-context to hard-block by setting a flag in domain physics:
+
+```yaml
+slm_config:
+  prior_rejection_policy: block   # default: attach_context
+```
+
+With `block`, if the SLM detects a semantic match above threshold, the LLM call is suppressed. The SLM returns the denial rationale as context for the caller without consuming LLM compute.
+
+### What Gets Indexed
+
+Each rejection corpus entry contains:
+
+- `record_id` — CommitmentRecord UUID (for audit trail back-reference)
+- `domain_pack_id` — corpus is scoped to this domain
+- `rejection_summary_hash` — hash of the original synthesis signal context (never raw transcript)
+- `denial_rationale.reason_category` — structured reason for SLM similarity matching
+- `denial_rationale.authority_note` — human rationale, surfaced as prompt context when the SLM fires
+
+> **Privacy boundary:** The corpus indexes hashes and structured fields only. Raw transcript content or subject-identifiable data is never stored in the rejection corpus.
+
+---
+
+## H. Verified Synthesis Corpus: SLM Replay Path
+
+When Key 2 produces a `novel_synthesis_verified` CommitmentRecord, that verified insight is indexed into an **active-domain-scoped** verified synthesis corpus available to the SLM.
+
+### Purpose
+
+A verified novel synthesis is a genuine new pattern confirmed by a human authority. Invoking the full LLM pipeline again to reproduce a conclusion already confirmed is pure compute waste. The verified synthesis corpus enables the SLM to serve confirmed insights directly — analogous to how the Stage 2 glossary intercept serves known definitions, but for dynamically discovered knowledge rather than pre-authored glossary entries.
+
+### SLM Replay Behaviour
+
+Before the SLM forwards a datastream to the LLM, it performs a similarity check against the domain's verified synthesis corpus:
+
+| Outcome | Action |
+|---------|--------|
+| **No match** | Datastream proceeds to LLM normally |
+| **Match above replay threshold** | SLM serves the verified insight directly; LLM is not invoked; TraceEvent `metadata` carries `synthesis_replay: true` |
+
+The `synthesis_replay: true` tag in TraceEvent `metadata` ensures the CTL audit trail captures the efficiency gain without losing traceability — an auditor can trace back to the original `novel_synthesis_verified` CommitmentRecord via the corpus entry's `record_id`.
+
+### Replay Threshold
+
+The similarity threshold governing replay is domain-configurable:
+
+```yaml
+slm_config:
+  synthesis_replay_threshold: 0.92   # default; range 0.0–1.0
+```
+
+A higher threshold means the SLM only replays when extremely confident in the match, falling back to the LLM for borderline cases. A lower threshold trades accuracy for efficiency. The default is conservative to protect against false-positive replays serving incorrect conclusions.
+
+### Relationship to Glossary Intercept (Tier 1)
+
+The glossary intercept (Tier 1) operates on pre-authored, static knowledge in the domain physics. The verified synthesis corpus (Tier 3 replay) operates on *dynamically discovered* knowledge that was unknown at domain pack authoring time. Together they form a two-layer deterministic pre-filter in front of the LLM:
+
+```
+Incoming datastream
+     │
+     ▼
+Glossary check (Tier 1) ──hit──► Return deterministic definition
+     │ miss
+     ▼
+Verified synthesis corpus check (Tier 3 — replay) ──hit──► Return verified insight
+     │ miss
+     ▼
+Rejection corpus check (Tier 3 — pre-filter) ──hit──► Attach denial context (or block LLM)
+     │
+     ▼
+LLM dispatch
+```
 
 ---
 
