@@ -35,7 +35,7 @@ The LLM is the **processing unit**, not the authority. The input interface is th
 ├──────────────────────────────────────────────────────────────────────┤
 │  Task Weight Classifier                                              │  ← LOW → SLM tier  |  HIGH → LLM tier
 ├──────────────────────────┬───────────────────────────────────────────┤
-│  SLM — Low-weight tasks  │  LLM — Reasoning Engine                  │  ← definitions, physics interp, admin cmds | instructions, synthesis
+│  SLM — Low-weight tasks  │  LLM — Reasoning Engine                   │  ← definitions, physics interp, admin cmds | instructions, synthesis
 │  (structured extraction) │  (high-weight; probabilistic; never       │
 │                          │   trusted alone)                          │
 ├──────────────────────────┴───────────────────────────────────────────┤
