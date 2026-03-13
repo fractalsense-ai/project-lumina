@@ -19,7 +19,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 
 def _load_api_module():
     module_path = _REPO_ROOT / "src" / "lumina" / "api" / "server.py"
-    module_name = "lumina_api_server_admin_test"
+    module_name = "lumina.api.server"
     spec = importlib.util.spec_from_file_location(module_name, str(module_path))
     if spec is None or spec.loader is None:
         raise RuntimeError("Could not load lumina-api-server module")

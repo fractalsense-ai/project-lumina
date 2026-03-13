@@ -16,7 +16,7 @@ from lumina.core.yaml_loader import load_yaml as _load_yaml
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
-def _load_api_module(module_name: str = "lumina_api_server_multidomain_test"):
+def _load_api_module(module_name: str = "lumina.api.server"):
     module_path = _REPO_ROOT / "src" / "lumina" / "api" / "server.py"
     spec = importlib.util.spec_from_file_location(module_name, str(module_path))
     if spec is None or spec.loader is None:

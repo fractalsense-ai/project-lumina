@@ -18,11 +18,11 @@ def _load_detect_fn():
     # Ensure server module can initialize (needs at least one domain config path)
     os.environ.setdefault("LUMINA_RUNTIME_CONFIG_PATH", "domain-packs/education/cfg/runtime-config.yaml")
     module_path = _REPO_ROOT / "src" / "lumina" / "api" / "server.py"
-    spec = importlib.util.spec_from_file_location("lumina_api_server_glossary_test", str(module_path))
+    spec = importlib.util.spec_from_file_location("lumina.api.server", str(module_path))
     if spec is None or spec.loader is None:
         raise RuntimeError("Could not load lumina-api-server module")
     mod = importlib.util.module_from_spec(spec)
-    sys.modules["lumina_api_server_glossary_test"] = mod
+    sys.modules["lumina.api.server"] = mod
     spec.loader.exec_module(mod)
     return mod._detect_glossary_query
 

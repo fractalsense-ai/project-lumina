@@ -21,18 +21,19 @@ def _load_module(script_name: str, module_name: str):
     spec = importlib.util.spec_from_file_location(module_name, str(REF_DIR / script_name))
     assert spec and spec.loader
     mod = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = mod
     spec.loader.exec_module(mod)
     return mod
 
 
 @pytest.fixture(scope="module")
 def validator_mod():
-    return _load_module("ctl_validator.py", "ctl_commitment_validator")
+    return _load_module("ctl_validator.py", "lumina.systools.ctl_validator")
 
 
 @pytest.fixture(scope="module")
 def freeze_mod():
-    return _load_module("security_freeze.py", "lumina_security_freeze")
+    return _load_module("security_freeze.py", "lumina.systools.security_freeze")
 
 
 def _write_sample_domain_physics(path: Path) -> None:

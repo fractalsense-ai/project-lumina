@@ -46,3 +46,8 @@ lumina-manifest-regen = "lumina.cli.cli:manifest_regen"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/lumina"]
+
+[tool.coverage.run]
+omit = [
+    "*/systools/dsa_demo.py",
+]
