@@ -236,6 +236,14 @@ artifacts:
     last_updated: 2026-03-13
     sha256: dc1af81877f23212823e5f370a9e246086fb94d95dda818ad66a8c39d478baa4
 
+  - path: docs/7-concepts/novel-synthesis-framework.md
+    type: doc
+    section: 7
+    doc_version: 1.0.0
+    status: active
+    last_updated: 2026-03-13
+    sha256: pending
+
   # ── Section 8: Administration ──────────────────────────────────────────────
 
   - path: docs/8-admin/README.md

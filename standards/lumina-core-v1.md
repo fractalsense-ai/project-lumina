@@ -135,6 +135,21 @@ Domain CTL TraceEvent.metadata.system_physics_hash
               └─► cfg/system-physics.yaml  (YAML source, human-authored)
 ```
 
+### 2.4 Novel Synthesis Telemetry
+
+Every domain/session `TraceEvent` record **SHOULD** include `model_id` and `model_version` in its `metadata` block — the identifier and version of the LLM model used for the turn. These fields are passed per-request via `ChatRequest.model_id` and `ChatRequest.model_version`.
+
+When a domain physics invariant with a `signal_type` field fires (fails), the orchestrator **MUST** propagate the `signal_type` value into the TraceEvent metadata as `novel_synthesis_signal`. This enables system-level tracking of novel synthesis events across domains without coupling the system to domain-specific invariant logic.
+
+Resolution of novel synthesis events uses a **two-key verification gate**:
+
+1. **Key 1 (LLM/Domain):** The domain invariant fires and the orchestrator propagates the signal. This is automatic.
+2. **Key 2 (Human-in-the-Loop):** The Domain Authority reviews the escalation and issues a CommitmentRecord with `commitment_type` of either `novel_synthesis_verified` or `novel_synthesis_rejected`.
+
+The system **MUST NOT** record a novel synthesis as validated until Key 2 has been turned. Escalation records for novel synthesis review **SHOULD** use `trigger_type: novel_synthesis_review`.
+
+See [`novel-synthesis-framework(7)`](../docs/7-concepts/novel-synthesis-framework.md) for the full architectural description.
+
 ---
 
 ## 3. Causal Trace Ledger (CTL) Conformance

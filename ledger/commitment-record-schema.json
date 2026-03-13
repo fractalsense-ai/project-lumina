@@ -59,9 +59,11 @@
         "profile_correction",
         "onboarding",
         "audit_policy",
+        "novel_synthesis_verified",
+        "novel_synthesis_rejected",
         "other"
       ],
-      "description": "The type of commitment being made. Use 'system_physics_activation' when committing a new version of cfg/system-physics.json to the system CTL; use 'system_physics_rollback' when reverting to a prior version."
+      "description": "The type of commitment being made. Use 'system_physics_activation' when committing a new version of cfg/system-physics.json to the system CTL; use 'system_physics_rollback' when reverting to a prior version. Use 'novel_synthesis_verified' when a Domain Authority confirms a novel synthesis event is valid; use 'novel_synthesis_rejected' when the Domain Authority determines it is a false positive."
     },
     "subject_id": {
       "type": "string",

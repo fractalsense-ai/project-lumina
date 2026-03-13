@@ -17,5 +17,6 @@ Architectural principles, design frameworks, and system philosophy.
 | [nlp-semantic-router](nlp-semantic-router.md) | Two-tier NLP architecture: Tier 1 system-level domain classification (`classify_domain`), Tier 2 domain NLP pre-interpreter (`_nlp_anchors`), three-stage input pipeline, glossary intercept, routing surface evolution |
 | [prompt-packet-assembly](prompt-packet-assembly.md) | How prompt contracts are assembled from layered components: layer reference table, input sources and telemetry, domain library tools, what the LLM sees vs. what is hidden |
 | [zero-trust-architecture](zero-trust-architecture.md) | Zero-trust posture across all Lumina layers: per-layer trust enforcement matrix, NIST SP 800-207 tenet mapping, OWASP Top 10 mapping, operational implications (fail-closed defaults, escalation, pseudonymity) |
+| [novel-synthesis-framework](novel-synthesis-framework.md) | Novel synthesis detection, two-key verification gate (LLM flags + domain authority confirms), model performance benchmarking via CTL telemetry, compute efficiency through glossary intercepts and grounding anchors |
 
 These documents define the foundational design philosophy of Project Lumina. All implementation decisions trace back to these concepts.

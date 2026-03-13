@@ -878,6 +878,8 @@ def process_message(
     deterministic_response: bool = False,
     domain_id: str | None = None,
     user: dict[str, Any] | None = None,
+    model_id: str | None = None,
+    model_version: str | None = None,
 ) -> dict[str, Any]:
     session = get_or_create_session(session_id, domain_id=domain_id, user=user)
     orch: DSAOrchestrator = session["orchestrator"]
@@ -956,6 +958,10 @@ def process_message(
 
     turn_provenance: dict[str, Any] = dict(runtime_provenance)
     turn_provenance["turn_data_hash"] = _canonical_sha256(turn_data)
+    if model_id is not None:
+        turn_provenance["model_id"] = model_id
+    if model_version is not None:
+        turn_provenance["model_version"] = model_version
 
     prompt_contract, resolved_action = orch.process_turn(
         task_spec,
@@ -1119,6 +1125,8 @@ class ChatRequest(BaseModel):
     deterministic_response: bool = False
     turn_data_override: dict[str, Any] | None = None
     domain_id: str | None = None
+    model_id: str | None = None
+    model_version: str | None = None
 
 
 class ChatResponse(BaseModel):
@@ -1364,6 +1372,8 @@ async def chat(
             req.deterministic_response,
             resolved_domain_id,
             user,
+            req.model_id,
+            req.model_version,
         )
     except DomainNotFoundError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

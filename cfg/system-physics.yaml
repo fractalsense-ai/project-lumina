@@ -526,3 +526,82 @@ glossary:
       The education domain_lib exposes fluency_monitor and zpd_estimator;
       both are called by the education runtime adapter before each
       orchestrator turn.
+
+  - term: novel_synthesis
+    definition: >-
+      A flag set when the reasoning engine identifies a non-obvious connection
+      or approach that does not match any known pattern in the active domain
+      physics. Requires two-key verification before the system records it as
+      a validated innovation.
+    aliases:
+      - novel synthesis
+      - novel pattern
+      - creative synthesis
+    related_terms:
+      - two_key_verification
+      - invariant
+      - escalation_trigger
+      - domain_physics
+    example_in_context: >-
+      The algebra domain's standard_method_preferred invariant fires with
+      signal_type NOVEL_PATTERN when the subject uses an unrecognized
+      solution method. The domain authority reviews and either verifies
+      or rejects the synthesis.
+
+  - term: two_key_verification
+    definition: >-
+      A verification gate requiring two independent confirmations before the
+      system accepts a novel synthesis event. Key 1 is the LLM or domain
+      adapter flagging novel_synthesis true. Key 2 is the Domain Authority
+      (human-in-the-loop) confirming the logic is sound.
+    aliases:
+      - two key verification
+      - two-key gate
+      - two key gate
+      - dual key
+    related_terms:
+      - novel_synthesis
+      - escalation_trigger
+      - domain_authority
+      - commitment_record
+    example_in_context: >-
+      After the orchestrator flags a novel synthesis, an escalation record
+      is created for domain authority review. The domain authority resolves
+      it with a novel_synthesis_verified or novel_synthesis_rejected
+      commitment record, completing the two-key gate.
+
+  - term: model_id
+    definition: >-
+      The identifier of the LLM model used for a given turn, recorded in
+      TraceEvent metadata for cross-domain performance benchmarking and
+      model-to-domain optimization telemetry.
+    aliases:
+      - model identifier
+      - llm model id
+      - language model id
+    related_terms:
+      - model_version
+      - trace_event
+      - novel_synthesis
+    example_in_context: >-
+      A TraceEvent's metadata contains model_id "claude-sonnet-4-20250514"
+      and model_version "2025-05-14", enabling the system to track which
+      model produced novel synthesis events across domains.
+
+  - term: model_version
+    definition: >-
+      The version or revision string of the LLM model used for a given turn,
+      recorded alongside model_id in TraceEvent metadata for model drift
+      detection and performance regression tracking.
+    aliases:
+      - model version
+      - llm version
+      - model revision
+    related_terms:
+      - model_id
+      - trace_event
+      - novel_synthesis
+    example_in_context: >-
+      When a provider updates a model, a drop in the verified novel
+      synthesis rate for a domain may indicate capability regression.
+      The model_version field pinpoints exactly which revision caused it.

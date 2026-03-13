@@ -405,6 +405,11 @@ class DSAOrchestrator:
         }
         if self._system_physics_hash is not None:
             record["metadata"]["system_physics_hash"] = self._system_physics_hash
+        # Propagate signal_type from any failing invariant into metadata
+        for inv_result in invariant_results:
+            if not inv_result["passed"] and inv_result.get("signal_type"):
+                record["metadata"]["novel_synthesis_signal"] = inv_result["signal_type"]
+                break
         self._append_ctl_record(record)
 
     def _write_escalation_record(
