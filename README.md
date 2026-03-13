@@ -1,44 +1,55 @@
-# Project Lumina
+# Lumina OS
 
-**Deterministic orchestration around a probabilistic LLM — dynamic prompt contracts, verified outputs, and traceable accountability.**
+**A zero-trust, deterministic orchestration layer that secures AI reasoning behind immutable Domain Physics — giving the LLM exactly one job: high-weight reasoning.**
 
 ---
 
-## What Is Project Lumina?
+## What Is Lumina OS?
 
-TCP/IP assembles packets from layered protocols — each layer adds its headers, the payload travels through, and checksums verify integrity. Project Lumina does the same thing for LLMs.
+TCP/IP assembles packets from layered protocols — each layer adds its headers, the payload travels through, and checksums verify integrity. Lumina OS does the same thing for LLMs.
 
 The **D.S.A. engine** assembles a **dynamic prompt contract** from layered components — global rules, domain policy, module state, and turn context. Only what is needed is added at each layer. The LLM processes this contract. Tool-adapters verify the output. The Causal Trace Ledger logs the decision.
 
 The LLM is the **processing unit**, not the authority. The input interface is the **surface**, not the system — it can be a chat session, a sensor feed, a lab instrument stream, or any structured event source. Everything surrounding the probabilistic LLM is **deterministic and verifiable**.
 
 ```
-┌─────────────────────────────────────────────┐
-│  Input Interface                            │  ← the surface (chat session, sensor feed, event stream, or API call)
-├─────────────────────────────────────────────┤
-│  Domain Adapter — Input Normalization (A)   │  ← domain-owned; normalizes inputs to structured signals
-├─────────────────────────────────────────────┤
-│  Global Base Prompt                         │  ← universal rules (like IP headers)
-├─────────────────────────────────────────────┤
-│  Domain Physics                             │  ← domain-specific policy layer
-├─────────────────────────────────────────────┤
-│  Module State + Turn Data                   │  ← session-specific context + NLP anchors
-├─────────────═══════════════════─────────────┤
-│  Assembled Prompt Contract                  │  ← the "packet" sent to the LLM
-├─────────────────────────────────────────────┤
-│  LLM (Processing Unit)                      │  ← probabilistic; never trusted alone
-├─────────────────────────────────────────────┤
-│  Tool-Adapter Verification                  │  ← deterministic output checking
-├─────────────────────────────────────────────┤
-│  Domain Adapter — Signal Synthesis (B)      │  ← computes engine contract fields
-├─────────────────────────────────────────────┤
-│  CTL (Causal Trace Ledger)                  │  ← structured event/error logging
-└─────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│  Input Interface                                                     │  ← chat session, sensor feed, event stream, or API call
+├──────────────────────────────────────────────────────────────────────┤
+│  Domain Adapter — Input Normalization (A)                            │  ← domain-owned; normalizes inputs to structured signals
+├───────────────────────────────┬──────────────────────────────────────┤
+│  NLP Classifier               │  Glossary Intercept                  │  ← Tier 1 domain routing | known-term early detection
+│                               ├──────────────────────────────────────┤
+│                               │  SLM Librarian                       │  ← renders fluent definition; LLM never invoked for glossary
+│                               │  (early exit ──► response returned)  │
+├───────────────────────────────┴──────────────────────────────────────┤
+│  SLM Physics Interpreter                                             │  ← pre-digests domain physics → _slm_context injected into turn_data
+├──────────────────────────────────────────────────────────────────────┤
+│  Global Base Prompt                                                  │  ← universal rules (like IP headers)
+├──────────────────────────────────────────────────────────────────────┤
+│  Domain Physics                                                      │  ← immutable domain-specific policy layer
+├──────────────────────────────────────────────────────────────────────┤
+│  Module State + Turn Data                                            │  ← session context + NLP anchors + _slm_context
+├══════════════════════════════════════════════════════════════════════╡
+│  Assembled Prompt Contract                                           │  ← the "packet" ready for dispatch
+├──────────────────────────────────────────────────────────────────────┤
+│  Task Weight Classifier                                              │  ← LOW → SLM tier  |  HIGH → LLM tier
+├──────────────────────────┬───────────────────────────────────────────┤
+│  SLM — Low-weight tasks  │  LLM — Reasoning Engine                  │  ← definitions, physics interp, admin cmds | instructions, synthesis
+│  (structured extraction) │  (high-weight; probabilistic; never       │
+│                          │   trusted alone)                          │
+├──────────────────────────┴───────────────────────────────────────────┤
+│  Tool-Adapter Verification                                           │  ← deterministic output checking + novel synthesis detection
+├──────────────────────────────────────────────────────────────────────┤
+│  Domain Adapter — Signal Synthesis (B)                               │  ← computes engine contract fields
+├──────────────────────────────────────────────────────────────────────┤
+│  CTL (Causal Trace Ledger)                                           │  ← append-only: trace events, escalations, novel synthesis events
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 > Both Domain Adapter rows are **domain-owned** and live entirely in the domain pack — zero domain-specific names appear in the core engine. See [`docs/7-concepts/domain-adapter-pattern.md`](docs/7-concepts/domain-adapter-pattern.md) for the authoring pattern.
 
-The core engine is **fully domain-agnostic**. All domain-specific behavior — prompts, state models, turn interpretation, tool adapters, and deterministic templates — lives in self-contained **domain packs** loaded at runtime. No server code changes are needed to switch domains.
+The Lumina OS core engine is **fully domain-agnostic**. All domain-specific behavior — prompts, state models, turn interpretation, tool adapters, and deterministic templates — lives in self-contained **domain packs** loaded at runtime. No server code changes are needed to switch domains.
 
 > **Full reference documentation** — UNIX man-page style, sections 1–8: [`docs/`](docs/README.md)
 >
@@ -63,8 +74,8 @@ Every turn follows a strict, auditable sequence:
 2. **Context (state)** — mutable session state updated from structured evidence
 3. **Intent (action)** — bounded action determined by Domain + State
 4. **Proposal (LLM)** — the LLM processes the assembled prompt contract
-5. **Verification (tools + invariants)** — tool-adapters check the LLM's reasoning
-6. **Commit / escalate** — verified decisions are committed; violations escalate to a human
+5. **Verification (tools + invariants)** — tool-adapters check the LLM's reasoning; unrecognized patterns are flagged as novel synthesis signals
+6. **Commit / escalate** — verified decisions are committed; violations escalate to a human; novel synthesis events require a two-key gate (LLM flags → Domain Authority confirms or rejects)
 7. **Trace (CTL)** — the decision is logged to the append-only ledger
 
 The D.S.A. model is the contract materialization of this sequence:
@@ -102,6 +113,37 @@ Tool calls are **policy-driven**, not hardcoded. Each domain's config maps resol
 
 ---
 
+### SLM Compute Tier
+
+Lumina OS distributes compute across two model tiers so the LLM receives only pre-digested, high-quality context. The SLM handles all **low-weight** work:
+
+| SLM Role | What it does | LLM involvement |
+|----------|--------------|-----------------|
+| **Librarian** | Renders fluent glossary definitions from domain-owned term data | None — response returned before LLM is invoked |
+| **Physics Interpreter** | Pre-digests domain physics against incoming signals → `_slm_context` injected into the prompt packet | Reduced — LLM receives compressed, pre-interpreted context |
+| **Command Translator** | Parses natural-language admin instructions into structured operations | None — execution goes through existing RBAC-enforced admin endpoints |
+
+A **Task Weight Classifier** evaluates the assembled prompt contract and routes `LOW` tasks (definitions, physics interpretation, state formatting, admin commands) to the SLM and `HIGH` tasks (instructions, corrections, novel synthesis, verification requests) to the LLM.
+
+The SLM layer **always degrades gracefully** — if the SLM is unavailable, deterministic templates fill glossary responses, the prompt packet assembles without context compression, and admin commands return HTTP 503. SLM failure never blocks the system.
+
+See [`docs/7-concepts/slm-compute-distribution.md`](docs/7-concepts/slm-compute-distribution.md) for the full three-role architecture, weight routing table, provider backends, and fallback guarantees.
+
+---
+
+### Novel Synthesis Tracking
+
+When the LLM produces a response the domain's evidence extractors cannot classify using existing rules, the system enters a **two-key verification gate**:
+
+1. **Key 1 — Domain invariant fires** — the domain physics defines a `signal_type: NOVEL_PATTERN` invariant. When the pattern-recognition check fails, the orchestrator applies a standing order (requesting justification) and, if unresolved, creates an `EscalationRecord` with `trigger_type: novel_synthesis_review`.
+2. **Key 2 — Domain Authority confirms** — the human Domain Authority reviews the escalation and issues a verdict: `novel_synthesis_verified` (innovation recorded) or `novel_synthesis_rejected` (false positive flagged).
+
+The CTL records `model_id`, `model_version`, and the verdict for every gate event. This builds a **cross-domain model performance heatmap** — distinguishing models that parrott known answers from those that generate genuine insight. The domain knowledge base is never updated until Key 2 turns.
+
+See [`docs/7-concepts/novel-synthesis-framework.md`](docs/7-concepts/novel-synthesis-framework.md) for the full lifecycle diagram and CTL telemetry schema.
+
+---
+
 ## Governance — Fractal Authority
 
 Every level is a Domain Authority for its own scope and a Meta Authority for levels below:
@@ -124,7 +166,7 @@ See [`GOVERNANCE.md`](GOVERNANCE.md) for policies and [`docs/8-admin/`](docs/8-a
 
 ## Core Principles
 
-These seven universal principles apply to every Project Lumina interaction, regardless of domain. They cannot be overridden by any authority level. Domain-specific principles are owned by each domain pack under [`domain-packs/`](domain-packs/).
+These seven universal principles apply to every Lumina OS interaction, regardless of domain. They cannot be overridden by any authority level. Domain-specific principles are owned by each domain pack under [`domain-packs/`](domain-packs/).
 
 1. **Domain-bounded operation** — the AI may not act outside what the Domain Physics authorizes
 2. **Measurement, not surveillance** — structured telemetry only; no transcript storage
@@ -258,6 +300,8 @@ See [`docs/1-commands/`](docs/1-commands/README.md) for detailed command referen
 4. [`domain-packs/education/modules/algebra-level-1/`](domain-packs/education/modules/algebra-level-1/) — a complete worked domain pack (education)
 5. [`domain-packs/agriculture/modules/operations-level-1/`](domain-packs/agriculture/modules/operations-level-1/) — a sensor/field operations domain pack
 6. [`examples/README.md`](examples/README.md) — full interaction traces
+7. [`docs/7-concepts/slm-compute-distribution.md`](docs/7-concepts/slm-compute-distribution.md) — SLM three-role architecture, weight routing, provider backends, fallback guarantees
+8. [`docs/7-concepts/novel-synthesis-framework.md`](docs/7-concepts/novel-synthesis-framework.md) — two-key verification gate, model benchmarking via CTL telemetry
 
 ---
 
@@ -269,7 +313,7 @@ All domain packs and implementations must conform to [`standards/lumina-core-v1.
 
 ## Disclaimer
 
-Project Lumina is research/experimental software provided AS-IS under Apache 2.0 with NO WARRANTIES. No part of this project is certified for safety-critical, high-stakes, or regulated use (including with minors) without thorough independent validation.
+Lumina OS is research/experimental software provided AS-IS under Apache 2.0 with NO WARRANTIES. No part of this project is certified for safety-critical, high-stakes, or regulated use (including with minors) without thorough independent validation.
 
 The engine provides structural accountability (D.S.A. contracts, CTL traces) but does **not** replace human oversight, professional judgment, or legal compliance. Ultimate accountability for any deployment sits with the human Domain Authority at each level, never the AI or the engine.
 
@@ -277,4 +321,4 @@ Domain packs that involve vulnerable populations (children, patients, etc.) incl
 
 ---
 
-*Last updated: 2026-03-11*
+*Last updated: 2026-03-13*
