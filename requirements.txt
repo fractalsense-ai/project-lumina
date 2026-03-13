@@ -1,6 +1,7 @@
 # Core runtime dependencies for Project Lumina API host
 fastapi>=0.111.0
 uvicorn>=0.30.0
+httpx>=0.27.0
 
 # NLP sentence splitting — optional, requires Python <=3.13
 # (spaCy 3.x uses the pydantic.v1 shim which is broken on Python 3.14+;

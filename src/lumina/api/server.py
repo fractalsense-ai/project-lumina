@@ -539,13 +539,15 @@ def interpret_turn_input(input_text: str, task_context: dict[str, Any], runtime:
     interpreter = runtime["turn_interpreter_fn"]
     kwargs: dict[str, Any] = {
         "call_llm": call_llm,
-        "call_slm": call_slm,
         "input_text": input_text,
         "task_context": task_context,
         "prompt_text": runtime["turn_interpretation_prompt"],
         "default_fields": runtime["turn_input_defaults"],
         "tool_fns": runtime.get("tool_fns"),
     }
+    _interp_sig = inspect.signature(interpreter)
+    if "call_slm" in _interp_sig.parameters:
+        kwargs["call_slm"] = call_slm
     nlp_fn = runtime.get("nlp_pre_interpreter_fn")
     if nlp_fn is not None:
         kwargs["nlp_pre_interpreter_fn"] = nlp_fn
