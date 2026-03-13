@@ -10,7 +10,7 @@
 # The value "pending" is reserved for the initial bootstrap only.
 
 schema_version: 1.0.0
-last_updated: 2026-03-12
+last_updated: 2026-03-13
 
 artifacts:
 
@@ -202,7 +202,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-12
-    sha256: 542887b00ae624bf05ef3c531a4cf166fe9e89e7f7fdd78d1542816bc486a187
+    sha256: 7d9c579e95d83037a07aa8eaa99b79176f62cdea6d2d26c4d88fb88ad32e66cc
 
   - path: docs/7-concepts/domain-adapter-pattern.md
     type: doc
@@ -211,6 +211,30 @@ artifacts:
     status: active
     last_updated: 2026-03-12
     sha256: 5b0ec2fb8d29819ff391a8b864d5d1c6de925abfe0ae1adcf85f07eaeab50275
+
+  - path: docs/7-concepts/nlp-semantic-router.md
+    type: doc
+    section: 7
+    doc_version: 1.0.0
+    status: active
+    last_updated: 2026-03-13
+    sha256: 5a76a14be6a4b7bb17621222e32cc82f56baee46467e0324d2e8335febd4c260
+
+  - path: docs/7-concepts/prompt-packet-assembly.md
+    type: doc
+    section: 7
+    doc_version: 1.0.0
+    status: active
+    last_updated: 2026-03-13
+    sha256: 3355bfa96c5da8f5b3c988827d962523e01fcb3b6a3814366e2a7b80da6714c4
+
+  - path: docs/7-concepts/zero-trust-architecture.md
+    type: doc
+    section: 7
+    doc_version: 1.0.0
+    status: active
+    last_updated: 2026-03-13
+    sha256: dc1af81877f23212823e5f370a9e246086fb94d95dda818ad66a8c39d478baa4
 
   # ── Section 8: Administration ──────────────────────────────────────────────
 
