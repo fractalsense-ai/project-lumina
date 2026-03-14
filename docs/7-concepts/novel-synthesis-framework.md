@@ -101,7 +101,7 @@ The system does **not** learn the new concept until Key 2 turns. This prevents h
   │       │                     ┌────────────────┼──────────┐   │
   │       │                     ▼                ▼          │   │
   │       │              VERIFIED          REJECTED         │   │
-  │       │              CommitmentRecord   CommitmentRecord │   │
+  │       │             CommitmentRecord   CommitmentRecord │   │
   └───────│─────────────────────│────────────────│──────────┘   │
           │                     │                │              │
   ┌───────│─────────────────────│────────────────│──────────┐   │
