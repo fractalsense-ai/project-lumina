@@ -1,8 +1,8 @@
 # secrets-and-runtime-config
 
-**Version:** 1.0.0  
-**Status:** Active  
-**Last updated:** 2026-03-12  
+**Version:** 1.1.0
+**Status:** Active
+**Last updated:** 2026-03-15
 
 ---
 
@@ -36,6 +36,7 @@ Conditionally required:
 - `LUMINA_BOOTSTRAP_MODE=false`
 - `LUMINA_CORS_ORIGINS`
 - `LUMINA_PORT`
+- `LUMINA_PASSWORD_HASH_ALGORITHM` (default: `argon2id`)
 
 ## Local development setup
 
@@ -72,6 +73,32 @@ export LUMINA_JWT_SECRET="<32-byte-or-longer-random-secret>"
 ```bash
 python -c "import secrets; print(secrets.token_hex(32))"
 ```
+
+## Password hashing
+
+The default algorithm is Argon2id, which requires the `argon2-cffi` package.
+When the required library is not installed, the system falls back gracefully:
+argon2id → bcrypt → sha256.
+
+```bash
+# Install both password hashing backends
+pip install project-lumina[passwords]
+
+# Or install individually
+pip install argon2-cffi   # Argon2id — recommended default
+pip install bcrypt         # bcrypt — battle-tested alternative
+```
+
+Configure via environment variable:
+
+```bash
+export LUMINA_PASSWORD_HASH_ALGORITHM="argon2id"   # default
+# export LUMINA_PASSWORD_HASH_ALGORITHM="bcrypt"
+# export LUMINA_PASSWORD_HASH_ALGORITHM="sha256"
+```
+
+SHA-256 is always available as a zero-dependency fallback but is not
+recommended for production deployments.
 
 ## Production deployment guidance
 

@@ -1,0 +1,18 @@
+Collecting bcrypt
+  Downloading bcrypt-5.0.0-cp39-abi3-win_amd64.whl.metadata (10 kB)
+Collecting argon2-cffi
+  Downloading argon2_cffi-25.1.0-py3-none-any.whl.metadata (4.1 kB)
+Collecting argon2-cffi-bindings (from argon2-cffi)
+  Downloading argon2_cffi_bindings-25.1.0-cp39-abi3-win_amd64.whl.metadata (7.5 kB)
+Collecting cffi>=2.0.0b1 (from argon2-cffi-bindings->argon2-cffi)
+  Downloading cffi-2.0.0-cp314-cp314-win_amd64.whl.metadata (2.6 kB)
+Collecting pycparser (from cffi>=2.0.0b1->argon2-cffi-bindings->argon2-cffi)
+  Downloading pycparser-3.0-py3-none-any.whl.metadata (8.2 kB)
+Downloading bcrypt-5.0.0-cp39-abi3-win_amd64.whl (150 kB)
+Downloading argon2_cffi-25.1.0-py3-none-any.whl (14 kB)
+Downloading argon2_cffi_bindings-25.1.0-cp39-abi3-win_amd64.whl (31 kB)
+Downloading cffi-2.0.0-cp314-cp314-win_amd64.whl (185 kB)
+Downloading pycparser-3.0-py3-none-any.whl (48 kB)
+Installing collected packages: pycparser, bcrypt, cffi, argon2-cffi-bindings, argon2-cffi
+
+Successfully installed argon2-cffi-25.1.0 argon2-cffi-bindings-25.1.0 bcrypt-5.0.0 cffi-2.0.0 pycparser-3.0

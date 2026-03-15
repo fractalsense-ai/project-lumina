@@ -11,12 +11,14 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import logging
 import os
 import secrets
 import time
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from typing import Any
 
+log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -26,6 +28,11 @@ JWT_SECRET: str = os.environ.get("LUMINA_JWT_SECRET", "")
 JWT_ALGORITHM: str = os.environ.get("LUMINA_JWT_ALGORITHM", "HS256").upper()
 JWT_TTL_MINUTES: int = int(os.environ.get("LUMINA_JWT_TTL_MINUTES", "60"))
 JWT_ISSUER: str = "lumina"
+
+# Password hashing — supported values: "argon2id", "bcrypt", "sha256"
+PASSWORD_HASH_ALGORITHM: str = os.environ.get(
+    "LUMINA_PASSWORD_HASH_ALGORITHM", "argon2id"
+).lower()
 
 # Valid Lumina roles (see specs/rbac-spec-v1.md)
 VALID_ROLES: frozenset[str] = frozenset(
@@ -65,28 +72,156 @@ class TokenInvalidError(AuthError):
 
 
 # ---------------------------------------------------------------------------
-# Password hashing  (SHA-256 + per-user salt — sufficient for reference impl)
+# Password hashing — multi-algorithm (argon2id, bcrypt, sha256)
 # ---------------------------------------------------------------------------
 
 
+def _has_argon2() -> bool:
+    """Return True if argon2-cffi is installed."""
+    try:
+        import argon2  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+def _has_bcrypt() -> bool:
+    """Return True if the bcrypt package is installed."""
+    try:
+        import bcrypt  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+def _resolve_algorithm() -> str:
+    """Return the effective hashing algorithm, falling back when libs are missing."""
+    algo = PASSWORD_HASH_ALGORITHM
+    if algo == "argon2id":
+        if _has_argon2():
+            return "argon2id"
+        if _has_bcrypt():
+            log.warning("argon2-cffi not installed; falling back to bcrypt")
+            return "bcrypt"
+        log.warning(
+            "argon2-cffi and bcrypt not installed; falling back to sha256"
+        )
+        return "sha256"
+    if algo == "bcrypt":
+        if _has_bcrypt():
+            return "bcrypt"
+        log.warning("bcrypt not installed; falling back to sha256")
+        return "sha256"
+    return "sha256"
+
+
 def _generate_salt(length: int = 32) -> str:
+    """Generate a hex-encoded random salt (SHA-256 legacy path only)."""
     return secrets.token_hex(length)
 
 
-def hash_password(password: str) -> str:
-    """Return ``salt:hash`` string."""
+def _hash_sha256(password: str) -> str:
+    """SHA-256 + per-user salt.  Returns ``salt:hex_digest``."""
     salt = _generate_salt()
     digest = hashlib.sha256((salt + password).encode("utf-8")).hexdigest()
     return f"{salt}:{digest}"
 
 
-def verify_password(password: str, stored: str) -> bool:
-    """Verify *password* against a ``salt:hash`` string produced by :func:`hash_password`."""
-    if ":" not in stored:
-        return False
+def _hash_bcrypt(password: str) -> str:
+    """bcrypt.  Returns the standard ``$2b$...`` string."""
+    import bcrypt as _bcrypt
+
+    return _bcrypt.hashpw(
+        password.encode("utf-8"),
+        _bcrypt.gensalt(rounds=12),
+    ).decode("ascii")
+
+
+def _hash_argon2id(password: str) -> str:
+    """Argon2id.  Returns the standard ``$argon2id$...`` string."""
+    from argon2 import PasswordHasher
+    import argon2 as _argon2
+
+    ph = PasswordHasher(
+        time_cost=3,
+        memory_cost=65536,
+        parallelism=4,
+        hash_len=32,
+        salt_len=16,
+        type=_argon2.Type.ID,
+    )
+    return ph.hash(password)
+
+
+def _detect_algorithm(stored: str) -> str:
+    """Infer the algorithm from a stored hash string."""
+    if stored.startswith("$argon2"):
+        return "argon2id"
+    if stored.startswith(("$2b$", "$2a$")):
+        return "bcrypt"
+    if ":" in stored:
+        return "sha256"
+    return "unknown"
+
+
+def _verify_sha256(password: str, stored: str) -> bool:
     salt, expected = stored.split(":", 1)
     digest = hashlib.sha256((salt + password).encode("utf-8")).hexdigest()
     return hmac.compare_digest(digest, expected)
+
+
+def _verify_bcrypt(password: str, stored: str) -> bool:
+    import bcrypt as _bcrypt
+
+    return _bcrypt.checkpw(
+        password.encode("utf-8"),
+        stored.encode("ascii"),
+    )
+
+
+def _verify_argon2id(password: str, stored: str) -> bool:
+    from argon2 import PasswordHasher
+    from argon2.exceptions import VerifyMismatchError
+
+    ph = PasswordHasher()
+    try:
+        return ph.verify(stored, password)
+    except VerifyMismatchError:
+        return False
+
+
+def hash_password(password: str) -> str:
+    """Hash *password* using the configured algorithm.
+
+    Default: Argon2id (configurable via ``LUMINA_PASSWORD_HASH_ALGORITHM``).
+    Falls back gracefully when the required library is not installed.
+    """
+    algo = _resolve_algorithm()
+    if algo == "argon2id":
+        return _hash_argon2id(password)
+    if algo == "bcrypt":
+        return _hash_bcrypt(password)
+    return _hash_sha256(password)
+
+
+def verify_password(password: str, stored: str) -> bool:
+    """Verify *password* against a stored hash string.
+
+    Auto-detects the hashing algorithm from the stored format:
+    Argon2id (``$argon2id$...``), bcrypt (``$2b$...``), or
+    SHA-256 legacy (``salt:hash``).
+    """
+    algo = _detect_algorithm(stored)
+    try:
+        if algo == "argon2id":
+            return _verify_argon2id(password, stored)
+        if algo == "bcrypt":
+            return _verify_bcrypt(password, stored)
+        if algo == "sha256":
+            return _verify_sha256(password, stored)
+    except Exception:
+        return False
+    return False
 
 
 # ---------------------------------------------------------------------------

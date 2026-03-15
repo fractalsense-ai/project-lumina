@@ -1,8 +1,8 @@
 # Zero-Trust Architecture
 
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Status:** Active
-**Last updated:** 2026-03-13
+**Last updated:** 2026-03-15
 
 ---
 
@@ -45,7 +45,7 @@ Lumina's zero-trust posture is not a single module — it is a suite of mechanis
 | **LLM output** | No LLM response field is trusted without deterministic override where possible | Tool adapters called by orchestrator policy override specific evidence fields (e.g., algebra parser replaces `correctness`); invariant checks block commits when violated | **Escalation** — violated invariant triggers an escalation record; human authority is required |
 | **CTL integrity** | No historical record is trusted without chain verification | Hash-chain: each record carries `prev_record_hash` (SHA-256 of prior record, canonical key-sort); SQLite triggers block UPDATE/DELETE on `ctl_records`; `GET /api/ctl/validate` exposes `validate_ctl_chain` | **MISMATCH** — chain breaks are reported and trace back to the tampered record |
 | **System physics** | No global ruleset is trusted without turn-level provenance | `system_physics_hash` (SHA-256 of active `system-physics.json`) injected into every CTL TraceEvent metadata | **Provenance gap** — missing hash surfaces in audit queries |
-| **Password storage** | No credential is trusted in cleartext | SHA-256 with per-user random salt; salt stored with user record; no reversible encryption | **No plaintext at rest** — breach of user table does not expose passwords |
+| **Password storage** | No credential is trusted in cleartext | Multi-algorithm password hashing (Argon2id default, bcrypt, SHA-256 legacy); auto-detection on verify; graceful fallback when optional libraries are unavailable | **No plaintext at rest** — breach of user table does not expose passwords |
 | **Pseudonymous identity** | The AI layer does not receive canonical identity attributes | Session tokens map to pseudonymous IDs only; canonical identity lives in a separate access-controlled store | **Privacy boundary** — AI layer cannot correlate canonical attributes with session behavior |
 
 ---
@@ -73,12 +73,12 @@ The OWASP Top 10 identifies the most critical web application security risks. Th
 | Category | Risk | Lumina Response |
 |----------|------|----------------|
 | **A01 — Broken Access Control** | Unauthorized users access sessions, CTL records, or domain physics | RBAC with chmod-style octal permissions enforced per module; `check_permission()` on every API call; `require_role()` decorators on admin endpoints; auditor role has read-only CTL scope by design |
-| **A02 — Cryptographic Failures** | Credentials or sensitive data exposed in transit or at rest | Passwords: SHA-256 + per-user random salt, never reversible; JWT: HS256 with `LUMINA_JWT_SECRET` (runtime secret, not source code); CTL hash-chain: SHA-256 per record; system physics hash: SHA-256 of active JSON; no session content stored at rest |
+| **A02 — Cryptographic Failures** | Credentials or sensitive data exposed in transit or at rest | Passwords: multi-algorithm hashing with Argon2id (memory-hard) as default, bcrypt and SHA-256 as fallbacks, never reversible; JWT: HS256 with `LUMINA_JWT_SECRET` (runtime secret, not source code); CTL hash-chain: SHA-256 per record; system physics hash: SHA-256 of active JSON; no session content stored at rest |
 | **A03 — Injection** | Malicious input manipulates database queries or system commands | NLP pre-interpreter operates on text with regex and spaCy — no dynamic query construction driven by user input; SQLite persistence uses parameterized queries, no string-interpolated SQL; tool adapter payloads use template interpolation from validated `turn_data` fields, not raw user text |
 | **A04 — Insecure Design** | System architecture lacks security controls | Security is structural, not bolted on: LLM output is always verified by deterministic adapters; domain physics constrain the action space before any LLM call; policy commitment gate fails closed; no unauthenticated path exists to session execution |
 | **A05 — Security Misconfiguration** | Missing auth, open defaults, exposed debug endpoints | `LUMINA_JWT_SECRET` is required at startup — the server will not start without it; `LUMINA_BOOTSTRAP_MODE` must be explicitly enabled and disables policy enforcement, making its activation auditable; domain registry requires explicit `default_domain` — no silent defaults |
 | **A06 — Vulnerable and Outdated Components** | Dependencies with known CVEs | spaCy is a soft dependency with a complete graceful fallback — its absence does not degrade security posture; no runtime secrets in source code or dependency manifests; dependency list is minimal and explicit in `requirements.txt` |
-| **A07 — Identification and Authentication Failures** | Weak credentials, broken token handling, session fixation | JWT tokens carry `exp` (expiration) and `role` claims; `refresh` endpoint for token renewal; per-user random salt prevents rainbow table attacks; `get_current_user()` validates signature and expiration on every request, not just login |
+| **A07 — Identification and Authentication Failures** | Weak credentials, broken token handling, session fixation | JWT tokens carry `exp` (expiration) and `role` claims; `refresh` endpoint for token renewal; Argon2id password hashing (memory-hard, resists GPU and ASIC brute-force) with bcrypt and SHA-256 fallbacks; `get_current_user()` validates signature and expiration on every request, not just login |
 | **A08 — Software and Data Integrity Failures** | Unsigned updates, tampered artifacts, insecure deserialization | `docs/MANIFEST.yaml` carries SHA-256 for every repo artifact; `lumina-integrity-check` verifies them at any time; CTL hash-chain detects record tampering post-commit; domain physics is hash-committed before sessions execute — a modified file is detectable before it causes harm |
 | **A09 — Security Logging and Monitoring Failures** | Insufficient logs, undetected breaches, no alerts | CTL is the audit backbone: every decision, escalation, and tool call is logged in an append-only, hash-chained record; `validate_ctl_chain` exposes chain integrity on demand; system-level CTL (separate from domain CTLs) captures system operations; escalation records require human authority acknowledgment |
 | **A10 — Server-Side Request Forgery (SSRF)** | Input causes server to make unauthorized outbound requests | Outbound calls are made only through explicitly declared tool adapters registered in domain physics — no free-form URL construction from user input; core engine makes no outbound network calls; LLM API endpoint is a single configured provider URL, not user-controlled |

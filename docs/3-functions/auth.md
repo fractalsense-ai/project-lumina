@@ -1,8 +1,8 @@
 # auth(3)
 
-**Version:** 1.0.0  
-**Status:** Active  
-**Last updated:** 2026-03-12  
+**Version:** 1.1.0
+**Status:** Active
+**Last updated:** 2026-03-15
 
 ---
 
@@ -32,15 +32,26 @@ Decode and verify a JWT. Returns the payload dict.
 
 ### `hash_password(password) → str`
 
-Hash a password with a random salt. Returns `"salt:hash"` string.
+Hash a password using the configured algorithm. Default: Argon2id.
+
+Supported algorithms (set via `LUMINA_PASSWORD_HASH_ALGORITHM`):
+
+| Algorithm | Format | Library required |
+|-----------|--------|-----------------|
+| `argon2id` (default) | `$argon2id$v=19$m=...,t=...,p=...$salt$hash` | `argon2-cffi` |
+| `bcrypt` | `$2b$cost$salthash` | `bcrypt` |
+| `sha256` | `salt:hash` | none (stdlib) |
+
+Falls back gracefully when libraries are missing: argon2id → bcrypt → sha256.
 
 ### `verify_password(password, stored) → bool`
 
-Verify a password against a stored `"salt:hash"` string.
+Verify a password against a stored hash string. Auto-detects the hashing
+algorithm from the stored format — no configuration needed for verification.
 
 ## CONSTANTS
 
-- `VALID_ROLES` — `frozenset({"root", "domain_authority", "it_support", "qa", "auditor", "user"})`
+- `VALID_ROLES` — `frozenset({"root", "domain_authority", "it_support", "qa", "auditor", "user", "guest"})`
 
 ## EXCEPTIONS
 
@@ -55,10 +66,11 @@ Verify a password against a stored `"salt:hash"` string.
 | `LUMINA_JWT_SECRET` | — | HMAC signing key (required for production) |
 | `LUMINA_JWT_TTL_MINUTES` | `60` | Token time-to-live in minutes |
 | `LUMINA_JWT_ALGORITHM` | `HS256` | JWT signing algorithm |
+| `LUMINA_PASSWORD_HASH_ALGORITHM` | `argon2id` | Password hashing algorithm: `argon2id`, `bcrypt`, or `sha256` |
 
 ## NOTES
 
-This module uses zero external dependencies — JWT is implemented using the standard library (`hmac`, `hashlib`, `base64`). Production deployments should evaluate an external IdP.
+This module uses zero external dependencies for JWT — implemented using the standard library (`hmac`, `hashlib`, `base64`). Password hashing supports optional external libraries (`argon2-cffi`, `bcrypt`) for production-grade security; install via `pip install project-lumina[passwords]`. When neither is installed, SHA-256 with per-user salt is used as a fallback. Production deployments should evaluate an external IdP.
 
 ## SEE ALSO
 

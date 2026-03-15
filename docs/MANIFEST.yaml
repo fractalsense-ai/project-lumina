@@ -111,10 +111,10 @@ artifacts:
   - path: docs/3-functions/auth.md
     type: doc
     section: 3
-    doc_version: 1.0.0
+    doc_version: 1.1.0
     status: active
-    last_updated: 2026-03-12
-    sha256: fafc64c2c03de1c8faf24a6eb076b27f56860032b8d75907d758b9c69b1ed744
+    last_updated: 2026-03-15
+    sha256: eeba8f224d0caa5e2692796c20152297fa815afb94fee35cae6ef11a823c9ec6
 
   - path: docs/3-functions/permissions.md
     type: doc
@@ -231,10 +231,10 @@ artifacts:
   - path: docs/7-concepts/zero-trust-architecture.md
     type: doc
     section: 7
-    doc_version: 1.0.0
+    doc_version: 1.1.0
     status: active
-    last_updated: 2026-03-13
-    sha256: dc1af81877f23212823e5f370a9e246086fb94d95dda818ad66a8c39d478baa4
+    last_updated: 2026-03-15
+    sha256: 6ae1782a3ca5f977e4cf9ebb3a895af9bc1bcc8edbdaa4570aab7e0fa98939a3
 
   - path: docs/7-concepts/novel-synthesis-framework.md
     type: doc
@@ -289,10 +289,10 @@ artifacts:
   - path: docs/8-admin/secrets-and-runtime-config.md
     type: doc
     section: 8
-    doc_version: 1.0.0
+    doc_version: 1.1.0
     status: active
-    last_updated: 2026-03-12
-    sha256: 1286c4e4d5c6769313065acdc5e376519f3f4b92566dc2166150f055e9cb9bae
+    last_updated: 2026-03-15
+    sha256: a3955fbb58ac582c198d074e677ef9babd88b2fd744201ae885ec4356379a700
 
   - path: docs/8-admin/system-domain-operations.md
     type: doc

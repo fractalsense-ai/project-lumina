@@ -30,3 +30,8 @@ python-multipart>=0.0.18
 #   LUMINA_SLM_PROVIDER   local | openai | anthropic   (default: local)
 #   LUMINA_SLM_MODEL      model name to pass the provider  (default: phi-3)
 #   LUMINA_SLM_ENDPOINT   Ollama base URL  (default: http://localhost:11434)
+
+# Optional password hashing backends (install for production-grade hashing)
+# Default is Argon2id; falls back to bcrypt then SHA-256 when libs are absent.
+# argon2-cffi>=23.1.0    (Argon2id — recommended default)
+# bcrypt>=4.0.0          (bcrypt — battle-tested alternative)
