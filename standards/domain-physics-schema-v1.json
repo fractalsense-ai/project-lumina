@@ -148,6 +148,71 @@
         }
       },
       "description": "Configuration for the document ingestion pipeline. Controls which formats are accepted, size limits, and SLM interpretation parameters."
+    },
+    "cross_domain_synthesis": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, this domain participates in cross-domain synthesis analysis during night cycle processing. When false or omitted, the domain remains fully isolated."
+        },
+        "peer_domains": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Domain IDs this domain allows synthesis comparison with. Both domains in a pair must list each other for analysis to proceed (mutual opt-in). Empty array or omitted means no peers."
+        },
+        "share_glossary": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true, glossary terms are included in the structural comparison pass."
+        },
+        "share_invariant_structure": {
+          "type": "boolean",
+          "default": true,
+          "description": "When true, invariant structural patterns are included in the physics comparison pass."
+        }
+      },
+      "description": "Opt-in configuration for cross-domain synthesis. Enables controlled bridging between otherwise isolated domain VLANs to identify structural and invariant similarities. Omit entirely or set enabled=false to keep this domain fully isolated. Both domains in a pair must mutually opt in."
+    },
+    "logic_scraping": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, the logic scraping tool is available for this domain. Only domain authorities may trigger scrapes."
+        },
+        "max_iterations": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500,
+          "default": 100,
+          "description": "Maximum number of LLM iterations per scrape invocation."
+        },
+        "synthesis_yield_threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.1,
+          "description": "Minimum novel synthesis yield rate (flagged / total iterations) below which the scrape is considered low-value."
+        },
+        "feedback_mode": {
+          "type": "string",
+          "enum": ["cumulative", "sliding_window"],
+          "default": "cumulative",
+          "description": "How prior responses are fed back to the LLM. cumulative: all prior responses included. sliding_window: only the last N responses included."
+        },
+        "sliding_window_size": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 10,
+          "description": "Number of prior responses to include when feedback_mode is sliding_window."
+        }
+      },
+      "description": "Configuration for the logic scraping tool. Enables iterative LLM probing for novel synthesis discovery. Domain authorities invoke scrapes on-demand; flagged results are escalated for review via the novel synthesis two-key verification gate."
     }
   },
   "$defs": {

@@ -13,7 +13,7 @@ import time
 from typing import Any, Callable
 
 from lumina.nightcycle.report import NightCycleReport, TaskResult
-from lumina.nightcycle.tasks import get_task, list_tasks
+from lumina.nightcycle.tasks import get_task, get_cross_domain_task, list_tasks, list_cross_domain_tasks
 
 log = logging.getLogger("lumina-nightcycle")
 
@@ -95,8 +95,18 @@ class NightCycleScheduler:
                         proposals.append(prop.to_dict())
         return proposals
 
-    def resolve_proposal(self, proposal_id: str, action: str) -> bool:
-        """Approve or reject a pending proposal. Returns True if found."""
+    def resolve_proposal(
+        self,
+        proposal_id: str,
+        action: str,
+        domain_id: str | None = None,
+    ) -> bool:
+        """Approve or reject a pending proposal.  Returns True if found.
+
+        For cross-domain proposals with ``required_approvers``, pass
+        *domain_id* to record one domain authority's decision.  The
+        overall status is recomputed automatically.
+        """
         if action not in ("approved", "rejected"):
             return False
         with self._lock:
@@ -104,7 +114,10 @@ class NightCycleScheduler:
                 for result in run.task_results:
                     for prop in result.proposals:
                         if prop.proposal_id == proposal_id:
-                            prop.status = action
+                            if prop.required_approvers and domain_id:
+                                prop.resolve_approval(domain_id, action)
+                            else:
+                                prop.status = action
                             return True
         return False
 
@@ -197,6 +210,39 @@ class NightCycleScheduler:
                         report.task_results.append(TaskResult(
                             task=task_name,
                             domain_id=domain_id,
+                            success=False,
+                            error=str(exc),
+                        ))
+
+            # ── Cross-domain tasks ──────────────────────────────
+            # These receive the full list of opt-in domains rather than
+            # iterating per-domain.  Only run on full (unfiltered) runs —
+            # when domain_ids is specified the caller wants a targeted run
+            # on specific domains, not cross-domain analysis.
+            cross_domain_task_names = list_cross_domain_tasks()
+            if (cross_domain_task_names
+                    and domain_ids is None
+                    and time.monotonic() <= deadline):
+                for task_name in cross_domain_task_names:
+                    if time.monotonic() > deadline:
+                        log.warning("Night cycle exceeded max duration during cross-domain tasks")
+                        break
+
+                    cd_task_fn = get_cross_domain_task(task_name)
+                    if cd_task_fn is None:
+                        continue
+
+                    try:
+                        result = cd_task_fn(
+                            domains=domains,
+                            persistence=self._persistence,
+                        )
+                        report.task_results.append(result)
+                    except Exception as exc:
+                        log.error("Cross-domain task %s failed: %s", task_name, exc)
+                        report.task_results.append(TaskResult(
+                            task=task_name,
+                            domain_id="cross_domain",
                             success=False,
                             error=str(exc),
                         ))

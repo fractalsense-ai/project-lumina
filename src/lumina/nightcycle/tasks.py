@@ -13,6 +13,7 @@ import time
 from typing import Any, Callable
 
 from lumina.nightcycle.report import Proposal, TaskResult
+from lumina.nightcycle.cross_domain import find_synthesis_candidates
 
 log = logging.getLogger("lumina-nightcycle")
 
@@ -20,6 +21,7 @@ log = logging.getLogger("lumina-nightcycle")
 # ── Task registry ────────────────────────────────────────────
 
 _TASK_REGISTRY: dict[str, Callable[..., TaskResult]] = {}
+_CROSS_DOMAIN_TASK_REGISTRY: dict[str, Callable[..., TaskResult]] = {}
 
 
 def register_task(name: str) -> Callable:
@@ -30,12 +32,32 @@ def register_task(name: str) -> Callable:
     return decorator
 
 
+def register_cross_domain_task(name: str) -> Callable:
+    """Decorator to register a cross-domain night-cycle task.
+
+    Cross-domain tasks receive ``domains`` (list of all opt-in domain dicts)
+    instead of a single ``domain_id`` / ``domain_physics`` pair.
+    """
+    def decorator(fn: Callable[..., TaskResult]) -> Callable[..., TaskResult]:
+        _CROSS_DOMAIN_TASK_REGISTRY[name] = fn
+        return fn
+    return decorator
+
+
 def get_task(name: str) -> Callable[..., TaskResult] | None:
     return _TASK_REGISTRY.get(name)
 
 
+def get_cross_domain_task(name: str) -> Callable[..., TaskResult] | None:
+    return _CROSS_DOMAIN_TASK_REGISTRY.get(name)
+
+
 def list_tasks() -> list[str]:
     return list(_TASK_REGISTRY.keys())
+
+
+def list_cross_domain_tasks() -> list[str]:
+    return list(_CROSS_DOMAIN_TASK_REGISTRY.keys())
 
 
 # ── Task implementations ─────────────────────────────────────
@@ -300,4 +322,149 @@ def telemetry_summary_refresh(
         success=True,
         duration_seconds=time.monotonic() - start,
         metadata={"note": "placeholder — needs telemetry store"},
+    )
+
+
+# ── Cross-domain task implementations ────────────────────────
+# Cross-domain tasks receive the full list of domains instead of
+# iterating per-domain.  They use register_cross_domain_task().
+
+
+@register_cross_domain_task("cross_domain_synthesis")
+def cross_domain_synthesis_task(
+    domains: list[dict[str, Any]],
+    persistence: Any = None,
+    **_kw: Any,
+) -> TaskResult:
+    """Analyse opt-in domain pairs for structural and invariant similarities.
+
+    Two-pass algorithm:
+      Pass 1 — Glossary structural comparison (term, alias, related_terms overlap)
+      Pass 2 — Invariant structure comparison (severity, delegation, chaining patterns)
+
+    Produces dual-approval proposals: both domain authorities must approve.
+    """
+    start = time.monotonic()
+    proposals: list[Proposal] = []
+
+    candidates = find_synthesis_candidates(domains)
+
+    for candidate in candidates:
+        if not candidate["is_candidate"]:
+            continue
+
+        a_id = candidate["domain_a_id"]
+        b_id = candidate["domain_b_id"]
+
+        detail: dict[str, Any] = {}
+        summary_parts: list[str] = []
+
+        glossary = candidate.get("glossary_result")
+        if glossary and glossary.get("passes_threshold"):
+            detail["glossary_overlap"] = {
+                "shared_terms": glossary["shared_terms"],
+                "shared_related": glossary["shared_related"],
+                "score": glossary["score"],
+            }
+            summary_parts.append(
+                f"glossary overlap ({len(glossary['shared_terms'])} shared terms, "
+                f"score={glossary['score']})"
+            )
+
+        invariant = candidate.get("invariant_result")
+        if invariant and invariant.get("score", 0) > 0:
+            detail["invariant_structure"] = {
+                "matched_pairs": invariant["matched_pairs"],
+                "score": invariant["score"],
+            }
+            summary_parts.append(
+                f"invariant structure match ({len(invariant['matched_pairs'])} pairs, "
+                f"score={invariant['score']})"
+            )
+
+        if not summary_parts:
+            continue
+
+        proposals.append(Proposal(
+            task="cross_domain_synthesis",
+            domain_id=f"{a_id}+{b_id}",
+            proposal_type="cross_domain_similarity",
+            summary=f"Cross-domain similarity between {a_id} and {b_id}: "
+                    + "; ".join(summary_parts),
+            detail=detail,
+            required_approvers=[a_id, b_id],
+        ))
+
+    return TaskResult(
+        task="cross_domain_synthesis",
+        domain_id="cross_domain",
+        success=True,
+        duration_seconds=time.monotonic() - start,
+        proposals=proposals,
+        metadata={
+            "pairs_analysed": len(candidates),
+            "candidates_found": sum(1 for c in candidates if c["is_candidate"]),
+        },
+    )
+
+
+# ── Logic scrape review task ─────────────────────────────────
+# Surfaces pending logic scrape proposals during night cycle.
+# The scrape itself is triggered on-demand via the admin API.
+
+
+@register_task("logic_scrape_review")
+def logic_scrape_review(
+    domain_id: str,
+    domain_physics: dict[str, Any],
+    persistence: Any = None,
+    **_kw: Any,
+) -> TaskResult:
+    """Surface pending logic scrape proposals for Domain Authority review.
+
+    Scans persistence for completed scrape results whose proposals
+    have not yet been reviewed.  Does *not* run the scrape itself.
+    """
+    start = time.monotonic()
+    proposals: list[Proposal] = []
+
+    logic_cfg = domain_physics.get("logic_scraping") or {}
+    if not logic_cfg.get("enabled", False):
+        return TaskResult(
+            task="logic_scrape_review",
+            domain_id=domain_id,
+            success=True,
+            duration_seconds=time.monotonic() - start,
+            metadata={"skipped": "logic_scraping not enabled"},
+        )
+
+    # Query persistence for pending scrape proposals
+    if persistence is not None:
+        try:
+            records = persistence.query_ctl_records(domain_id=domain_id)
+            for rec in records:
+                if rec.get("record_type") != "TraceEvent":
+                    continue
+                if rec.get("event_type") != "logic_scrape_flagged":
+                    continue
+                meta = rec.get("metadata") or {}
+                proposals.append(Proposal(
+                    task="logic_scrape_review",
+                    domain_id=domain_id,
+                    proposal_type="novel_synthesis_candidate",
+                    summary=(
+                        f"Logic scrape finding (scrape {meta.get('scrape_id', '?')}, "
+                        f"iteration {meta.get('iteration', '?')})"
+                    ),
+                    detail=meta,
+                ))
+        except Exception as exc:
+            log.warning("logic_scrape_review scan failed: %s", exc)
+
+    return TaskResult(
+        task="logic_scrape_review",
+        domain_id=domain_id,
+        success=True,
+        duration_seconds=time.monotonic() - start,
+        proposals=proposals,
     )

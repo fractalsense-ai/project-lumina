@@ -1,8 +1,8 @@
 # Section 7 — Concepts
 
-**Version:** 1.1.0  
-**Status:** Active  
-**Last updated:** 2026-03-13  
+**Version:** 1.2.0
+**Status:** Active
+**Last updated:** 2026-03-15
 
 ---
 
@@ -22,5 +22,7 @@ Architectural principles, design frameworks, and system philosophy.
 | [ingestion-pipeline](ingestion-pipeline.md) | Document ingestion lifecycle: upload → SLM extraction → multi-interpretation review → commit. RBAC gating, chat-driven workflow, night cycle relationship. |
 | [night-cycle-processing](night-cycle-processing.md) | Batch processing subsystem: glossary expansion/pruning, cross-module consistency, knowledge graph rebuild, proposal-based review workflow, configuration reference. |
 | [governance-dashboard](governance-dashboard.md) | DA governance dashboard: overview telemetry, escalation queue, ingestion review, night cycle panel. Access control and workflow patterns. |
+| [cross-domain-synthesis](cross-domain-synthesis.md) | Cross-domain synthesis: opt-in VLAN bridging between domains, glossary structural comparison, invariant homomorphism detection, dual-key domain authority approval. |
+| [logic-scraping](logic-scraping.md) | Logic scraping: iterative LLM probing for novel synthesis discovery, feedback accumulation, yield rate tracking, domain authority review workflow. |
 
 These documents define the foundational design philosophy of Project Lumina. All implementation decisions trace back to these concepts.

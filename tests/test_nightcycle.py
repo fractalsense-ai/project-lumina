@@ -87,9 +87,10 @@ class TestNightCycleReport:
 class TestTaskRegistry:
     def test_all_nine_registered(self):
         tasks = list_tasks()
-        assert len(tasks) == 9
+        assert len(tasks) == 10
         assert "glossary_expansion" in tasks
         assert "telemetry_summary_refresh" in tasks
+        assert "logic_scrape_review" in tasks
 
     def test_get_task(self):
         fn = get_task("glossary_expansion")

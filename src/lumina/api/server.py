@@ -18,6 +18,7 @@ import os
 import re
 import sys
 import tempfile
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -1281,6 +1282,12 @@ class EscalationResolveRequest(BaseModel):
 
 class AdminCommandRequest(BaseModel):
     instruction: str
+
+
+class LogicScrapeRequest(BaseModel):
+    prompt: str
+    iterations: int | None = None
+    domain_id: str
 
 
 # ── Auth middleware ───────────────────────────────────────────
@@ -3131,6 +3138,114 @@ async def admin_command(
         raise HTTPException(status_code=422, detail=f"Unknown operation: {operation}")
 
     return {"parsed_command": parsed, "result": result}
+
+
+# ─────────────────────────────────────────────────────────────
+# Logic Scraping — Admin Endpoints
+# ─────────────────────────────────────────────────────────────
+
+# In-memory store for running/completed scrapes (keyed by scrape_id).
+_logic_scrape_results: dict[str, dict[str, Any]] = {}
+_logic_scrape_lock = threading.Lock()
+
+
+@app.post("/api/admin/logic-scrape")
+async def start_logic_scrape(
+    req: LogicScrapeRequest,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+) -> dict[str, Any]:
+    """Submit a logic scrape job.  Runs asynchronously; poll the scrape_id.
+
+    Requires domain_authority role.
+    """
+    current = await get_current_user(credentials)
+    user_data = require_auth(current)
+
+    if user_data["role"] not in ("root", "domain_authority"):
+        raise HTTPException(status_code=403, detail="Insufficient permissions — domain_authority required")
+
+    # Resolve domain
+    try:
+        resolved = DOMAIN_REGISTRY.resolve_domain_id(req.domain_id)
+    except DomainNotFoundError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    runtime = DOMAIN_REGISTRY.get_runtime_context(resolved)
+    domain_physics = PERSISTENCE.load_domain_physics(runtime["domain_physics_path"])
+
+    logic_cfg = domain_physics.get("logic_scraping") or {}
+    if not logic_cfg.get("enabled", False):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Logic scraping is not enabled for domain '{resolved}'",
+        )
+
+    from lumina.tools.logic_scraper import LogicScraper
+
+    def _call_llm_via_slm(system_prompt: str, user_prompt: str) -> str:
+        return call_slm(system_prompt, user_prompt)
+
+    scraper = LogicScraper(
+        call_llm_fn=_call_llm_via_slm,
+        domain_physics=domain_physics,
+        config=logic_cfg,
+    )
+
+    # Create a placeholder entry and launch in a background thread.
+    import uuid as _uuid
+    scrape_id = str(_uuid.uuid4())
+
+    with _logic_scrape_lock:
+        _logic_scrape_results[scrape_id] = {
+            "scrape_id": scrape_id,
+            "status": "running",
+            "domain_id": resolved,
+            "prompt": req.prompt,
+        }
+
+    def _run() -> None:
+        try:
+            result = scraper.scrape(
+                prompt=req.prompt,
+                iterations=req.iterations,
+                domain_id=resolved,
+                actor_id=user_data["sub"],
+            )
+            with _logic_scrape_lock:
+                _logic_scrape_results[scrape_id] = {
+                    "status": "completed",
+                    **result.to_dict(),
+                }
+        except Exception as exc:
+            log.exception("Logic scrape %s failed", scrape_id)
+            with _logic_scrape_lock:
+                _logic_scrape_results[scrape_id] = {
+                    "scrape_id": scrape_id,
+                    "status": "failed",
+                    "error": str(exc),
+                }
+
+    thread = threading.Thread(target=_run, daemon=True, name=f"logic-scrape-{scrape_id}")
+    thread.start()
+
+    return {"scrape_id": scrape_id, "status": "running"}
+
+
+@app.get("/api/admin/logic-scrape/{scrape_id}")
+async def get_logic_scrape(
+    scrape_id: str,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+) -> dict[str, Any]:
+    """Poll a logic scrape result by scrape_id."""
+    current = await get_current_user(credentials)
+    require_auth(current)
+
+    with _logic_scrape_lock:
+        entry = _logic_scrape_results.get(scrape_id)
+
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Scrape not found")
+    return entry
 
 
 # ─────────────────────────────────────────────────────────────
