@@ -1,0 +1,17 @@
+# operator-profile.yaml — Default system-operator entity profile
+# Used as the subject_profile for system domain sessions.
+# This is a structural template; real operator state is not tracked
+# across sessions in the same way as learner state.
+# ============================================================
+
+operator_id: "system_operator_template"
+domain_id: "domain/sys/system-core/v1"
+display_name: "System Operator"
+
+preferences:
+  explanation_style: technical
+  language: en
+
+# System domain does not track learning/ZPD state.
+# The state dict kept in session is intentionally minimal.
+state: {}

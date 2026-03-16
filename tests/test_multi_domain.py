@@ -39,6 +39,9 @@ def multi_domain_module(monkeypatch: pytest.MonkeyPatch):
     mod.BOOTSTRAP_MODE = False
     mod.PERSISTENCE.load_subject_profile = _load_yaml
 
+    # Disable SLM so tests don't require a live Ollama instance
+    monkeypatch.setattr(mod, "slm_available", lambda: False)
+
     monkeypatch.setattr(auth, "JWT_SECRET", "test-secret")
     return mod
 
@@ -104,6 +107,7 @@ def test_chat_with_explicit_domain_id(multi_client: TestClient) -> None:
 
 @pytest.mark.integration
 def test_chat_uses_default_domain_when_omitted(multi_client: TestClient) -> None:
+    """Unauthenticated request with no domain_id falls back to global default (education)."""
     resp = multi_client.post(
         "/api/chat",
         json={
@@ -122,7 +126,7 @@ def test_chat_uses_default_domain_when_omitted(multi_client: TestClient) -> None
     )
     assert resp.status_code == 200
     body = resp.json()
-    # default_domain in domain-registry.yaml is "education"
+    # Unauthenticated users → global default_domain in domain-registry.yaml = "education"
     assert body["domain_id"] == "education"
 
 
@@ -270,3 +274,167 @@ def test_parallel_sessions_different_domains(multi_client: TestClient) -> None:
     )
     assert edu_resp2.status_code == 200
     assert edu_resp2.json()["domain_id"] == "education"
+
+
+# ── Role-based default domain routing ────────────────────────
+
+
+def _make_token(mod, role: str, governed_modules: list[str] | None = None) -> str:
+    """Create a signed JWT for the given role using the test JWT_SECRET."""
+    return auth.create_jwt(
+        user_id=f"test_{role}_001",
+        role=role,
+        governed_modules=governed_modules or [],
+    )
+
+
+@pytest.mark.integration
+def test_root_defaults_to_system_domain(multi_client: TestClient) -> None:
+    """Authenticated root user with no domain_id routes to the system domain."""
+    token = _make_token(None, "root")
+    resp = multi_client.post(
+        "/api/chat",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "message": "Show me the current CTL configuration",
+            "deterministic_response": True,
+        },
+    )
+    assert resp.status_code == 200
+    assert resp.json()["domain_id"] == "system"
+
+
+@pytest.mark.integration
+def test_it_support_defaults_to_system_domain(multi_client: TestClient) -> None:
+    """Authenticated it_support user with no domain_id routes to the system domain."""
+    token = _make_token(None, "it_support")
+    resp = multi_client.post(
+        "/api/chat",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "message": "Diagnose this session",
+            "deterministic_response": True,
+        },
+    )
+    assert resp.status_code == 200
+    assert resp.json()["domain_id"] == "system"
+
+
+@pytest.mark.integration
+def test_qa_defaults_to_global_default_domain(multi_client: TestClient) -> None:
+    """Authenticated qa user with no domain_id falls back to global default (education)."""
+    token = _make_token(None, "qa")
+    resp = multi_client.post(
+        "/api/chat",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "message": "Run a test",
+            "deterministic_response": True,
+            "turn_data_override": {
+                "correctness": "correct",
+                "frustration_marker_count": 0,
+                "step_count": 1,
+                "hint_used": False,
+                "repeated_error": False,
+                "off_task_ratio": 0.0,
+                "response_latency_sec": 5,
+            },
+        },
+    )
+    assert resp.status_code == 200
+    assert resp.json()["domain_id"] == "education"
+
+
+@pytest.mark.integration
+def test_auditor_defaults_to_global_default_domain(multi_client: TestClient) -> None:
+    """Authenticated auditor user with no domain_id falls back to global default (education)."""
+    token = _make_token(None, "auditor")
+    resp = multi_client.post(
+        "/api/chat",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "message": "Audit something",
+            "deterministic_response": True,
+            "turn_data_override": {
+                "correctness": "correct",
+                "frustration_marker_count": 0,
+                "step_count": 1,
+                "hint_used": False,
+                "repeated_error": False,
+                "off_task_ratio": 0.0,
+                "response_latency_sec": 5,
+            },
+        },
+    )
+    assert resp.status_code == 200
+    assert resp.json()["domain_id"] == "education"
+
+
+@pytest.mark.integration
+def test_domain_authority_defaults_to_governed_domain(multi_client: TestClient) -> None:
+    """domain_authority user routes to the domain matching their governed_modules."""
+    token = _make_token(None, "domain_authority", governed_modules=["domain/edu/algebra-level-1/v1"])
+    resp = multi_client.post(
+        "/api/chat",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "message": "Let me review my module",
+            "deterministic_response": True,
+            "turn_data_override": {
+                "correctness": "correct",
+                "frustration_marker_count": 0,
+                "step_count": 1,
+                "hint_used": False,
+                "repeated_error": False,
+                "off_task_ratio": 0.0,
+                "response_latency_sec": 5,
+            },
+        },
+    )
+    assert resp.status_code == 200
+    assert resp.json()["domain_id"] == "education"
+
+
+@pytest.mark.integration
+def test_domain_authority_no_governed_modules_uses_global_default(multi_client: TestClient) -> None:
+    """domain_authority with empty governed_modules falls back to global default."""
+    token = _make_token(None, "domain_authority", governed_modules=[])
+    resp = multi_client.post(
+        "/api/chat",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "message": "Hello",
+            "deterministic_response": True,
+            "turn_data_override": {
+                "correctness": "correct",
+                "frustration_marker_count": 0,
+                "step_count": 1,
+                "hint_used": False,
+                "repeated_error": False,
+                "off_task_ratio": 0.0,
+                "response_latency_sec": 5,
+            },
+        },
+    )
+    assert resp.status_code == 200
+    assert resp.json()["domain_id"] == "education"
+
+
+@pytest.mark.integration
+def test_system_role_user_cannot_access_education_domain_turns_without_permission(
+    multi_client: TestClient,
+) -> None:
+    """system domain explicit request from root user reaches system domain."""
+    token = _make_token(None, "root")
+    resp = multi_client.post(
+        "/api/chat",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "message": "Tell me about RBAC",
+            "deterministic_response": True,
+            "domain_id": "system",
+        },
+    )
+    assert resp.status_code == 200
+    assert resp.json()["domain_id"] == "system"
+

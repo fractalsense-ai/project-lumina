@@ -40,6 +40,10 @@ class DomainRegistry:
         self._domains: dict[str, dict[str, Any]] = {}
         self._default_domain: str | None = None
         self._multi_domain = False
+        # Role-based defaults: maps role name → domain_id
+        self._role_defaults: dict[str, str] = {}
+        # module_prefix → domain_id reverse map (for domain_authority resolution)
+        self._prefix_to_domain: dict[str, str] = {}
 
         if registry_path:
             self._load_registry(registry_path)
@@ -83,10 +87,29 @@ class DomainRegistry:
                 f"default_domain '{self._default_domain}' not found in domains"
             )
 
+        # Load optional role_defaults mapping
+        role_defaults_raw = data.get("role_defaults") or {}
+        if not isinstance(role_defaults_raw, dict):
+            raise RuntimeError("'role_defaults' must be a mapping of role → domain_id")
+        for role, target in role_defaults_raw.items():
+            if target not in self._domains:
+                raise RuntimeError(
+                    f"role_defaults['{role}'] references unknown domain '{target}'"
+                )
+        self._role_defaults = dict(role_defaults_raw)
+
+        # Build prefix → domain_id reverse map from module_prefix entries
+        self._prefix_to_domain = {
+            entry["module_prefix"]: domain_id
+            for domain_id, entry in self._domains.items()
+            if "module_prefix" in entry
+        }
+
         log.info(
-            "Loaded domain registry: %d domain(s), default=%s",
+            "Loaded domain registry: %d domain(s), default=%s, role_defaults=%s",
             len(self._domains),
             self._default_domain or "(none)",
+            self._role_defaults or "(none)",
         )
 
     # ── Public API ────────────────────────────────────────────
@@ -128,6 +151,45 @@ class DomainRegistry:
                 "keywords": entry.get("keywords") or [],
             }
         return routing_map
+
+    def resolve_default_for_user(self, user: dict[str, Any] | None) -> str:
+        """Return the default domain_id for *user* when NLP routing finds no match.
+
+        Resolution order:
+        1. If user is None (unauthenticated) → global default_domain.
+        2. If user role is listed in role_defaults → that domain.
+        3. If user role is domain_authority and governed_modules is non-empty →
+           extract the module-prefix segment from the first module path
+           (``domain/<prefix>/…``) and map to the corresponding domain_id.
+        4. Fallthrough → global default_domain.
+        """
+        if not self._multi_domain:
+            return self._default_domain or "_default"
+
+        if user is None:
+            return self._default_domain or next(iter(self._domains))
+
+        role = user.get("role", "")
+
+        # Step 2 — explicit role_default
+        if role in self._role_defaults:
+            return self._role_defaults[role]
+
+        # Step 3 — domain_authority: infer from governed_modules
+        if role == "domain_authority":
+            governed: list[str] = user.get("governed_modules") or []
+            if governed:
+                # Module paths are shaped like "domain/<prefix>/…".
+                # Split out the prefix segment (index 1).
+                parts = governed[0].strip("/").split("/")
+                if len(parts) >= 2:
+                    prefix = parts[1]
+                    inferred = self._prefix_to_domain.get(prefix)
+                    if inferred:
+                        return inferred
+
+        # Step 4 — global fallback
+        return self._default_domain or next(iter(self._domains))
 
     def resolve_domain_id(self, requested: str | None) -> str:
         """Map a request-level domain_id to a validated registry key."""

@@ -1,36 +1,74 @@
 # system-domain-operations
 
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Status:** Active  
-**Last updated:** 2026-03-13  
+**Last updated:** 2026-03-16  
 
 ---
 
-Operational reference for the Project Lumina system domain: the machine-readable
+Operational reference for the Project Lumina system domain: both the machine-readable
 policy layer (`cfg/system-physics.yaml`) that governs the Conversational Interface
-before and regardless of which named domain is active.
+across all domains, and the live system domain pack (`domain-packs/system/`) that
+provides an administration session interface for `root` and `it_support` users.
 
 ---
 
 ## A — System domain overview
 
-The **system domain** is not a named domain pack (it has no `domain-packs/system/`
-directory).  Instead it comprises:
+The **system domain** is a full named domain pack located at `domain-packs/system/`.
+It is the default routing destination for `root` and `it_support` users when no
+explicit `domain_id` is provided and NLP routing does not confidently match another
+domain (see `cfg/domain-registry.yaml` → `role_defaults`).
 
 | Component | Path | Role |
 |-----------|------|------|
-| System physics source | `cfg/system-physics.yaml` | Human-editable policy source |
+| System physics source | `cfg/system-physics.yaml` | Human-editable global policy source |
 | System physics compiled | `cfg/system-physics.json` | Runtime-loaded, schema-validated |
 | System physics schema | `standards/system-physics-schema-v1.json` | JSON Schema for CI layer |
-| Domain registry entry | `cfg/domain-registry.yaml` → `system:` | Enables glossary routing |
-| Runtime config stub | `cfg/system-runtime-config.yaml` | Routing-only; live sessions unimplemented |
+| Domain registry entry | `cfg/domain-registry.yaml` → `system:` | Routing + live session config |
+| Domain pack runtime config | `domain-packs/system/cfg/runtime-config.yaml` | Full live-session config |
+| Domain physics | `domain-packs/system/modules/system-core/domain-physics.json` | Glossary, permissions, topics |
+| Domain prompts | `domain-packs/system/prompts/` | LLM persona + turn interpretation |
+| Runtime adapters | `domain-packs/system/systools/runtime_adapters.py` | Minimal state/step/interpreter |
+| Deprecated stub | `cfg/system-runtime-config.yaml` | Superseded; retained for reference only |
 | System lib | `src/lumina/lib/system_health.py` | Passive state estimator (hw probes) |
 | Hardware probes | `src/lumina/systools/hw_disk.py` · `hw_temp.py` · `hw_memory.py` | Passive, lib-invoked only |
 
-The system domain registry entry is present so that `classify_domain()` can route
-admin and auditor queries about Lumina infrastructure terms to the system glossary
-via the glossary-intercept pipeline.  **Live session execution is not yet
-implemented** (the stub runtime config restricts access to `root`).
+### Access control
+
+Session execution in the system domain is restricted to principals with `root` or
+`it_support` roles.  The domain-physics permission block uses mode `"770"` — owner
+and group have full rwx, all others have no access.
+
+`qa`, `auditor`, `domain_authority`, and `user` principals that attempt a session
+in the system domain receive `403 Module access denied`.  They may still see the
+`system` domain listed in `/api/domains` because it is a registered registry entry,
+but they cannot execute sessions.
+
+### Role-based default routing
+
+`root` and `it_support` users who send a chat message with no `domain_id` and whose
+message does not confidently match another domain via NLP are routed to the system
+domain automatically.  This is controlled by `role_defaults` in
+`cfg/domain-registry.yaml` and implemented in
+`DomainRegistry.resolve_default_for_user()` in `src/lumina/core/domain_registry.py`.
+
+All other roles (including unauthenticated users) fall through to the global
+`default_domain: education`.  This intentional asymmetry hides system internals
+from domain-level users by default.
+
+### What system domain sessions support
+
+- **Glossary queries** — explain any term in the system-core domain physics glossary
+  (CTL, commitment record, RBAC, domain pack, policy gate, hash chain, etc.)
+- **Status queries** — discuss the state of a Lumina component from session context
+- **Diagnostic discussion** — troubleshooting guidance for runtime issues
+- **Config review** — walk through domain-registry, domain-physics, or system-physics
+- **Operational monitoring** — CTL record structure, night-cycle status, hash-chain
+  integrity
+
+The system domain does **not** support world-sim personas, learner ZPD tracking,
+or any domain-level tool adapters beyond core Lumina.
 
 ---
 

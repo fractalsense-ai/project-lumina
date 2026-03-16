@@ -89,28 +89,102 @@ The LLM may override them, but having deterministic anchors as a prior makes ove
 
 ---
 
-## C. Three-Stage Input Pipeline
+## C. Four-Stage Routing Decision
 
-A single incoming message passes through three sequential stages before it reaches the LLM. The first two stages may short-circuit the pipeline entirely — the third stage always runs when the pipeline reaches the orchestrator.
+A single incoming message passes through four stages to determine which domain owns it. Stages 1 and 2 may resolve the domain early; Stage 3 handles authenticated users who match no NLP signal; Stage 4 is the final safety net.
+
+```
+Incoming message / signal
+          │
+          ▼
+┌──────────────────────────────────────┐
+│ Stage 1: Explicit domain_id          │  domain_id in request body → done
+│ (API request field)                  │  validates against registry
+└────────────────┬─────────────────────┘
+                 │ (no domain_id)
+                 ▼
+┌──────────────────────────────────────┐
+│ Stage 2: NLP Semantic Classification │  classify_domain() → domain_id
+│ (src/lumina/core/nlp.py)             │  confidence ≥ 0.6 → done
+└────────────────┬─────────────────────┘
+                 │ (confidence < 0.6 or NLP unavailable)
+                 ▼
+┌──────────────────────────────────────┐
+│ Stage 3: Role-Based Default          │  resolve_default_for_user(user)
+│ (domain_registry.py)                 │  root/it_support → system
+│                                      │  domain_authority → governed domain
+└────────────────┬─────────────────────┘
+                 │ (role not in role_defaults, or unauthenticated)
+                 ▼
+┌──────────────────────────────────────┐
+│ Stage 4: Global Default              │  default_domain in registry
+│ (cfg/domain-registry.yaml)           │  → education (masks system internals)
+└──────────────────────────────────────┘
+```
+
+### Stage 3 — Role-Based Default Fallback
+
+When NLP classification does not find a confident match, authenticated users may be directed to a domain that matches their role rather than the global default. This is controlled by two fields in `cfg/domain-registry.yaml`:
+
+**`role_defaults`** — maps role names to domain IDs:
+```yaml
+role_defaults:
+  root: system
+  it_support: system
+```
+
+**`module_prefix`** per domain entry — enables reverse-mapping a module path to a domain:
+```yaml
+domains:
+  education:
+    module_prefix: edu
+  agriculture:
+    module_prefix: agri
+  system:
+    module_prefix: sys
+```
+
+**Resolution algorithm** (`DomainRegistry.resolve_default_for_user()`):
+
+1. `user is None` (unauthenticated) → Stage 4 global default
+2. `role` found in `role_defaults` → that domain (e.g. `root` → `system`)
+3. `role == domain_authority` and `governed_modules` non-empty → extract prefix from first module path (`domain/<prefix>/…`) and look up in `module_prefix` reverse map
+4. Fallthrough → Stage 4 global default
+
+**Design rationale:** The global `default_domain` is deliberately set to `education` (a domain-level domain) to ensure that system internals remain invisible to unauthenticated users and domain-level roles. System operators (`root`, `it_support`) who send a message with no explicit domain receive the system domain, which is their natural working context. Domain authorities land in the domain they govern.
+
+**Roles not in `role_defaults`:** `qa`, `auditor`, and `user` are cross-cutting readers; they are not operators of any specific domain by default, so they fall through to the global default (education). They can reach any domain they have permission for by specifying `domain_id` explicitly.
+
+### Stage 2 + Stage 3 interaction: accessible domain filtering
+
+Before calling `classify_domain()` (Stage 2), the server builds an `accessible_domains` list by checking EXECUTE permission on every registered domain for the authenticated user. Only accessible domains are passed to the NLP classifier. This prevents the classifier from routing a user to a domain they cannot access.
+
+For `root` users, all domains are accessible (permission check is bypassed).
+
+---
+
+## D. Input Processing Pipeline (post-routing)
+
+After the domain is resolved, the input passes through three sequential processing stages before reaching the LLM. The first two stages may short-circuit the pipeline entirely.
 
 ```
 Incoming message / signal
           │
           ▼
 ┌─────────────────────────────────┐
-│ Stage 1: Domain Classification  │  classify_domain() → domain_id
-│ (src/lumina/core/nlp.py)        │  or None → fall back to default
+│ Phase A: Domain Classification  │  classify_domain() → domain_id
+│ (Stages 1-4 above)              │  or role-based/global default
 └────────────────┬────────────────┘
                  │
                  ▼
 ┌─────────────────────────────────┐
-│ Stage 2: Glossary Intercept     │  Known term? → return inline
+│ Phase B: Glossary Intercept     │  Known term? → return inline
 │ (domain-lib glossary check)     │  definition; skip orchestrator
 └────────────────┬────────────────┘
                  │ (not a glossary hit)
                  ▼
 ┌─────────────────────────────────┐
-│ Stage 3: NLP Anchor Extraction  │  Phase A extractor → _nlp_anchors
+│ Phase C: NLP Anchor Extraction  │  Phase A extractor → _nlp_anchors
 │ (domain NLP pre-interpreter)    │  injected into prompt context
 └────────────────┬────────────────┘
                  │
@@ -118,21 +192,21 @@ Incoming message / signal
           D.S.A. Orchestrator
 ```
 
-### Stage 2 — Glossary Intercept (short-circuit)
+### Phase B — Glossary Intercept (short-circuit)
 
 When the incoming text matches a term in the domain's glossary, the system returns an inline definition directly without entering the D.S.A. orchestrator. This is not routing in the classification sense — it is a deterministic early exit that avoids unnecessarily consuming an LLM turn for a known definitional query.
 
 The prompt contract type for these responses is `definition_lookup`, and the returned packet carries the `glossary_entry` field with term, definition, example in context, and related terms.
 
-Only terms explicitly enumerated in the active domain's `glossary` block (in `domain-physics.yaml`) trigger this intercept. Unknown terms pass through to Stage 3.
+Only terms explicitly enumerated in the active domain's `glossary` block (in `domain-physics.yaml`) trigger this intercept. Unknown terms pass through to Phase C.
 
-### Stage 3 — NLP Anchor Extraction (always runs on orchestrator path)
+### Phase C — NLP Anchor Extraction (always runs on orchestrator path)
 
 Anchor extraction runs for every message that reaches the orchestrator. Anchors become part of the evidence dict and are formatted into the LLM context hint before the prompt contract is finalized. They do not influence domain classification — they influence LLM interpretation accuracy within the already-established domain.
 
 ---
 
-## D. Routing Surface: Keywords and Glossary Evolution
+## E. Routing Surface: Keywords and Glossary Evolution
 
 The routing surface for domain classification is defined by the `keywords` list in `cfg/domain-registry.yaml` (one list per domain). A domain's routing surface is as wide as its keyword list.
 
@@ -164,11 +238,9 @@ domains:
 
 This evolution is a domain-level concern (each domain authority decides when to promote glossary terms to routing keywords) and does not require core engine changes.
 
-**System-level routing note:** The `system` domain — responsible for admin operations, auditor access, and runtime configuration changes — will eventually require its own domain physics and glossary to classify inputs at the system level. This is a planned future slice and is tracked separately.
-
 ---
 
-## E. Scope Boundaries
+## F. Scope Boundaries
 
 The NLP semantic router has a strictly bounded role. Understanding what it does *not* do is as important as understanding what it does.
 

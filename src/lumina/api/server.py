@@ -1421,16 +1421,22 @@ async def chat(
                 inferred.get("method"),
             )
         else:
-            # Fall back to default domain
+            # Fall back to role-based default (or global default for unauthenticated users)
             try:
-                resolved_domain_id = DOMAIN_REGISTRY.resolve_domain_id(None)
+                resolved_domain_id = DOMAIN_REGISTRY.resolve_default_for_user(user)
             except RuntimeError as exc:
                 raise HTTPException(
                     status_code=400,
                     detail="Could not determine domain. Please specify domain_id.",
                 )
-            routing_record["method"] = "default"
+            routing_record["method"] = "role_default"
             routing_record["confidence"] = 0.0
+            log.info(
+                "[%s] Role-based default routing: %s (role=%s)",
+                session_id,
+                resolved_domain_id,
+                user.get("role") if user else "unauthenticated",
+            )
 
     routing_record["final_domain"] = resolved_domain_id
 

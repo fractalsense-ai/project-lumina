@@ -211,6 +211,34 @@ A role can only assign roles at or below its `max_assignable_level`. For example
 
 ---
 
+## System Roles and Domain Default Routing
+
+Cross-cutting system roles (`root`, `it_support`, `qa`, `auditor`) operate across all domains and are outside the domain role hierarchy.  However, they interact with domain routing in two specific ways:
+
+### role_defaults
+
+`root` and `it_support` users have a **default domain** of `system` when no explicit `domain_id` is provided in a request and NLP routing does not confidently match another domain.  This is declared in `cfg/domain-registry.yaml`:
+
+```yaml
+role_defaults:
+  root: system
+  it_support: system
+```
+
+All other system roles (`qa`, `auditor`, `user`), as well as unauthenticated users, fall through to the global `default_domain` (currently `education`), masking system internals from domain-level users by default.
+
+### domain_authority governed_modules inference
+
+`domain_authority` users do not appear in `role_defaults` because they are domain-affiliated, not system operators.  Instead, when NLP routing finds no confident match, their default domain is **inferred from their `governed_modules` JWT claim**:
+
+The system extracts the module-prefix segment from the first module path (`domain/<prefix>/…`) and looks it up in the `module_prefix` reverse map in the registry.  A teacher with `governed_modules: ["domain/edu/algebra-level-1/v1"]` defaults to `education`; an agriculture domain authority with `governed_modules: ["domain/agri/operations-level-1/v1"]` defaults to `agriculture`.
+
+If `governed_modules` is empty or the prefix is unrecognised, the global `default_domain` is used.
+
+This design is implemented in `DomainRegistry.resolve_default_for_user()` in `src/lumina/core/domain_registry.py`.
+
+---
+
 ## SEE ALSO
 
 - [`specs/rbac-spec-v1.md`](../../specs/rbac-spec-v1.md) — Full RBAC specification including domain role hierarchy

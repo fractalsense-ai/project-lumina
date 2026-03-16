@@ -1,0 +1,54 @@
+{
+  "id": "domain/sys/system-core/v1",
+  "version": "1.0.0",
+  "domain": "system",
+  "label": "Lumina System Core",
+  "description": "System-administration domain covering Lumina OS internals: CTL, RBAC, domain physics, domain packs, system physics, policy gates, and operational monitoring.",
+
+  "permissions": {
+    "mode": "770",
+    "owner": "root",
+    "group": "it_support",
+    "acl": [
+      { "role": "root",       "access": "rwx" },
+      { "role": "it_support", "access": "rwx" }
+    ]
+  },
+
+  "topics": [
+    "system_administration",
+    "operational_monitoring",
+    "audit",
+    "rbac_inspection",
+    "domain_physics_review",
+    "ctl_review",
+    "session_diagnostics"
+  ],
+
+  "glossary": {
+    "ctl": "Causal Trace Ledger — the append-only, hash-chained record of all domain-session trace events and commitment records.",
+    "commitment_record": "A CTL record that marks a durable system decision: domain-physics activation, role change, escalation, or night-cycle outcome.",
+    "trace_event": "A single LLM-driven turn record in the CTL, capturing input evidence, state delta, and the system-physics hash active at the time.",
+    "system_physics": "The machine-readable global invariant layer (cfg/system-physics.yaml / .json) that constrains every domain session regardless of which domain is active.",
+    "domain_physics": "A domain-pack JSON file defining the module's topics, glossary, standing orders, escalation conditions, and artifacts.",
+    "domain_pack": "A self-contained module bundle (cfg, prompts, domain-lib, systools, modules) that implants a domain into the Lumina runtime.",
+    "domain_authority": "A role with authoring rights over one or more governed modules; highest ceiling for domain-scoped operations.",
+    "meta_authority": "The cross-domain governance layer above a Domain Authority; approves cross-domain synthesis and standing-order conflicts.",
+    "policy_gate": "A hard invariant in system physics that cannot be overridden by any domain pack; violated by a session → escalation.",
+    "hash_chain": "The linked sequence of record_hash values in the CTL that provides tamper-evidence across all ledger entries.",
+    "rbac": "Role-Based Access Control — Lumina's permission model combining chmod-style octal modes with optional extended ACLs.",
+    "domain_registry": "cfg/domain-registry.yaml — the file that maps domain_id keys to their runtime-config paths and routing metadata.",
+    "standing_order": "A persistent instruction authored by a Domain Authority that survives across session turns until explicitly revoked.",
+    "escalation": "A domain-session signal that exceeds a policy-gate threshold; surfaces to Meta Authority and writes an escalation record to the CTL.",
+    "night_cycle": "A configurable off-hours batch pass that performs glossary expansion, constraint refresh, and knowledge-graph rebuilds for a domain.",
+    "tool_adapter": "A domain-pack module that exposes a callable to the Lumina orchestrator as a named tool during a session.",
+    "domain_lib": "A domain-pack library of pure functions available to systools adapters without LLM involvement.",
+    "pseudonymous_id": "The opaque, non-reversible identifier stored in the CTL in place of a real user identifier.",
+    "ingestion_pipeline": "The upload → extract → SLM-interpret → DA-review → commit workflow for importing external content into a domain pack."
+  },
+
+  "default_task_spec": {
+    "task_id": "system-query-001",
+    "nominal_difficulty": 0.0
+  }
+}
