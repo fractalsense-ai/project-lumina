@@ -202,7 +202,7 @@ def algebra_parser_tool(payload: dict[str, Any]) -> dict[str, Any]:
         return {
             "ok": True,
             "step_count": 0,
-            "equivalence_preserved": True,
+            "equivalence_preserved": None,
             "substitution_check": False,
             "method_recognized": None,
             "parsed_steps": [],
@@ -221,6 +221,7 @@ def algebra_parser_tool(payload: dict[str, Any]) -> dict[str, Any]:
 
     methods_detected: set[str] = set()
     all_equiv = True
+    any_equation_parsed = False
 
     for step_text in raw_steps:
         operation = _classify_step(step_text)
@@ -232,6 +233,7 @@ def algebra_parser_tool(payload: dict[str, Any]) -> dict[str, Any]:
         if _step_has_equation(step_text):
             step_parsed = _parse_linear_equation(step_text, variable)
             if step_parsed is not None and expected_solution is not None:
+                any_equation_parsed = True
                 step_sol = _solve_linear(*step_parsed)
                 if step_sol is not None:
                     if abs(step_sol - expected_solution) > 1e-9:
@@ -247,6 +249,11 @@ def algebra_parser_tool(payload: dict[str, Any]) -> dict[str, Any]:
             "operation": operation,
             "valid": valid,
         })
+
+    # equivalence_preserved is True/False only when we successfully parsed at
+    # least one equation step; None means "indeterminate" (all steps were
+    # unparseable prose or complex notation the parser doesn't handle).
+    equiv_result: bool | None = all_equiv if any_equation_parsed else None
 
     # Count meaningful steps (not unknown text without equations)
     meaningful_steps = [
@@ -274,7 +281,7 @@ def algebra_parser_tool(payload: dict[str, Any]) -> dict[str, Any]:
     return {
         "ok": True,
         "step_count": step_count,
-        "equivalence_preserved": all_equiv,
+        "equivalence_preserved": equiv_result,
         "substitution_check": sub_check,
         "method_recognized": method,
         "parsed_steps": parsed_steps,

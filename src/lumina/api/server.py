@@ -211,12 +211,35 @@ def _canonical_sha256(value: Any) -> str:
 
 _LATEX_INLINE_RE = re.compile(r"\\\((.+?)\\\)", re.DOTALL)
 _LATEX_DISPLAY_RE = re.compile(r"\\\[(.+?)\\\]", re.DOTALL)
+_LATEX_DOLLAR2_RE = re.compile(r"\$\$(.+?)\$\$", re.DOTALL)
+_LATEX_DOLLAR_RE = re.compile(r"\$([^$\n]+)\$")
+_LATEX_FRAC_RE = re.compile(r"\\frac\{([^{}]+)\}\{([^{}]+)\}")
+_LATEX_CMD_BRACE_RE = re.compile(r"\\[a-zA-Z]+\{([^{}]*)\}")
 
 
 def _strip_latex_delimiters(text: str) -> str:
-    """Remove LaTeX inline \\( \\) and display \\[ \\] delimiters, keeping inner content."""
-    text = _LATEX_INLINE_RE.sub(r"\1", text)
+    """Convert LaTeX math notation to plain-text equivalents.
+
+    Removes delimiter pairs (\\(…\\), \\[…\\], $…$, $$…$$), converts
+    \\frac{a}{b} → (a)/(b), and strips remaining LaTeX commands with braces
+    so the student-facing response never contains raw markup.
+    """
+    # Display delimiters first (longer pattern takes priority over inline $)
+    text = _LATEX_DOLLAR2_RE.sub(r"\1", text)
     text = _LATEX_DISPLAY_RE.sub(r"\1", text)
+    # Inline delimiters
+    text = _LATEX_DOLLAR_RE.sub(r"\1", text)
+    text = _LATEX_INLINE_RE.sub(r"\1", text)
+    # \frac{a}{b} → (a)/(b); repeat to handle one level of nesting
+    for _ in range(3):
+        text = _LATEX_FRAC_RE.sub(r"(\1)/(\2)", text)
+    # \left and \right sizing hints — drop entirely
+    text = re.sub(r"\\left\s*", "", text)
+    text = re.sub(r"\\right\s*", "", text)
+    # Common symbols
+    text = text.replace(r"\cdot", "*").replace(r"\times", "*")
+    # Generic \\cmd{content} → content (catches \text{}, \sqrt{}, etc.)
+    text = _LATEX_CMD_BRACE_RE.sub(r"\1", text)
     return text
 
 
@@ -750,7 +773,15 @@ def _build_domain_context(
     domain_params = dict(runtime["domain_step_params"])
 
     _sb_sig = inspect.signature(state_builder)
-    _sb_kwargs = {"world_sim_cfg": runtime.get("world_sim")} if "world_sim_cfg" in _sb_sig.parameters else {}
+    _sb_kwargs: dict[str, Any] = {}
+    if "world_sim_cfg" in _sb_sig.parameters:
+        _sb_kwargs["world_sim_cfg"] = runtime.get("world_sim")
+    if "tiers" in _sb_sig.parameters:
+        _tiers = domain.get("subsystem_configs", {}).get("equation_difficulty_tiers") or []
+        _ps_task = ps.get("task_spec") or runtime.get("default_task_spec") or {}
+        _sb_kwargs["tiers"] = _tiers
+        _sb_kwargs["tier_progression"] = [str(t.get("tier_id", "")) for t in _tiers]
+        _sb_kwargs["nominal_difficulty"] = float(_ps_task.get("nominal_difficulty", 0.5))
     initial_state = state_builder(profile, **_sb_kwargs)
 
     orch = PPAOrchestrator(
@@ -985,7 +1016,11 @@ def process_message(
     # Inject server-side solve elapsed time (more reliable than LLM estimate)
     presented_at = session.get("problem_presented_at")
     if presented_at is not None:
-        turn_data["solve_elapsed_sec"] = time.time() - presented_at
+        _elapsed = time.time() - presented_at
+        turn_data["solve_elapsed_sec"] = _elapsed
+        # response_latency_sec measures wall-clock time from prompt delivery to
+        # response receipt — the same interval as solve_elapsed_sec.
+        turn_data["response_latency_sec"] = _elapsed
 
     log.info("[%s] Turn Data: %s", session_id, json.dumps(turn_data, default=str))
 

@@ -82,6 +82,9 @@ def select_world_sim_theme(
 def build_initial_learning_state(
     profile: dict[str, Any],
     world_sim_cfg: dict[str, Any] | None = None,
+    tiers: list[dict[str, Any]] | None = None,
+    tier_progression: list[str] | None = None,
+    nominal_difficulty: float = 0.5,
 ) -> Any:
     """Build the education domain-lib state from profile learning_state."""
     learning_state = profile.get("learning_state") or {}
@@ -122,7 +125,15 @@ def build_initial_learning_state(
 
     # Attach fluency state as a dynamic attribute so the composite
     # state object carries both ZPD learning state and fluency tracking.
-    ls.fluency = FluencyState()  # type: ignore[attr-defined]
+    # When tiers and tier_progression are supplied, initialise to the
+    # tier matching the session's starting nominal_difficulty so that
+    # fluency advancement begins from the correct starting point.
+    if tiers and tier_progression:
+        ls.fluency = build_initial_fluency_state_fn(  # type: ignore[attr-defined]
+            nominal_difficulty, tiers, tier_progression
+        )
+    else:
+        ls.fluency = FluencyState()  # type: ignore[attr-defined]
 
     # Attach world-sim theme: selected once at session start and carried on
     # the state object so the same theme is used consistently every turn.
@@ -317,14 +328,6 @@ def interpret_turn_input(
         and evidence.get("substitution_check") is True
         and evidence.get("step_count", 0) >= evidence.get("min_steps", 1)
     )
-
-    # When the problem is fully solved, equivalence must have been preserved
-    # throughout the solution (verified substitution logically implies this).
-    # Overriding here prevents a loose LLM judgement on worked notation from
-    # incorrectly firing the equivalence_preserved critical invariant on the
-    # same turn the student demonstrates a correct, verified solution.
-    if evidence["problem_solved"]:
-        evidence["equivalence_preserved"] = True
 
     # If the LLM returned null for equivalence_preserved (e.g. no algebraic
     # transformations were present), remove the key entirely so the orchestrator
