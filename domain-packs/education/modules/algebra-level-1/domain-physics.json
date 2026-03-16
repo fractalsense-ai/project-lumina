@@ -157,10 +157,10 @@
       "unlock_condition": "mastery >= 0.8 on all required skills, confirmed by boss challenge",
       "mastery_threshold": 0.8,
       "skills_required": [
-        "solve_one_variable",
-        "check_equivalence",
-        "show_work_steps",
-        "verify_solution"
+        "equivalence_preserved",
+        "no_illegal_operations",
+        "solution_verifies",
+        "show_work_minimum"
       ]
     }
   ],

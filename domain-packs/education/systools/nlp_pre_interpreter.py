@@ -157,6 +157,10 @@ _MATH_VOCAB = frozenset([
 _NUMBER_RE = re.compile(r"^[+-]?\d+(?:\.\d+)?$")
 _OPERATOR_RE = re.compile(r"^[+\-*/=<>^]+$")
 _VARIABLE_RE = re.compile(r"^[a-zA-Z]$")
+# Fraction / division-step tokens: "72/8", "8/8x", "9/9x", "2*3x", "2*x"
+_FRACTION_TOKEN_RE = re.compile(r"^\d+(?:\.\d+)?[*/]\d*(?:\.\d+)?[a-zA-Z]?$")
+# Coefficient-variable tokens written without a space: "8x", "4x", "2x"
+_COEFF_TOKEN_RE = re.compile(r"^\d+[a-zA-Z]$")
 
 
 def _is_math_token(token: str) -> bool:
@@ -170,6 +174,10 @@ def _is_math_token(token: str) -> bool:
     if _OPERATOR_RE.match(lower):
         return True
     if _VARIABLE_RE.match(lower):
+        return True
+    if _FRACTION_TOKEN_RE.match(lower):
+        return True
+    if _COEFF_TOKEN_RE.match(lower):
         return True
     return False
 

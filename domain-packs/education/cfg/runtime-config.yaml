@@ -89,10 +89,10 @@ runtime:
     task_id: algebra-linear-eq-001
     nominal_difficulty: 0.45
     skills_required:
-      - solve_one_variable
-      - check_equivalence
-      - show_work_steps
-      - verify_solution
+      - equivalence_preserved
+      - no_illegal_operations
+      - solution_verifies
+      - show_work_minimum
 
   domain_step_params:
     min_challenge: 0.3

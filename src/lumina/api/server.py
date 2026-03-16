@@ -1101,7 +1101,15 @@ def process_message(
                 try:
                     import dataclasses
                     profile_data = PERSISTENCE.load_subject_profile(profile_path)
-                    profile_data["learning_state"] = dataclasses.asdict(orch.state)
+                    _ls_dict = dataclasses.asdict(orch.state)
+                    # .fluency is a dynamic attribute — not a dataclass field —
+                    # so dataclasses.asdict() silently omits it.  Merge manually.
+                    if hasattr(orch.state, "fluency"):
+                        _ls_dict["fluency"] = {
+                            "current_tier": orch.state.fluency.current_tier,
+                            "consecutive_correct": orch.state.fluency.consecutive_correct,
+                        }
+                    profile_data["learning_state"] = _ls_dict
                     PERSISTENCE.save_subject_profile(profile_path, profile_data)
                 except Exception:
                     log.warning("Profile auto-save failed for session %s", session_id)

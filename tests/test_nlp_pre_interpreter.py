@@ -165,6 +165,44 @@ class TestExtractOffTaskRatio:
         assert result["off_task_ratio"] == 0.0
 
 
+class TestExtractOffTaskRatioFractionNotation:
+    """Fraction and coefficient tokens written during show-work steps."""
+
+    def test_division_step_notation(self):
+        """'8/8x = 72/8 so x = 9' was previously stuck at exactly 0.429
+        because fraction tokens were not recognised.  Off-task ratio must
+        now be well below 0.4 (tokens 8/8x, =, 72/8, =, x, =, 9 are all math)."""
+        result = extract_off_task_ratio("8/8x = 72/8 so x = 9")
+        assert result["off_task_ratio"] < 0.4, (
+            f"Expected ratio < 0.4, got {result['off_task_ratio']}. "
+            "Fraction tokens (8/8x, 72/8) must be recognised as math."
+        )
+
+    def test_coeff_token_recognised(self):
+        """'8x = 72' — coefficient token '8x' must count as math."""
+        result = extract_off_task_ratio("8x = 72")
+        assert result["off_task_ratio"] == 0.0
+
+    def test_fraction_only_token(self):
+        """'72/8' on its own must be recognised as a math token."""
+        result = extract_off_task_ratio("72/8")
+        assert result["off_task_ratio"] == 0.0
+
+    def test_full_show_work_response(self):
+        """A natural show-work response should have off_task_ratio < 0.5."""
+        result = extract_off_task_ratio(
+            "divide both sides by 8 so 8x / 8 = 72 / 8 therefore x = 9"
+        )
+        assert result["off_task_ratio"] < 0.5, (
+            f"Expected ratio < 0.5 for on-task show-work reply, got {result['off_task_ratio']}"
+        )
+
+    def test_multiplication_coefficient(self):
+        """'2*x' — multiplication with a variable is a math token."""
+        result = extract_off_task_ratio("2*x = 10")
+        assert result["off_task_ratio"] == 0.0
+
+
 # ── nlp_preprocess (integration) ────────────────────────────
 
 class TestNlpPreprocess:

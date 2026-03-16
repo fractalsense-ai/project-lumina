@@ -125,10 +125,16 @@ def build_initial_learning_state(
 
     # Attach fluency state as a dynamic attribute so the composite
     # state object carries both ZPD learning state and fluency tracking.
-    # When tiers and tier_progression are supplied, initialise to the
-    # tier matching the session's starting nominal_difficulty so that
-    # fluency advancement begins from the correct starting point.
-    if tiers and tier_progression:
+    # If the profile already has persisted fluency (from a previous session),
+    # restore it directly so the student resumes at the tier they earned.
+    # Otherwise initialise based on nominal_difficulty or default to tier_1.
+    fluency_saved = learning_state.get("fluency") if learning_state else None
+    if fluency_saved:
+        ls.fluency = FluencyState(  # type: ignore[attr-defined]
+            current_tier=str(fluency_saved.get("current_tier", "tier_1")),
+            consecutive_correct=int(fluency_saved.get("consecutive_correct", 0)),
+        )
+    elif tiers and tier_progression:
         ls.fluency = build_initial_fluency_state_fn(  # type: ignore[attr-defined]
             nominal_difficulty, tiers, tier_progression
         )
@@ -148,11 +154,20 @@ def domain_step(
     evidence: dict[str, Any],
     params: dict[str, Any],
 ) -> tuple[Any, dict[str, Any]]:
-    # 1. ZPD monitor (primary)
+    # Carry forward dynamic attributes that zpd_monitor_step will NOT preserve
+    # on the new LearningState it returns (dynamic attrs are not dataclass fields).
+    prev_fluency: FluencyState = getattr(state, "fluency", FluencyState())
+    prev_world_sim_theme: Any = getattr(state, "world_sim_theme", None)
+
+    # 1. ZPD monitor (primary) — returns a new LearningState instance
     state, zpd_decision = zpd_monitor_step(state, task_spec, evidence, params=params)
 
+    # Restore dynamic attributes on the new state object.
+    if not hasattr(state, "world_sim_theme"):
+        state.world_sim_theme = prev_world_sim_theme  # type: ignore[attr-defined]
+
     # 2. Fluency monitor (secondary)
-    fluency_state: FluencyState = getattr(state, "fluency", FluencyState())
+    fluency_state: FluencyState = getattr(state, "fluency", prev_fluency)
     fluency_params = params.get("fluency_monitor") or {}
     fluency_state, fluency_decision = fluency_monitor_step_fn(
         fluency_state, task_spec, evidence, params=fluency_params,

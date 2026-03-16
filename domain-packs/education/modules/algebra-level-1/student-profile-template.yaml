@@ -24,10 +24,10 @@ learning_state:
     arousal: 0.5
 
   mastery:
-    solve_one_variable: 0.0
-    check_equivalence: 0.0
-    show_work_steps: 0.0
-    verify_solution: 0.0
+    equivalence_preserved: 0.0
+    no_illegal_operations: 0.0
+    solution_verifies: 0.0
+    show_work_minimum: 0.0
 
   challenge_band:
     min_challenge: 0.3
@@ -44,6 +44,10 @@ learning_state:
 
   challenge: 0.3   # Start at the low end of the challenge band
   uncertainty: 0.8  # High initial uncertainty — we don't know the student yet
+
+  fluency:
+    current_tier: tier_1
+    consecutive_correct: 0
 
   updated_utc: null
 

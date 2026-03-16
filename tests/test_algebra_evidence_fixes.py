@@ -336,3 +336,143 @@ class TestEquivalencePreservedNoForcedOverride:
         if evidence.get("equivalence_preserved") is None and "equivalence_preserved" in evidence:
             del evidence["equivalence_preserved"]
         assert "equivalence_preserved" not in evidence
+
+
+# ===========================================================================
+# 5. build_initial_learning_state — fluency restored from saved profile
+# ===========================================================================
+
+
+class TestBuildInitialLearningStateFluentyRestore:
+    """Saved fluency from a previous session is restored rather than reset."""
+
+    def test_saved_tier_and_count_restored(self):
+        """Profile with persisted fluency → state starts at the saved tier."""
+        profile: dict[str, Any] = {
+            "learning_state": {
+                "fluency": {
+                    "current_tier": "tier_2",
+                    "consecutive_correct": 2,
+                }
+            }
+        }
+        state = build_initial_learning_state(
+            profile,
+            tiers=TIERS,
+            tier_progression=TIER_PROGRESSION,
+            nominal_difficulty=0.2,  # would normally select tier_1
+        )
+        assert state.fluency.current_tier == "tier_2", (
+            "Saved tier_2 must be restored even though nominal_difficulty maps to tier_1"
+        )
+        assert state.fluency.consecutive_correct == 2
+
+    def test_no_saved_fluency_falls_back_to_difficulty_tier(self):
+        """Profile without saved fluency → tier selected from nominal_difficulty."""
+        state = build_initial_learning_state(
+            _MINIMAL_PROFILE,
+            tiers=TIERS,
+            tier_progression=TIER_PROGRESSION,
+            nominal_difficulty=0.5,
+        )
+        assert state.fluency.current_tier == "tier_2"
+        assert state.fluency.consecutive_correct == 0
+
+    def test_saved_fluency_without_tiers_still_restores(self):
+        """Even without tier lookup data, saved fluency values are honoured."""
+        profile: dict[str, Any] = {
+            "learning_state": {
+                "fluency": {
+                    "current_tier": "tier_3",
+                    "consecutive_correct": 1,
+                }
+            }
+        }
+        state = build_initial_learning_state(profile)
+        assert state.fluency.current_tier == "tier_3"
+        assert state.fluency.consecutive_correct == 1
+
+
+# ===========================================================================
+# 6. domain_step — consecutive_correct survives across turns
+# ===========================================================================
+
+
+class TestDomainStepFluencyPersistsAcrossTurns:
+    """consecutive_correct must accumulate across turns (not reset each call)."""
+
+    def _make_evidence(self, correct: bool) -> dict[str, Any]:
+        return {
+            "correctness": "correct" if correct else "incorrect",
+            "solve_elapsed_sec": 30.0,
+            "problem_solved": correct,
+        }
+
+    def _make_task_spec(self) -> dict[str, Any]:
+        return {
+            "task_id": "algebra-linear-eq-001",
+            "nominal_difficulty": 0.45,
+            "skills_required": [
+                "equivalence_preserved",
+                "no_illegal_operations",
+                "solution_verifies",
+                "show_work_minimum",
+            ],
+        }
+
+    def _make_params(self) -> dict[str, Any]:
+        return {
+            "fluency_monitor": {
+                "target_consecutive_successes": 3,
+                "time_threshold_seconds": 120.0,
+                "tier_progression": ["tier_1", "tier_2", "tier_3"],
+            },
+        }
+
+    def test_consecutive_correct_accumulates_over_three_turns(self):
+        """Three consecutive correct turns must leave consecutive_correct == 3
+        (or trigger an advance), not reset to 1 on each turn."""
+        domain_step = _adapters.domain_step
+
+        state = build_initial_learning_state(
+            _MINIMAL_PROFILE,
+            tiers=TIERS,
+            tier_progression=TIER_PROGRESSION,
+            nominal_difficulty=0.2,  # tier_1 start
+        )
+        task_spec = self._make_task_spec()
+        params = self._make_params()
+        evidence = self._make_evidence(correct=True)
+
+        for _ in range(3):
+            state, _ = domain_step(state, task_spec, evidence, params)
+
+        # After 3 consecutive correct turns: either advanced tier OR counter == 3
+        advanced = state.fluency.current_tier != "tier_1"
+        counter_accumulated = state.fluency.consecutive_correct == 3
+        assert advanced or counter_accumulated, (
+            f"Fluency must accumulate across turns.  "
+            f"tier={state.fluency.current_tier}, "
+            f"consecutive_correct={state.fluency.consecutive_correct}"
+        )
+
+    def test_consecutive_correct_resets_on_incorrect_turn(self):
+        """An incorrect turn after two correct resets the counter to 0."""
+        domain_step = _adapters.domain_step
+
+        state = build_initial_learning_state(
+            _MINIMAL_PROFILE,
+            tiers=TIERS,
+            tier_progression=TIER_PROGRESSION,
+            nominal_difficulty=0.2,
+        )
+        task_spec = self._make_task_spec()
+        params = self._make_params()
+
+        for _ in range(2):
+            state, _ = domain_step(state, task_spec, self._make_evidence(correct=True), params)
+        state, _ = domain_step(state, task_spec, self._make_evidence(correct=False), params)
+
+        assert state.fluency.consecutive_correct == 0, (
+            "Incorrect turn must reset consecutive_correct to 0"
+        )
