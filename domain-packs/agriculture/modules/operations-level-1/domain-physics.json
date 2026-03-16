@@ -63,5 +63,43 @@
         "access": "x"
       }
     ]
+  },
+  "domain_roles": {
+    "schema_version": "1.0",
+    "roles": [
+      {
+        "role_id": "site_manager",
+        "role_name": "Site Manager",
+        "hierarchy_level": 1,
+        "description": "On-site operational manager with full read/write/execute access to operations data.",
+        "maps_to_system_role": "domain_authority",
+        "default_access": "rwx",
+        "may_assign_domain_roles": true,
+        "max_assignable_level": 2
+      },
+      {
+        "role_id": "field_operator",
+        "role_name": "Field Operator",
+        "hierarchy_level": 2,
+        "description": "Field workers who execute operational procedures and log observations.",
+        "maps_to_system_role": "user",
+        "default_access": "rx",
+        "may_assign_domain_roles": false,
+        "scoped_capabilities": {
+          "log_observations": true,
+          "trigger_alerts": true,
+          "modify_thresholds": false
+        }
+      },
+      {
+        "role_id": "observer",
+        "role_name": "Observer",
+        "hierarchy_level": 3,
+        "description": "Read-only observers of agricultural operations data.",
+        "maps_to_system_role": "user",
+        "default_access": "r",
+        "may_assign_domain_roles": false
+      }
+    ]
   }
 }

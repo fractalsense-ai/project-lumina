@@ -1,8 +1,8 @@
 # Role-Based Access Control (RBAC) Specification — V1
 
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Status:** Active
-**Last updated:** 2026-03-09
+**Last updated:** 2026-03-15
 
 ---
 
@@ -293,17 +293,116 @@ When a user's role is changed (e.g., promoted from `user` to `domain_authority`)
 
 ## Mapping to Governance Hierarchy
 
-The six RBAC roles map to the existing four-level governance hierarchy:
+The system RBAC roles map to the existing four-level governance hierarchy. Domain roles (defined in each domain's `domain_roles` block) provide finer granularity within levels 2-4:
 
-| Governance Level | Governance Title | RBAC Role(s) | Notes |
-|-----------------|-----------------|--------------|-------|
-| 1 — Macro | School Board / Admin | `root` | Institution-wide system administration |
-| 2 — Meso | Department Head | `domain_authority` (with Meta Authority scope) | Governs multiple modules and subordinate authorities |
-| 3 — Micro | Teacher / Operator | `domain_authority` (with module scope) | Governs specific modules |
-| 4 — Subject | Student / Patient | `user` | Session participant |
-| (cross-cutting) | IT Support | `it_support` | Technical operations across domains |
-| (cross-cutting) | QA Tester | `qa` | Conformance testing across assigned modules |
-| (cross-cutting) | Compliance Officer | `auditor` | Audit trail review within scope |
+| Governance Level | Governance Title | RBAC Role(s) | Domain Roles (examples) | Notes |
+|-----------------|-----------------|--------------|------------------------|-------|
+| 1 — Macro | School Board / Admin | `root` | — | Institution-wide system administration |
+| 2 — Meso | Department Head | `domain_authority` (with Meta Authority scope) | — | Governs multiple modules and subordinate authorities |
+| 3 — Micro | Teacher / Operator | `domain_authority` (with module scope) | `teacher`, `site_manager` | Governs specific modules; can assign sub-roles |
+| 3b — Support | Teaching Assistant / Field Operator | `user` + domain role | `teaching_assistant`, `field_operator` | Support staff with enhanced access via domain role |
+| 4 — Subject | Student / Patient | `user` + domain role | `student`, `observer` | Session participant |
+| (cross-cutting) | IT Support | `it_support` | — | Technical operations across domains |
+| (cross-cutting) | QA Tester | `qa` | — | Conformance testing across assigned modules |
+| (cross-cutting) | Compliance Officer | `auditor` | — | Audit trail review within scope |
+
+---
+
+## Domain Role Hierarchy
+
+### Overview
+
+Each domain can define its own role hierarchy beneath the Domain Authority ceiling via an optional `domain_roles` block in its domain-physics document. Domain roles are an additive overlay on top of the 7 system-level roles — they can grant additional access within a domain but cannot revoke access already granted by the system-level permission resolution.
+
+### Domain Role Definition
+
+Each domain role declares:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `role_id` | yes | Unique identifier within the domain (lowercase_snake_case) |
+| `role_name` | yes | Human-readable display name |
+| `hierarchy_level` | yes | Position in hierarchy (1-10; DA is implicit 0) |
+| `description` | yes | Purpose and responsibilities |
+| `maps_to_system_role` | yes | System role ceiling: `domain_authority`, `user`, or `guest` |
+| `default_access` | yes | Default `rwxi` permissions in this domain |
+| `may_assign_domain_roles` | no | Whether this role can assign domain roles (default: false) |
+| `max_assignable_level` | no | Lowest privilege level this role can assign |
+| `scoped_capabilities` | no | Free-form boolean flags for domain-specific capability checks |
+
+### Extended Permission Resolution Algorithm
+
+The domain role check is step 7 in the resolution algorithm, after all system-level checks:
+
+```
+1. If user.role == "root":  → ALLOW (bypass)
+
+2. Determine system-level category:
+   a. If user.sub == module.permissions.owner  → category = OWNER
+   b. Else if user.role == module.permissions.group  → category = GROUP
+   c. Else  → category = OTHERS
+
+3. Extract bits from mode for the determined category.
+4. Check if the required permission bit is set.
+5. If mode check grants access → ALLOW
+
+6. Check system-role ACL entries:
+   For each entry where entry.role == user.role:
+     If operation character in entry.access → ALLOW
+
+7. Check domain role (if present):
+   a. Extract domain_role from JWT domain_roles claim for this module
+   b. Look up domain_role in module.domain_roles.roles
+   c. If operation character in role_def.default_access → ALLOW
+   d. Check domain_roles.role_acl for matching domain_role entries → ALLOW
+   e. Check permissions.acl for domain_role-keyed entries → ALLOW
+
+8. → DENY
+```
+
+### Extended JWT Claims
+
+The JWT payload gains an optional `domain_roles` claim:
+
+```json
+{
+  "sub": "<pseudonymous_id>",
+  "role": "user",
+  "governed_modules": [],
+  "domain_roles": {
+    "domain/edu/algebra-level-1/v1": "teaching_assistant",
+    "domain/edu/geometry-level-1/v1": "student"
+  },
+  "iat": 1741500000,
+  "exp": 1741503600,
+  "iss": "lumina"
+}
+```
+
+| Claim | Type | Description |
+|-------|------|-------------|
+| `domain_roles` | object | Mapping of domain module IDs to domain-scoped role IDs. Optional; omitted when empty. |
+
+### Domain Role Assignment Auditing
+
+Domain role assignments and revocations are recorded in the CTL as `CommitmentRecord` entries with `commitment_type` values:
+
+- `domain_role_assignment` — when a domain role is assigned to a user
+- `domain_role_revocation` — when a domain role is removed from a user
+
+### Extended ACL Entries
+
+ACL entries in the `permissions.acl` array can now reference domain roles via a `domain_role` field as an alternative to the system `role` field:
+
+```yaml
+acl:
+  - role: qa              # system role entry (existing)
+    access: rx
+  - domain_role: teacher  # domain role entry (new)
+    access: rwx
+```
+
+Each ACL entry must have exactly one of `role` or `domain_role`, never both.
 
 ---
 
@@ -311,6 +410,7 @@ The six RBAC roles map to the existing four-level governance hierarchy:
 
 - [`rbac-permission-schema-v1.json`](../standards/rbac-permission-schema-v1.json) — JSON schema for module permission blocks
 - [`role-definition-schema-v1.json`](../standards/role-definition-schema-v1.json) — JSON schema for role records
+- [`domain-role-schema-v1.json`](../standards/domain-role-schema-v1.json) — JSON schema for domain-scoped role definitions
 - [`domain-authority-roles.md`](../governance/domain-authority-roles.md) — Domain Authority governance definitions
 - [`meta-authority-policy-template.yaml`](../governance/meta-authority-policy-template.yaml) — Meta Authority policy template
 - [`lumina-core-v1.md`](../standards/lumina-core-v1.md) — core conformance requirements

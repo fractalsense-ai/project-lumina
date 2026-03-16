@@ -1,6 +1,6 @@
 # auth(3)
 
-**Version:** 1.1.0
+**Version:** 1.2.0
 **Status:** Active
 **Last updated:** 2026-03-15
 
@@ -18,11 +18,14 @@ from auth import create_jwt, verify_jwt, hash_password, verify_password
 
 ## FUNCTIONS
 
-### `create_jwt(user_id, role, governed_modules, ttl_minutes=None) → str`
+### `create_jwt(user_id, role, governed_modules, domain_roles=None, ttl_minutes=None) → str`
 
 Create a signed JWT containing user identity and RBAC claims.
 
-**Claims:** `sub` (user_id), `role`, `governed_modules`, `iss` ("lumina"), `iat`, `exp`
+**Claims:** `sub` (user_id), `role`, `governed_modules`, `domain_roles` (optional), `iss` ("lumina"), `iat`, `exp`
+
+**Parameters:**
+- `domain_roles` — optional `dict[str, str]` mapping domain module IDs to domain-scoped role IDs (e.g., `{"domain/edu/algebra-level-1/v1": "teaching_assistant"}`). Omitted from the token payload when `None` or empty.
 
 ### `verify_jwt(token) → dict`
 

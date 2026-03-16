@@ -246,6 +246,7 @@ def create_jwt(
     user_id: str,
     role: str,
     governed_modules: list[str] | None = None,
+    domain_roles: dict[str, str] | None = None,
     ttl_minutes: int | None = None,
 ) -> str:
     """Create a signed JWT with Lumina claims.
@@ -258,6 +259,10 @@ def create_jwt(
         One of the six canonical role IDs.
     governed_modules:
         Module IDs this user governs (only meaningful for ``domain_authority``).
+    domain_roles:
+        Mapping of domain module IDs to domain-scoped role IDs
+        (e.g. ``{"domain/edu/algebra-level-1/v1": "teaching_assistant"}``).
+        Omit or pass ``None`` for users with no domain-scoped roles.
     ttl_minutes:
         Token lifetime override.  Falls back to ``LUMINA_JWT_TTL_MINUTES``.
 
@@ -289,6 +294,8 @@ def create_jwt(
         "iss": JWT_ISSUER,
         "jti": secrets.token_hex(16),
     }
+    if domain_roles:
+        payload["domain_roles"] = domain_roles
 
     h = _b64url_encode(json.dumps(header, separators=(",", ":")).encode("utf-8"))
     p = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))

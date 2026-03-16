@@ -63,9 +63,11 @@
         "novel_synthesis_rejected",
         "cross_domain_synthesis_verified",
         "cross_domain_synthesis_rejected",
+        "domain_role_assignment",
+        "domain_role_revocation",
         "other"
       ],
-      "description": "The type of commitment being made. Use 'system_physics_activation' when committing a new version of cfg/system-physics.json to the system CTL; use 'system_physics_rollback' when reverting to a prior version. Use 'novel_synthesis_verified' when a Domain Authority confirms a novel synthesis event is valid; use 'novel_synthesis_rejected' when the Domain Authority determines it is a false positive. Use 'cross_domain_synthesis_verified' when Domain Authorities from both domains in a cross-domain synthesis pair confirm the identified structural similarity is valid; use 'cross_domain_synthesis_rejected' when either Domain Authority determines the similarity is not meaningful. Cross-domain synthesis commitments require dual approval — both domain authorities in the pair must independently commit."
+      "description": "The type of commitment being made. Use 'system_physics_activation' when committing a new version of cfg/system-physics.json to the system CTL; use 'system_physics_rollback' when reverting to a prior version. Use 'novel_synthesis_verified' when a Domain Authority confirms a novel synthesis event is valid; use 'novel_synthesis_rejected' when the Domain Authority determines it is a false positive. Use 'cross_domain_synthesis_verified' when Domain Authorities from both domains in a cross-domain synthesis pair confirm the identified structural similarity is valid; use 'cross_domain_synthesis_rejected' when either Domain Authority determines the similarity is not meaningful. Cross-domain synthesis commitments require dual approval — both domain authorities in the pair must independently commit. Use 'domain_role_assignment' when a Domain Authority or authorized role assigns a domain-scoped role to a user within their domain; use 'domain_role_revocation' when a domain role is removed from a user."
     },
     "subject_id": {
       "type": "string",

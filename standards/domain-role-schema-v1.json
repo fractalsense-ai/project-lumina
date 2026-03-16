@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://projectlumina.org/standards/domain-role-schema-v1.json",
+  "title": "Domain Role Definition Schema V1",
+  "description": "JSON Schema for domain-scoped role definitions within a domain-physics document. Domain roles define a hierarchy beneath the Domain Authority ceiling, allowing each domain to create its own access tiers (e.g., teacher/teaching-assistant/student in education, site-manager/field-operator/observer in agriculture).",
+  "type": "object",
+  "required": ["role_id", "role_name", "hierarchy_level", "description", "maps_to_system_role", "default_access"],
+  "additionalProperties": false,
+  "properties": {
+    "role_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{1,47}$",
+      "description": "Domain-scoped role identifier. Unique within the domain-physics document. lowercase_snake_case, 2-48 characters. Must not collide with system role IDs (root, domain_authority, it_support, qa, auditor, user, guest)."
+    },
+    "role_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Human-readable display name for this domain role."
+    },
+    "hierarchy_level": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10,
+      "description": "Position in the domain role hierarchy. 1 = highest privilege (just below Domain Authority), 10 = lowest. The Domain Authority is implicitly level 0 and must not be declared in the roles array."
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 256,
+      "description": "Purpose and responsibilities of this domain role."
+    },
+    "maps_to_system_role": {
+      "type": "string",
+      "enum": ["domain_authority", "user", "guest"],
+      "description": "The system-level role this domain role maps to for permission ceiling enforcement. Determines the maximum possible permissions this domain role can be granted. Cross-cutting system roles (root, it_support, qa, auditor) cannot be used here."
+    },
+    "default_access": {
+      "type": "string",
+      "pattern": "^[rwxi]{1,4}$",
+      "description": "Default permission characters for this role within the domain module. Must not exceed the access that maps_to_system_role would grant."
+    },
+    "may_assign_domain_roles": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether holders of this role can assign domain roles to other users within this domain. Only the Domain Authority and roles with this flag set to true may assign roles."
+    },
+    "max_assignable_level": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10,
+      "description": "The highest hierarchy_level (numerically, i.e., lowest privilege) this role can assign. A role can only assign roles at this level or higher (lower privilege). Only meaningful when may_assign_domain_roles is true."
+    },
+    "scoped_capabilities": {
+      "type": "object",
+      "additionalProperties": { "type": "boolean" },
+      "description": "Domain-specific capability flags. Free-form boolean map consulted by domain runtime code for fine-grained capability checks beyond the rwxi permission model (e.g., receive_escalations, view_student_progress, issue_hints)."
+    }
+  }
+}

@@ -1,8 +1,8 @@
 # RBAC Administration
 
-**Version:** 1.0.0  
-**Status:** Active  
-**Last updated:** 2026-03-12  
+**Version:** 1.1.0
+**Status:** Active
+**Last updated:** 2026-03-15
 
 ---
 
@@ -88,6 +88,57 @@ curl -H "Authorization: Bearer <token>" /api/auth/me
 curl -H "Authorization: Bearer <token>" /api/auth/users
 ```
 
+## Domain Role Management
+
+Domain roles allow each domain to define its own access tiers beneath the Domain Authority ceiling. See [domain-role-hierarchy](../7-concepts/domain-role-hierarchy.md) for the full concept.
+
+### Defining Domain Roles
+
+Domain roles are declared in the `domain_roles` block of a domain-physics document. The Domain Authority authors these as part of the domain pack. Example for education:
+
+```yaml
+domain_roles:
+  schema_version: "1.0"
+  roles:
+    - role_id: teacher
+      role_name: Teacher
+      hierarchy_level: 1
+      maps_to_system_role: domain_authority
+      default_access: rwx
+      may_assign_domain_roles: true
+      max_assignable_level: 2
+    - role_id: teaching_assistant
+      role_name: Teaching Assistant
+      hierarchy_level: 2
+      maps_to_system_role: user
+      default_access: rx
+    - role_id: student
+      role_name: Student
+      hierarchy_level: 3
+      maps_to_system_role: user
+      default_access: x
+```
+
+### Who Can Assign Domain Roles
+
+- The **Domain Authority** (module owner) can assign any domain role
+- Roles with `may_assign_domain_roles: true` can assign roles at or below their `max_assignable_level`
+- All assignments are recorded as CTL `CommitmentRecord` entries (`commitment_type: domain_role_assignment`)
+
+### Domain Role in JWT
+
+When a user has domain roles, their JWT carries a `domain_roles` claim:
+
+```json
+{
+  "sub": "user_ta_001",
+  "role": "user",
+  "domain_roles": {
+    "domain/edu/algebra-level-1/v1": "teaching_assistant"
+  }
+}
+```
+
 ## Manifest Integrity
 
 The manifest integrity systools apply role-based restrictions separate from the module-level octal
@@ -123,4 +174,5 @@ python -m lumina.systools.manifest_integrity regen
 - [rbac-spec-v1](../../specs/rbac-spec-v1.md) — Full RBAC specification
 - [auth(3)](../3-functions/auth.md) — JWT authentication module
 - [permissions(3)](../3-functions/permissions.md) — Permission checker
+- [domain-role-hierarchy](../7-concepts/domain-role-hierarchy.md) — Domain-scoped role hierarchy concept
 - [domain-authority-roles](../../governance/domain-authority-roles.md) — Governance role definitions

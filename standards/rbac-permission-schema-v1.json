@@ -41,8 +41,12 @@
   "$defs": {
     "acl_entry": {
       "type": "object",
-      "required": ["role", "access"],
+      "required": ["access"],
       "additionalProperties": false,
+      "oneOf": [
+        { "required": ["role"] },
+        { "required": ["domain_role"] }
+      ],
       "properties": {
         "role": {
           "type": "string",
@@ -55,7 +59,12 @@
             "user",
             "guest"
           ],
-          "description": "Canonical role ID receiving the access grant."
+          "description": "Canonical system role ID receiving the access grant. Use this for system-level role grants."
+        },
+        "domain_role": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{1,47}$",
+          "description": "Domain-scoped role ID receiving the access grant. Must match a role_id defined in the domain_roles.roles array of this domain-physics document. Use this for domain-level role grants."
         },
         "access": {
           "type": "string",

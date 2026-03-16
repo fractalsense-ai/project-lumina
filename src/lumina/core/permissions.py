@@ -48,6 +48,9 @@ def check_permission(
     user_role: str,
     module_permissions: dict[str, Any],
     operation: Operation,
+    *,
+    domain_role: str | None = None,
+    domain_roles_config: dict[str, Any] | None = None,
 ) -> bool:
     """Evaluate whether a user may perform *operation* on a module.
 
@@ -62,6 +65,12 @@ def check_permission(
         Expected keys: ``mode``, ``owner``, ``group``, and optionally ``acl``.
     operation:
         The :class:`Operation` being requested.
+    domain_role:
+        Optional domain-scoped role ID for the requesting user in this
+        module (from the JWT ``domain_roles`` claim).
+    domain_roles_config:
+        Optional ``domain_roles`` block from the module's domain-physics
+        document.  Required when *domain_role* is provided.
 
     Returns
     -------
@@ -134,6 +143,74 @@ def check_permission(
             if op_char in access:
                 return True
 
+    # Step 7: check domain role (additive overlay)
+    if domain_role and domain_roles_config:
+        op_char = {
+            Operation.READ: "r",
+            Operation.WRITE: "w",
+            Operation.EXECUTE: "x",
+            Operation.INGEST: "i",
+        }.get(operation, "")
+        if op_char and _check_domain_role(
+            domain_role, op_char, domain_roles_config, module_permissions
+        ):
+            return True
+
+    return False
+
+
+def _check_domain_role(
+    domain_role: str,
+    op_char: str,
+    domain_roles_config: dict[str, Any],
+    module_permissions: dict[str, Any],
+) -> bool:
+    """Check whether a domain role grants the requested operation.
+
+    Looks up *domain_role* in the ``domain_roles_config`` block and checks:
+    1. The role's ``default_access`` string.
+    2. The ``role_acl`` entries in the domain_roles_config.
+    3. Any ``domain_role``-keyed entries in the main ``permissions.acl``.
+    """
+    roles = domain_roles_config.get("roles")
+    if not isinstance(roles, list):
+        return False
+
+    # Find the role definition
+    role_def: dict[str, Any] | None = None
+    for r in roles:
+        if isinstance(r, dict) and r.get("role_id") == domain_role:
+            role_def = r
+            break
+    if role_def is None:
+        return False
+
+    # Check default_access
+    if op_char in role_def.get("default_access", ""):
+        return True
+
+    # Check role_acl in domain_roles_config
+    role_acl = domain_roles_config.get("role_acl")
+    if isinstance(role_acl, list):
+        for entry in role_acl:
+            if not isinstance(entry, dict):
+                continue
+            if entry.get("domain_role") != domain_role:
+                continue
+            if op_char in entry.get("access", ""):
+                return True
+
+    # Check main permissions.acl for domain_role-keyed entries
+    acl = module_permissions.get("acl")
+    if isinstance(acl, list):
+        for entry in acl:
+            if not isinstance(entry, dict):
+                continue
+            if entry.get("domain_role") != domain_role:
+                continue
+            if op_char in entry.get("access", ""):
+                return True
+
     return False
 
 
@@ -142,9 +219,19 @@ def check_permission_or_raise(
     user_role: str,
     module_permissions: dict[str, Any],
     operation: Operation,
+    *,
+    domain_role: str | None = None,
+    domain_roles_config: dict[str, Any] | None = None,
 ) -> None:
     """Like :func:`check_permission` but raises ``PermissionError`` on denial."""
-    if not check_permission(user_id, user_role, module_permissions, operation):
+    if not check_permission(
+        user_id,
+        user_role,
+        module_permissions,
+        operation,
+        domain_role=domain_role,
+        domain_roles_config=domain_roles_config,
+    ):
         op_name = operation.name or str(operation)
         raise PermissionError(
             f"Access denied: {user_role}:{user_id} lacks {op_name} on module"
