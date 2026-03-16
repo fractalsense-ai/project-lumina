@@ -14,10 +14,12 @@ domain_authority:
 meta_authority_id: domain/edu/curriculum/v1
 
 description: >
-  Algebra Level 1 for middle school students (grades 6-8).
-  Covers single-variable linear equations, equivalence preservation,
-  and solution verification. Students work toward the
-  'Linear Equations — Foundations' mastery artifact.
+  Algebra Level 1 — legacy deployed module covering single-variable linear
+  equations (Artifacts 3–4 of the Pre-Algebra curriculum: single_step_equations
+  and multi_step_linear_equations), equivalence preservation, and solution
+  verification. Active for current users. The new pre-algebra module
+  (domain/edu/pre-algebra/v1) extends this with variables/expressions,
+  order of operations, and linear inequalities.
 
 lumina_core_version: "1.0.0"
 
@@ -210,10 +212,10 @@ artifacts:
     unlock_condition: "mastery >= 0.8 on all required skills, confirmed by boss challenge"
     mastery_threshold: 0.8
     skills_required:
-      - solve_one_variable
-      - check_equivalence
-      - show_work_steps
-      - verify_solution
+      - equivalence_preserved
+      - no_illegal_operations
+      - solution_verifies
+      - show_work_minimum
 
 # ── Subsystem Configurations ─────────────────────────────────
 

@@ -1,0 +1,451 @@
+{
+  "id": "domain/edu/algebra-intro/v1",
+  "version": "0.1.0",
+  "domain_authority": {
+    "name": "Lead Algebra Teacher",
+    "role": "Teacher",
+    "pseudonymous_id": "da_algebra_intro_lead_001"
+  },
+  "meta_authority_id": "domain/edu/curriculum/v1",
+  "description": "Algebra Introduction for grade 8. Extends domain/edu/pre-algebra/v1 by activating Law 3 (Interchangeability/Substitution) and Law 5 (Relational Mapping). Covers slope and rate of change, linear forms and graphing, and three methods for solving systems of two linear equations. Artifacts 6\u201310 of 15 in the full curriculum. Prerequisite: Pre-Algebra (domain/edu/pre-algebra/v1). Gateway to Algebra 1 (domain/edu/algebra-1/v1).\n",
+  "lumina_core_version": "1.0.0",
+  "invariants": [
+    {
+      "id": "equivalence_preserved",
+      "description": "Law 1 (Balance Principle): both sides of an equation must remain algebraically equal after every transformation step. In systems, each individual equation must stay balanced; adding two balanced equations is valid because both sides of the sum are equivalent.\n",
+      "severity": "critical",
+      "check": "equivalence_preserved",
+      "standing_order_on_violation": "request_more_steps"
+    },
+    {
+      "id": "no_illegal_operations",
+      "description": "Division by zero or any other undefined operation is not permitted.\n",
+      "severity": "critical",
+      "check": "illegal_operations == []",
+      "standing_order_on_violation": "request_more_steps"
+    },
+    {
+      "id": "solution_verifies",
+      "description": "The proposed solution (x, y) must satisfy ALL original equations in the system. Verifying in only one equation is a Law 3 failure.\n",
+      "severity": "critical",
+      "check": "substitution_check",
+      "standing_order_on_violation": "request_verification_retry"
+    },
+    {
+      "id": "reversibility_order_correct",
+      "description": "Law 2 (Inverse Operations): inverse operations must be applied in correct reversed-PEMDAS order. Inherited from pre-algebra; active during back-substitution. NOTE: LLM-estimated; deterministic tool_adapter support planned for v0.2.\n",
+      "severity": "warning",
+      "check": "reversibility_order_correct",
+      "standing_order_on_violation": "hint_reverse_order_of_operations"
+    },
+    {
+      "id": "standard_method_preferred",
+      "description": "Non-standard solution methods are acceptable but should be flagged for Domain Authority review.\n",
+      "severity": "warning",
+      "check": "method_recognized",
+      "standing_order_on_violation": "request_method_justification",
+      "signal_type": "NOVEL_PATTERN"
+    },
+    {
+      "id": "show_work_minimum",
+      "description": "Solutions must show all required phases: setup/isolate, substitution or elimination operation, single-variable solve, back-substitution, and verification in both original equations.\n",
+      "severity": "warning",
+      "check": "step_count >= min_steps",
+      "standing_order_on_violation": "request_more_steps"
+    },
+    {
+      "id": "substitution_valid",
+      "description": "Law 3 (Interchangeability): an expression for a variable is a binding identity \u2014 it must be verified in ALL equations of the system, not only the one being simplified. Substituting into only one equation is the canonical Law 3 failure. NOTE: 'substitution_valid' is a new evidence field, currently estimated by the LLM interpreter; deterministic tool_adapter support is planned for v0.2.\n",
+      "severity": "warning",
+      "check": "substitution_valid",
+      "standing_order_on_violation": "request_substitution_verification"
+    },
+    {
+      "id": "relationship_correctly_mapped",
+      "description": "Law 5 (Relational Mapping): in y = mx + b the slope m is \u0394y/\u0394x and b is the starting value. Inverting slope (reading y-change as x-change or swapping slope and intercept) is the canonical Law 5 failure. NOTE: 'relationship_correctly_mapped' is a new evidence field, currently LLM-estimated; deterministic tool_adapter support is planned for v0.2.\n",
+      "severity": "warning",
+      "check": "relationship_correctly_mapped",
+      "standing_order_on_violation": "request_rate_identification"
+    },
+    {
+      "id": "zpd_drift_minor",
+      "description": "The student's challenge level has drifted outside the ZPD band in >= 30% of the recent window turns.\n",
+      "severity": "warning",
+      "check": "outside_pct >= 0.3",
+      "handled_by": "zpd_monitor",
+      "standing_order_on_violation": "zpd_scaffold"
+    },
+    {
+      "id": "zpd_drift_major",
+      "description": "The student's challenge level has drifted outside the ZPD band in >= 50% of recent window turns, or for 3+ consecutive turns.\n",
+      "severity": "warning",
+      "check": "outside_pct >= 0.5",
+      "handled_by": "zpd_monitor",
+      "standing_order_on_violation": "zpd_intervene_or_escalate"
+    },
+    {
+      "id": "fluency_bottleneck",
+      "description": "The student is solving problems correctly but consistently exceeding the time threshold, indicating procedural automaticity has not been achieved at the current tier.\n",
+      "severity": "warning",
+      "check": "average_completion_time > fluency_monitor.time_threshold_seconds",
+      "handled_by": "fluency_monitor",
+      "standing_order_on_violation": "trigger_targeted_hint"
+    }
+  ],
+  "standing_orders": [
+    {
+      "id": "request_more_steps",
+      "action": "request_more_steps",
+      "trigger_condition": "equivalence_preserved or no_illegal_operations or show_work_minimum",
+      "max_attempts": 3,
+      "escalation_on_exhaust": true,
+      "description": "Ask the student to show their work step by step. For systems: show setup, substitution or elimination operation, single-variable solve, back-substitution, and verification in each original equation.\n"
+    },
+    {
+      "id": "request_verification_retry",
+      "action": "request_verification_retry",
+      "trigger_condition": "solution_verifies",
+      "max_attempts": 2,
+      "escalation_on_exhaust": true,
+      "description": "Ask the student to substitute their solution pair (x, y) back into BOTH original equations and confirm both sides balance in each.\n"
+    },
+    {
+      "id": "request_substitution_verification",
+      "action": "request_substitution_verification",
+      "trigger_condition": "substitution_valid",
+      "max_attempts": 2,
+      "escalation_on_exhaust": true,
+      "description": "Prompt the student to examine which equations they have checked their solution in. Ask them to substitute the answer into the equation they have not yet verified. Do not state the interchangeability rule directly on the first prompt.\n"
+    },
+    {
+      "id": "request_rate_identification",
+      "action": "inject_domain_rule",
+      "trigger_condition": "relationship_correctly_mapped",
+      "max_attempts": 2,
+      "escalation_on_exhaust": false,
+      "description": "Provide the Law 5 scaffolding: ask the student to identify which quantity changes when x increases by exactly 1 unit. Ask: 'If x goes from 2 to 3, what happens to y?' Do not point out their inversion directly on the first prompt.\n"
+    },
+    {
+      "id": "hint_reverse_order_of_operations",
+      "action": "inject_domain_rule",
+      "trigger_condition": "reversibility_order_correct",
+      "max_attempts": 2,
+      "escalation_on_exhaust": false,
+      "description": "Provide the Law 2 scaffolding: ask the student to list the operations applied to the variable (in order), then ask them to undo those operations starting from the last one.\n"
+    },
+    {
+      "id": "request_method_justification",
+      "action": "request_method_justification",
+      "trigger_condition": "standard_method_preferred",
+      "max_attempts": 1,
+      "escalation_on_exhaust": false,
+      "description": "Acknowledge the non-standard approach and ask the student to explain their reasoning. Flag for Domain Authority review.\n"
+    },
+    {
+      "id": "zpd_scaffold",
+      "action": "zpd_scaffold",
+      "trigger_condition": "zpd_drift_minor",
+      "max_attempts": 3,
+      "escalation_on_exhaust": false,
+      "description": "Reduce challenge level on the next task. Offer an optional hint. Provide additional scaffolding in the explanation.\n"
+    },
+    {
+      "id": "zpd_intervene_or_escalate",
+      "action": "zpd_intervene_or_escalate",
+      "trigger_condition": "zpd_drift_major or frustration_flag",
+      "max_attempts": 1,
+      "escalation_on_exhaust": true,
+      "description": "Pause the current task. Issue one probe question to check understanding. If the probe response does not improve state, escalate to teacher.\n"
+    },
+    {
+      "id": "trigger_targeted_hint",
+      "action": "trigger_targeted_hint",
+      "trigger_condition": "fluency_bottleneck",
+      "max_attempts": 3,
+      "escalation_on_exhaust": false,
+      "description": "Provide a targeted procedural hint for the specific step the student is slowing on. Do not solve the problem.\n"
+    }
+  ],
+  "escalation_triggers": [
+    {
+      "id": "critical_invariant_unresolvable",
+      "condition": "A critical invariant (equivalence_preserved, no_illegal_operations, or solution_verifies) was violated and its standing order has been exhausted without resolution.\n",
+      "target_role": "teacher",
+      "sla_minutes": 30
+    },
+    {
+      "id": "major_zpd_drift_unresolved",
+      "condition": "The zpd_intervene_or_escalate standing order was applied and the probe response did not reduce outside_pct below the minor threshold.\n",
+      "target_role": "teacher",
+      "sla_minutes": 30
+    },
+    {
+      "id": "novel_pattern_review",
+      "condition": "The standard_method_preferred invariant fired and the student could not explain their non-standard reasoning after one justification request.\n",
+      "target_role": "teacher",
+      "sla_minutes": 120
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "slope_and_rate_of_change",
+      "name": "Slope & Rate of Change",
+      "unit": "3 \u2014 Graphing & Linear Relationships",
+      "description": "The student can calculate slope from a table, two points, or a graph as \u0394y/\u0394x, interpret it as a rate of change in context, and distinguish slope from the y-intercept starting value. Law 5 entry point.\n",
+      "unlock_condition": "mastery >= 0.8 on all required skills, confirmed by boss challenge",
+      "mastery_threshold": 0.8,
+      "skills_required": [
+        "relationship_correctly_mapped",
+        "show_work_minimum"
+      ],
+      "boss_challenge": {
+        "id": "boss_slope_rate_of_change_v1",
+        "task_description": "A table shows hours worked (x) and total earnings in dollars (y):\n  x : 0 | 2 | 4 | 6\n  y : 5 | 17 | 29 | 41\n(a) Calculate the rate of change. Show your \u0394y/\u0394x calculation using two rows.\n(b) What does the rate of change mean in this context?\n(c) Identify the y-intercept and explain what it represents.\n",
+        "sensor_purpose": "Part (a) forces \u0394y/\u0394x as an explicit written computation using two chosen table rows. Reading across a row instead of computing \u0394y and \u0394x is the canonical Law 5 inversion failure. Part (b) confirms understanding of rate as the engine of the relationship. Part (c) distinguishes slope from the y-intercept starting value.\n",
+        "grading": [
+          { "check": "relationship_correctly_mapped", "weight": 0.45 },
+          { "check": "context_interpretation_correct", "weight": 0.35 },
+          { "check": "step_count >= 2", "weight": 0.20 }
+        ],
+        "pass_threshold": 0.8,
+        "hints_allowed": false,
+        "max_attempts_per_session": 1
+      }
+    },
+    {
+      "id": "linear_forms_and_graphing",
+      "name": "Slope-Intercept Form & Graphing",
+      "unit": "3 \u2014 Graphing & Linear Relationships",
+      "description": "The student can identify slope and y-intercept from y = mx + b, graph a line by plotting (0, b) and using m as rise/run, and write the equation of a line given a point and slope. Laws 1 and 5 active together.\n",
+      "unlock_condition": "mastery >= 0.8 on all required skills, confirmed by boss challenge",
+      "mastery_threshold": 0.8,
+      "skills_required": [
+        "equivalence_preserved",
+        "relationship_correctly_mapped",
+        "show_work_minimum"
+      ],
+      "boss_challenge": {
+        "id": "boss_linear_forms_graphing_v1",
+        "task_description": "(a) For y = \u2212\u2154x + 4: state the slope and the y-intercept. Describe how you would graph this line.\n(b) Write the equation of the line through (6, 2) with slope \u2212\u2154. Show your work using point-slope form, then convert to slope-intercept form.\n",
+        "sensor_purpose": "Part (a) probes the core Law 5 distinction: is \u2212\u2154 correctly identified as slope and 4 as y-intercept? Part (b) requires building a balanced equation from a point and rate (Laws 1+5). Swapping slope and intercept in (b) produces an equation that the given point (6, 2) will not satisfy \u2014 making the error self-evident.\n",
+        "grading": [
+          { "check": "relationship_correctly_mapped", "weight": 0.40 },
+          { "check": "equivalence_preserved", "weight": 0.30 },
+          { "check": "verify_solution_substitution", "weight": 0.20 },
+          { "check": "step_count >= 3", "weight": 0.10 }
+        ],
+        "pass_threshold": 0.8,
+        "hints_allowed": false,
+        "max_attempts_per_session": 1
+      }
+    },
+    {
+      "id": "systems_by_graphing",
+      "name": "Systems of Equations \u2014 Graphing Method",
+      "unit": "4 \u2014 Systems of Linear Equations",
+      "description": "The student can solve a 2\u00d72 system by graphing both lines, identifying the intersection, and verifying the coordinates in both original equations. Law 3 entry artifact.\n",
+      "unlock_condition": "mastery >= 0.8 on all required skills, confirmed by boss challenge",
+      "mastery_threshold": 0.8,
+      "skills_required": [
+        "equivalence_preserved",
+        "relationship_correctly_mapped",
+        "solution_verifies",
+        "show_work_minimum"
+      ],
+      "boss_challenge": {
+        "id": "boss_systems_by_graphing_v1",
+        "task_description": "Solve the system by graphing:\n  y = x + 1\n  y = \u22122x + 7\n(a) Graph both lines. Show the two points used to plot each line.\n(b) State the intersection point coordinates.\n(c) Verify your answer by substituting the coordinates into BOTH original equations.\n",
+        "sensor_purpose": "Part (c) is the Law 3 sensor: requiring written verification in both equations forces the student to treat the solution as a binding identity satisfying two independent constraints. Verifying in only one equation reveals incomplete interchangeability. Parts (a\u2013b) test Law 5 (slope as rise/run). The intersection is off the y-axis so proper rise/run interpretation is required.\n",
+        "grading": [
+          { "check": "substitution_valid", "weight": 0.35 },
+          { "check": "relationship_correctly_mapped", "weight": 0.25 },
+          { "check": "solution_verifies", "weight": 0.30 },
+          { "check": "step_count >= 4", "weight": 0.10 }
+        ],
+        "pass_threshold": 0.8,
+        "hints_allowed": false,
+        "max_attempts_per_session": 1
+      }
+    },
+    {
+      "id": "systems_by_substitution",
+      "name": "Systems of Equations \u2014 Substitution Method",
+      "unit": "4 \u2014 Systems of Linear Equations",
+      "description": "The student can solve a 2\u00d72 system where one variable is isolated by substituting its expression into the second equation, solving, back-substituting, and verifying in both equations. Canonical Law 3 artifact.\n",
+      "unlock_condition": "mastery >= 0.8 on all required skills, confirmed by boss challenge",
+      "mastery_threshold": 0.8,
+      "skills_required": [
+        "equivalence_preserved",
+        "reversibility_order_correct",
+        "substitution_valid",
+        "solution_verifies",
+        "show_work_minimum"
+      ],
+      "boss_challenge": {
+        "id": "boss_systems_by_substitution_v1",
+        "task_description": "Solve the system using substitution:\n  y = 2x \u2212 4\n  3x + y = 10\nShow all five phases: (1) substitute the expression for y, (2) solve for x, (3) back-substitute to find y, (4) write the solution as (x, y), (5) verify in BOTH original equations.\n",
+        "sensor_purpose": "The canonical Law 3 sensor. Substituting y = 2x \u2212 4 into 3x + y = 10 but never verifying in the first equation is the failure signal \u2014 the student has treated the expression as a local plug-in rather than a binding identity. The five-phase requirement makes all process stages visible; skipping back-substitution or dual verification is an explicit omission.\n",
+        "grading": [
+          { "check": "substitution_valid", "weight": 0.35 },
+          { "check": "equivalence_preserved", "weight": 0.25 },
+          { "check": "reversibility_order_correct", "weight": 0.20 },
+          { "check": "verify_solution_substitution", "weight": 0.20 }
+        ],
+        "pass_threshold": 0.8,
+        "hints_allowed": false,
+        "max_attempts_per_session": 1
+      }
+    },
+    {
+      "id": "systems_by_elimination",
+      "name": "Systems of Equations \u2014 Elimination Method",
+      "unit": "4 \u2014 Systems of Linear Equations",
+      "description": "The student can solve a 2\u00d72 system by creating opposing coefficients, adding/subtracting the equations to eliminate a variable, solving for the remaining variable, back-substituting, and verifying in both equations. Laws 1, 2, and 3 simultaneously active.\n",
+      "unlock_condition": "mastery >= 0.8 on all required skills, confirmed by boss challenge",
+      "mastery_threshold": 0.8,
+      "skills_required": [
+        "equivalence_preserved",
+        "reversibility_order_correct",
+        "substitution_valid",
+        "solution_verifies",
+        "show_work_minimum"
+      ],
+      "boss_challenge": {
+        "id": "boss_systems_by_elimination_v1",
+        "task_description": "Solve the system using elimination:\n  2x + 3y = 16\n  5x \u2212 3y = 5\n(a) Explain in one sentence why you are allowed to add these two equations. Which law permits this?\n(b) Add the equations, solve for x, then back-substitute to find y.\n(c) Verify your solution (x, y) in BOTH original equations.\n",
+        "sensor_purpose": "Part (a) is a direct Law 1 probe: can the student articulate that adding two balanced equations produces a new balanced equation? This tests Law 1 applied to whole equations \u2014 a conceptual extension beyond single-equation operations. The +3y/\u22123y opposition makes the algebra easy so diagnostic weight sits on the justification and the dual verification. A student who can't answer (a) has memorized the algorithm without its law foundation.\n",
+        "grading": [
+          { "check": "equivalence_preserved", "weight": 0.30 },
+          { "check": "substitution_valid", "weight": 0.30 },
+          { "check": "verify_solution_substitution", "weight": 0.25 },
+          { "check": "step_count >= 4", "weight": 0.15 }
+        ],
+        "pass_threshold": 0.8,
+        "hints_allowed": false,
+        "max_attempts_per_session": 1
+      }
+    }
+  ],
+  "subsystem_configs": {
+    "zpd_monitor": {
+      "min_challenge": 0.25,
+      "max_challenge": 0.75,
+      "drift_window_turns": 10,
+      "minor_drift_threshold": 0.3,
+      "major_drift_threshold": 0.5,
+      "persistence_required": 3
+    },
+    "fluency_monitor": {
+      "target_consecutive_successes": 3,
+      "time_threshold_seconds": 120,
+      "tier_progression": [
+        { "tier_1": "slope_and_rates" },
+        { "tier_2": "linear_equations_y_equals_mx_b" },
+        { "tier_3": "systems_of_two_variables" }
+      ]
+    },
+    "equation_difficulty_tiers": [
+      {
+        "tier_id": "tier_1",
+        "label": "Entry \u2014 Slope & Rates",
+        "equation_type": "slope_and_rates",
+        "equation_template": "slope from table/graph  or  read slope and intercept from y = mx + b",
+        "min_difficulty": 0.0,
+        "max_difficulty": 0.35
+      },
+      {
+        "tier_id": "tier_2",
+        "label": "Intermediate \u2014 Linear Equations in Two Variables",
+        "equation_type": "linear_equations_y_equals_mx_b",
+        "equation_template": "y = mx + b \u2014 write equation from point+slope, convert forms, graph",
+        "min_difficulty": 0.35,
+        "max_difficulty": 0.65
+      },
+      {
+        "tier_id": "tier_3",
+        "label": "Advanced \u2014 Systems of Two Linear Equations",
+        "equation_type": "systems_of_two_variables",
+        "equation_template": "{y = ax + b, cx + dy = e}  solved by graphing, substitution, or elimination",
+        "min_difficulty": 0.65,
+        "max_difficulty": 1.0
+      }
+    ]
+  },
+  "evidence_schema": {
+    "path": "evidence-schema.json",
+    "version": "1.0",
+    "notes": "New evidence fields introduced by this module: substitution_valid (bool, LLM-estimated, tool_adapter support planned for v0.2), relationship_correctly_mapped (bool, same status), context_interpretation_correct (bool, LLM-estimated — confirms student can interpret slope/intercept in real-world context). Inherited from pre-algebra: reversibility_order_correct, inequality_direction_correct, correctness, substitution_check, step_count, equivalence_preserved, illegal_operations, off_task_ratio, frustration_marker_count, hint_used.\n"
+  },
+  "glossary": [
+    {
+      "term": "slope",
+      "definition": "The rate of change of a line \u2014 how much y changes for every 1-unit increase in x. Calculated as \u0394y \u00f7 \u0394x (rise/run). In y = mx + b, slope is m.",
+      "aliases": ["rate of change", "rise over run", "m", "\u0394y/\u0394x", "rise/run"],
+      "related_terms": ["y-intercept", "linear equation", "rate of change"],
+      "example_in_context": "x goes from 0 to 2, y goes from 5 to 17: slope = (17\u22125)\u00f7(2\u22120) = 6. Every extra hour earns $6 more."
+    },
+    {
+      "term": "y-intercept",
+      "definition": "The value of y when x = 0. In y = mx + b, the y-intercept is b. It is the starting value before x has changed.",
+      "aliases": ["b", "starting value", "initial value", "y intercept"],
+      "related_terms": ["slope", "linear equation", "graph"],
+      "example_in_context": "In y = 6x + 5, the y-intercept is 5. At zero hours, y = 5 (base pay)."
+    },
+    {
+      "term": "slope-intercept form",
+      "definition": "The equation form y = mx + b where m is slope and b is y-intercept. Start graphing at (0, b) then use m as rise/run.",
+      "aliases": ["y = mx + b", "slope intercept", "linear form"],
+      "related_terms": ["slope", "y-intercept", "standard form", "point-slope form"],
+      "example_in_context": "y = \u22122x + 7: slope = \u22122, y-intercept = 7. Start at (0,7), move down 2 right 1."
+    },
+    {
+      "term": "point-slope form",
+      "definition": "The form y \u2212 y\u2081 = m(x \u2212 x\u2081), used to build a line equation from one known point and slope.",
+      "aliases": ["point slope", "y \u2212 y1 = m(x \u2212 x1)"],
+      "related_terms": ["slope", "slope-intercept form"],
+      "example_in_context": "Line through (3,1) with slope 2: y \u2212 1 = 2(x \u2212 3) \u2192 y = 2x \u2212 5."
+    },
+    {
+      "term": "system of equations",
+      "definition": "Two or more equations that must ALL be satisfied by the same (x, y) pair simultaneously. Each equation is an independent constraint.",
+      "aliases": ["system", "simultaneous equations", "system of linear equations"],
+      "related_terms": ["substitution", "elimination", "intersection", "solution_verifies"],
+      "example_in_context": "{y = x + 1, y = \u22122x + 7} has solution (2, 3). Check: 3 = 2+1 \u2713 and 3 = \u22122(2)+7 = 3 \u2713."
+    },
+    {
+      "term": "substitution method",
+      "definition": "Solve a system by replacing a variable everywhere using its equivalent expression, solving the resulting single-variable equation, then verifying in ALL original equations.",
+      "aliases": ["substitution", "substitute", "plug in"],
+      "related_terms": ["system of equations", "back-substitution", "substitution_valid"],
+      "example_in_context": "y = 2x\u22124 and 3x+y=10: replace y to get 5x=14, x=2.8, y=1.6. Verify in both."
+    },
+    {
+      "term": "elimination method",
+      "definition": "Solve a system by multiplying equations so one variable's coefficients are opposites, adding to eliminate it, then solving and back-substituting.",
+      "aliases": ["elimination", "addition method", "linear combination"],
+      "related_terms": ["system of equations", "substitution method", "equivalence_preserved"],
+      "example_in_context": "{2x+3y=16, 5x\u22123y=5}: add to get 7x=21, x=3, back-substitute to find y."
+    },
+    {
+      "term": "intersection",
+      "definition": "The point where two lines meet. For a system of two linear equations, the intersection is the solution \u2014 the unique (x,y) satisfying both equations simultaneously.",
+      "aliases": ["point of intersection", "where the lines cross", "solution point"],
+      "related_terms": ["system of equations", "graph", "solution_verifies"],
+      "example_in_context": "y = x+1 and y = \u22122x+7 intersect at (2,3). That point lies on both lines."
+    },
+    {
+      "term": "back-substitution",
+      "definition": "After solving for one variable in a system, substitute its value into an original equation to find the other variable. Required to produce the complete solution pair (x, y).",
+      "aliases": ["back substitution", "substitute back", "plug back in"],
+      "related_terms": ["substitution method", "system of equations", "solution_verifies"],
+      "example_in_context": "After x=3 from elimination: back-substitute into 2x+3y=16 \u2192 3y=10 \u2192 y=10/3."
+    },
+    {
+      "term": "rate of change",
+      "definition": "How much one quantity changes relative to a 1-unit change in another. In algebra it is the slope: \u0394y/\u0394x. A constant rate of change means the relationship is linear.",
+      "aliases": ["rate", "change rate", "slope", "\u0394y/\u0394x"],
+      "related_terms": ["slope", "linear relationship", "y-intercept"],
+      "example_in_context": "$12 earned per hour worked: rate of change = 12. Straight line on a distance-earnings graph."
+    }
+  ]
+}
