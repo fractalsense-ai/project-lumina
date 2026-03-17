@@ -255,3 +255,42 @@ def test_build_initial_learning_state_default_kwarg():
     # Should not raise; world_sim_theme attribute should exist and be {}
     assert hasattr(state, "world_sim_theme")
     assert state.world_sim_theme == {}
+
+
+# ---------------------------------------------------------------------------
+# MUD backward-compat guard: mud_world_cfg=None → mud_world_state == {}
+# ---------------------------------------------------------------------------
+
+
+def test_build_initial_learning_state_mud_world_cfg_none_is_empty():
+    """mud_world_cfg=None → mud_world_state is {} on the returned state."""
+    state = build_initial_learning_state(_MINIMAL_PROFILE, mud_world_cfg=None)
+    assert hasattr(state, "mud_world_state")
+    assert state.mud_world_state == {}
+
+
+def test_build_initial_learning_state_no_mud_kwarg_is_backward_compat():
+    """Omitting mud_world_cfg entirely → mud_world_state == {} (no error)."""
+    state = build_initial_learning_state(_MINIMAL_PROFILE, world_sim_cfg=_WORLD_SIM_CFG)
+    assert hasattr(state, "mud_world_state")
+    assert state.mud_world_state == {}
+
+
+# ---------------------------------------------------------------------------
+# select_world_sim_theme — 'interests' canonical field (regression guard)
+# ---------------------------------------------------------------------------
+
+
+def test_select_theme_uses_interests_field():
+    """Canonical 'interests' field (not just 'likes') triggers theme selection."""
+    profile = {"preferences": {"interests": ["space", "rockets"], "dislikes": []}}
+    theme = select_world_sim_theme(profile, _WORLD_SIM_CFG)
+    assert theme["theme_id"] == "space_exploration"
+
+
+def test_select_theme_interests_and_likes_merged():
+    """Both interests and likes are checked; either can trigger a match."""
+    # Only 'likes' overlaps with nature keywords
+    profile = {"preferences": {"interests": ["cooking"], "likes": ["nature", "wildlife"]}}
+    theme = select_world_sim_theme(profile, _WORLD_SIM_CFG)
+    assert theme["theme_id"] == "nature_and_outdoors"

@@ -54,7 +54,9 @@ def select_world_sim_theme(
     default_theme_id: str = world_sim_cfg.get("default_theme", "")
 
     preferences = entity_profile.get("preferences") or {}
-    likes: list[str] = [str(v).lower() for v in (preferences.get("likes") or [])]
+    # Accept both 'interests' (canonical) and 'likes' (legacy alias); merge into one set.
+    _interests_raw = list(preferences.get("interests") or []) + list(preferences.get("likes") or [])
+    likes: list[str] = [str(v).lower() for v in _interests_raw]
     dislikes: list[str] = [str(v).lower() for v in (preferences.get("dislikes") or [])]
 
     # Attempt preference-matched selection
@@ -79,12 +81,78 @@ def select_world_sim_theme(
     return {}
 
 
+def generate_mud_world(
+    entity_profile: dict[str, Any],
+    mud_world_cfg: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Generate and return the MUD World State for this session.
+
+    Selects a template from ``mud_world_cfg["templates"]`` based on the
+    entity's interest/likes profile.  Returns a dict containing the 8
+    narrative constants (zone, protagonist, antagonist, guide_npc, macguffin,
+    variable_skin, obstacle_theme, failure_state) plus ``template_id`` for
+    audit traceability.  Returns ``{}`` if world builder is disabled or no
+    templates list is provided.
+
+    Selection algorithm:
+    1. Skip templates whose ``preference_keywords`` overlap with dislikes.
+    2. Return first template whose ``preference_keywords`` overlap with
+       interests/likes (combined set).
+    3. Fallback: return the first template with an empty ``preference_keywords``
+       list (the general_math catch-all).
+    4. Return ``{}`` if nothing matches.
+    """
+    if not mud_world_cfg or not mud_world_cfg.get("enabled", False):
+        return {}
+
+    templates: list[dict[str, Any]] = mud_world_cfg.get("templates") or []
+    if not templates:
+        return {}
+
+    preferences = entity_profile.get("preferences") or {}
+    # Accept both 'interests' (canonical) and 'likes' (legacy alias).
+    _interests_raw = list(preferences.get("interests") or []) + list(preferences.get("likes") or [])
+    interests: set[str] = {str(v).lower() for v in _interests_raw}
+    dislikes: set[str] = {str(v).lower() for v in (preferences.get("dislikes") or [])}
+
+    _NARRATIVE_FIELDS = {
+        "zone", "protagonist", "antagonist", "guide_npc",
+        "macguffin", "variable_skin", "obstacle_theme", "failure_state",
+    }
+
+    fallback: dict[str, Any] | None = None
+
+    for template in templates:
+        keywords: set[str] = {
+            str(kw).lower() for kw in (template.get("preference_keywords") or [])
+        }
+        if not keywords:
+            # Zero-keyword entry is the fallback; capture first one seen.
+            if fallback is None:
+                fallback = template
+            continue
+        if keywords & dislikes:
+            continue
+        if keywords & interests:
+            result = {"template_id": template.get("id", "")}
+            result.update({k: v for k, v in template.items() if k in _NARRATIVE_FIELDS})
+            return result
+
+    if fallback is not None:
+        result = {"template_id": fallback.get("id", "")}
+        result.update({k: v for k, v in fallback.items() if k in _NARRATIVE_FIELDS})
+        return result
+
+    return {}
+
+
 def build_initial_learning_state(
     profile: dict[str, Any],
     world_sim_cfg: dict[str, Any] | None = None,
     tiers: list[dict[str, Any]] | None = None,
     tier_progression: list[str] | None = None,
     nominal_difficulty: float = 0.5,
+    mud_world_cfg: dict[str, Any] | None = None,
 ) -> Any:
     """Build the education domain-lib state from profile learning_state."""
     learning_state = profile.get("learning_state") or {}
@@ -145,6 +213,10 @@ def build_initial_learning_state(
     # the state object so the same theme is used consistently every turn.
     ls.world_sim_theme = select_world_sim_theme(profile, world_sim_cfg)  # type: ignore[attr-defined]
 
+    # Attach MUD world state: generated once per session from the student's
+    # interest profile and locked in for the session's duration.
+    ls.mud_world_state = generate_mud_world(profile, mud_world_cfg)  # type: ignore[attr-defined]
+
     return ls
 
 
@@ -158,6 +230,7 @@ def domain_step(
     # on the new LearningState it returns (dynamic attrs are not dataclass fields).
     prev_fluency: FluencyState = getattr(state, "fluency", FluencyState())
     prev_world_sim_theme: Any = getattr(state, "world_sim_theme", None)
+    prev_mud_world_state: Any = getattr(state, "mud_world_state", None)
 
     # 1. ZPD monitor (primary) — returns a new LearningState instance
     state, zpd_decision = zpd_monitor_step(state, task_spec, evidence, params=params)
@@ -165,6 +238,8 @@ def domain_step(
     # Restore dynamic attributes on the new state object.
     if not hasattr(state, "world_sim_theme"):
         state.world_sim_theme = prev_world_sim_theme  # type: ignore[attr-defined]
+    if not hasattr(state, "mud_world_state"):
+        state.mud_world_state = prev_mud_world_state  # type: ignore[attr-defined]
 
     # 2. Fluency monitor (secondary)
     fluency_state: FluencyState = getattr(state, "fluency", prev_fluency)
@@ -201,6 +276,7 @@ def interpret_turn_input(
     tool_fns: dict[str, Callable[..., Any]] | None = None,
     nlp_pre_interpreter_fn: Callable[..., Any] | None = None,
     world_sim_theme: dict[str, Any] | None = None,
+    mud_world_state: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     context_hint = ""
     if task_context.get("task_id"):
@@ -256,6 +332,21 @@ def interpret_turn_input(
             f"\n[World-Sim Active] Setting: {setting}"
             f" Use in-world framing ('{task_framing}') for task labels."
             f" Artifact framing: '{artifact_framing}'."
+        )
+
+    # ── MUD World State context hint ───────────────────────────
+    if mud_world_state:
+        context_hint += (
+            f"\n[MUD World Active]"
+            f" Zone: {mud_world_state.get('zone', '')}"
+            f" | Cast: {mud_world_state.get('protagonist', 'Player')} (student)"
+            f" vs {mud_world_state.get('antagonist', 'The Boss')} (antagonist)"
+            f" — guided by {mud_world_state.get('guide_npc', 'Guide')}"
+            f"\n  Objective (MacGuffin): {mud_world_state.get('macguffin', '')}"
+            f"\n  Variable skin: unknowns are '{mud_world_state.get('variable_skin', 'the unknown')}'"
+            f" — NEVER use a bare variable letter in narrative language."
+            f"\n  Equations represented as: {mud_world_state.get('obstacle_theme', '')}"
+            f"\n  Invariant violation consequence (use verbatim): {mud_world_state.get('failure_state', '')}"
         )
 
     # ── Deterministic algebra parser (primary source) ──────────

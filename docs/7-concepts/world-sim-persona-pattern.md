@@ -56,8 +56,8 @@ This is the simplest option. Use it when a domain has a single well-defined narr
 The domain pack declares multiple themes and uses the entity's preference profile to select one at session start. The selection runs once in `build_initial_learning_state` and is stored on the domain state object for the session's duration.
 
 **Selection rules (enforced by `select_world_sim_theme`):**
-1. Collect the entity's `preferences.likes` list.
-2. Find the first theme whose `preference_keywords` overlaps with the likes list.
+1. Collect the entity's `preferences.interests` list (and `preferences.likes` as a legacy alias; both are checked).
+2. Find the first theme whose `preference_keywords` overlaps with the interests list.
 3. Skip any theme whose `preference_keywords` overlaps with the entity's `dislikes` list (dislike always wins over like).
 4. Fall back to `default_theme` if no match is found.
 5. Return `{}` if `world_sim.enabled` is `false`.
@@ -71,6 +71,53 @@ Artifact framing: '<artifact_framing>'.
 ```
 
 Module-level overrides are declared in `domain-physics.yaml` under `world_sim_override` and allow a specific module to restrict available themes or change the default within that module's scope.
+
+---
+
+## MUD Dynamic World Builder (Education Domain Extension)
+
+The **MUD World Builder** is an advanced dynamic persona pattern implemented on top of the standard theme selection layer. It is currently the education domain's reference implementation of a fully-locked session narrative.
+
+Where the standard Dynamic Persona selects one of a small set of broad themes (e.g., `space_exploration`, `sports_and_games`), the MUD World Builder generates a **World State** — 8 narrative constants that stay identical for the entire session, eliminating narrative drift completely:
+
+| Field | Role |
+|---|---|
+| `zone` | The session setting; prevents hallucinated environment changes |
+| `protagonist` | The student's in-world role |
+| `antagonist` | The boss who creates pressure |
+| `guide_npc` | The hint character, with a distinct voice |
+| `macguffin` | The objective that motivates every equation |
+| `variable_skin` | What the algebraic unknown *is* in this world |
+| `obstacle_theme` | How equations are physically represented |
+| `failure_state` | Exact narrative consequence on any invariant violation |
+
+The same $3x + 5 = 17$ algebra check spawns different narration in each world — but the `equivalence_preserved` invariant fires identically regardless:
+
+- **Dark Fantasy:** *"The counter-weight scale violently tips! Trap triggered! A poison dart strikes you. Lose 10 HP."*
+- **Zombie Survival:** *"The elevator sparks! Too much noise! Horde Proximity +15%."*
+- **Cyber-Heist:** *"ACCESS DENIED. Security tripped! Alert Level rises."*
+
+### Selection Algorithm
+
+`generate_mud_world(entity_profile, mud_world_cfg)` in `systools/runtime_adapters.py`:
+
+1. Collect `preferences.interests` and `preferences.likes` (both; merged into one set).
+2. Collect `preferences.dislikes`.
+3. Iterate the template library (in `mud-world-templates.yaml`).
+4. Skip any template whose `preference_keywords` overlaps with dislikes.
+5. Return first template whose `preference_keywords` overlaps with interests/likes.
+6. Fallback: return the first zero-keyword template (`general_math`).
+
+The generated World State is stored as `state.mud_world_state` at session start and injected into every turn's context as a `[MUD World Active]` hint block. The session-open `CommitmentRecord` captures the `template_id` for audit traceability.
+
+### Relationship to Standard Theme Selection
+
+Both systems are active simultaneously. They are complementary, not competing:
+
+- `world_sim_theme` → controls `task_framing`, `artifact_framing`, `exit_phrase` (broad UX labels)
+- `mud_world_state` → controls `zone`, `protagonist`, `antagonist`, `guide_npc`, `macguffin`, `variable_skin`, `obstacle_theme`, `failure_state` (session narrative constants)
+
+For full details, see [`domain-packs/education/world-sim/mud-world-builder-spec-v1.md`](../../domain-packs/education/world-sim/mud-world-builder-spec-v1.md).
 
 ---
 
@@ -157,4 +204,5 @@ If `world_sim_override` is absent, the module inherits the domain-wide `world_si
 - [`domain-packs/education/world-sim/world-sim-spec-v1.md`](../../domain-packs/education/world-sim/world-sim-spec-v1.md) — education reference implementation: persona parameters
 - [`domain-packs/education/world-sim/magic-circle-consent-v1.md`](../../domain-packs/education/world-sim/magic-circle-consent-v1.md) — education reference implementation: consent activation gate
 - [`domain-packs/education/world-sim/artifact-and-mastery-spec-v1.md`](../../domain-packs/education/world-sim/artifact-and-mastery-spec-v1.md) — education reference implementation: reward surface
+- [`domain-packs/education/world-sim/mud-world-builder-spec-v1.md`](../../domain-packs/education/world-sim/mud-world-builder-spec-v1.md) — MUD World Builder: advanced dynamic persona (education domain)
 - [`../../specs/principles-v1.md`](../../specs/principles-v1.md) — Principle 8 (consent boundary), enforced by magic circle

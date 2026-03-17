@@ -1,0 +1,191 @@
+# MUD World Builder — Template Library (Education Domain)
+#
+# Each template defines the 8 narrative constants that are locked into session
+# state when the world builder selects a world for a student.  The selection
+# algorithm mirrors select_world_sim_theme():  preference_keywords are matched
+# against entity_profile.preferences.interests (and .likes as a legacy alias);
+# dislikes always veto.  The first matching template wins.  The entry with no
+# preference_keywords ("general_math") acts as the catch-all fallback.
+#
+# Fields:
+#   id                — unique template identifier
+#   preference_keywords — student interest keywords that trigger this world
+#   zone              — the physical setting where math problems take place
+#   protagonist       — the player's in-world role / title
+#   antagonist        — the boss character who taunts and creates pressure
+#   guide_npc         — the in-world hint mechanic character
+#   macguffin         — the objective that narratively motivates every problem
+#   variable_skin     — what the unknown variable(s) represent in this world
+#                       (the LLM must NEVER use a bare letter like "x"; use
+#                       this label instead)
+#   obstacle_theme    — how equations are physically represented in the world
+#   failure_state     — exact narrative consequence when an invariant is
+#                       violated (used verbatim by the orchestrator persona)
+#
+# DO NOT reorder or delete the "general_math" entry — it must be last and
+# must have an empty preference_keywords list so it serves as the fallback.
+
+version: "1.0.0"
+last_updated: "2026-03-16"
+
+templates:
+
+  - id: dark_fantasy_dungeon
+    preference_keywords:
+      - fantasy
+      - dnd
+      - d&d
+      - dungeons and dragons
+      - elden ring
+      - magic
+      - dragons
+      - rpg
+      - wizards
+      - swords
+      - medieval
+      - dark souls
+      - tolkien
+    zone: "The Sunken Catacombs of Aethelgard"
+    protagonist: "Novice Spellweaver"
+    antagonist: "Xylar the Undying (an arrogant Lich who mocks your magic)"
+    guide_npc: "Barnaby (a sarcastic, floating enchanted grimoire)"
+    macguffin: "The Crown of Dawn"
+    variable_skin: "Unstable Mana Crystals"
+    obstacle_theme: "Magical Counter-Weight Scales and Runic Doors"
+    failure_state: "Trap triggered! A poison dart strikes you. Lose 10 HP."
+
+  - id: zombie_survival
+    preference_keywords:
+      - zombies
+      - zombie
+      - last of us
+      - resident evil
+      - survival
+      - post-apocalyptic
+      - apocalypse
+      - infected
+      - dead
+      - walking dead
+      - horror
+      - undead
+    zone: "Sector 4 Quarantine Zone (Abandoned City)"
+    protagonist: "Rookie Scavenger"
+    antagonist: "The Goliath (a massive mutated infected hunting you)"
+    guide_npc: "Patch (a grizzled survivor on a crackling HAM radio)"
+    macguffin: "The Patient Zero Blood Sample"
+    variable_skin: "Unmarked Supply Crates"
+    obstacle_theme: "Rusted Generator Valves and Barricaded Doors"
+    failure_state: "Too much noise! The Goliath roars closer. Horde Proximity +15%."
+
+  - id: cyber_heist
+    preference_keywords:
+      - cyberpunk
+      - hacking
+      - hacker
+      - spy
+      - heist
+      - stealth
+      - mission impossible
+      - infiltration
+      - secret agent
+      - technology
+      - tech
+      - computers
+      - programming
+    zone: "OmniCorp Global Headquarters (Floor 99)"
+    protagonist: "Phantom (Elite Infiltrator)"
+    antagonist: "Director Sterling (ruthless Head of Corporate Security)"
+    guide_npc: "Oracle (your hacker-in-the-van monitoring the cameras)"
+    macguffin: "The Quantum Drive Blueprints"
+    variable_skin: "Encrypted Data Drives"
+    obstacle_theme: "Laser Grids and Biometric Firewalls"
+    failure_state: "Security tripped! Alert Level rises. At 100%, drones deploy."
+
+  - id: space_mission
+    preference_keywords:
+      - space
+      - rockets
+      - astronaut
+      - astronauts
+      - nasa
+      - stars
+      - science fiction
+      - sci-fi
+      - galaxy
+      - planets
+      - astronomy
+      - cosmos
+      - alien
+      - aliens
+      - spaceship
+    zone: "Derelict Research Station Helios-7 (outer orbit)"
+    protagonist: "Mission Mathematician"
+    antagonist: "MAXIS (a rogue station AI who has locked the airlocks)"
+    guide_npc: "Glitch (a snarky micro-drone with a failing power cell)"
+    macguffin: "The Emergency Escape Pod Coordinates"
+    variable_skin: "Energy Cells"
+    obstacle_theme: "Encrypted Airlock Terminals and Power Grid Equations"
+    failure_state: "System error! MAXIS detects the breach. Stealth meter -10."
+
+  - id: nature_expedition
+    preference_keywords:
+      - nature
+      - animals
+      - outdoors
+      - wildlife
+      - hiking
+      - environment
+      - ecology
+      - plants
+      - biology
+      - forest
+      - jungle
+      - ocean
+      - marine
+      - dinosaurs
+      - paleontology
+    zone: "The Thornwood Research Reserve (Deep Jungle Sector)"
+    protagonist: "Junior Field Scientist"
+    antagonist: "Dr. Voss (a rival researcher sabotaging your data feeds)"
+    guide_npc: "Scout (a friendly camp drone with a monotone voice)"
+    macguffin: "The Rare Flora Sample needed for the antidote"
+    variable_skin: "Specimen Samples"
+    obstacle_theme: "Weighted Sensor Traps and Field Measurement Gates"
+    failure_state: "Sensor disturbed! Wildlife scatter and Dr. Voss gets a head start. Lose 1 sample."
+
+  - id: sports_arena
+    preference_keywords:
+      - sport
+      - sports
+      - soccer
+      - football
+      - basketball
+      - baseball
+      - games
+      - gaming
+      - video games
+      - esports
+      - athlete
+      - team
+      - olympics
+      - wrestling
+      - skateboarding
+    zone: "The Finals Arena (Championship Bracket)"
+    protagonist: "Team Strategist"
+    antagonist: "Coach Rax (the opposing team's legendary tactician)"
+    guide_npc: "Stats (your team's AI analytics assistant)"
+    macguffin: "The Championship Trophy"
+    variable_skin: "Skill Points"
+    obstacle_theme: "Scoreboard Equations and Play-Call Constraints"
+    failure_state: "Bad play call! The opposing team scores. Momentum -10."
+
+  - id: general_math
+    preference_keywords: []
+    zone: "The Math Challenge Arena"
+    protagonist: "Problem Solver"
+    antagonist: "The Equation Master (who doubts every move you make)"
+    guide_npc: "Hint (a helpful assistant ready to nudge you forward)"
+    macguffin: "The Final Answer"
+    variable_skin: "unknown quantities"
+    obstacle_theme: "Equations and Mathematical Constraints"
+    failure_state: "Incorrect step! Check your work and try again."

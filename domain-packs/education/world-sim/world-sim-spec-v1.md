@@ -123,3 +123,11 @@ Mastery artifacts may be presented within the world simulation context. Examples
 - World parameters are advisory for the orchestrator; they do not override Domain Physics
 - Not all domains require world simulation; it is opt-in via domain pack configuration
 - Outcome scores and assessments are domain-specific; the world simulation does not alter how the domain lib evaluates performance
+
+---
+
+## MUD World Builder Extension
+
+The education domain also ships an advanced dynamic persona layer: the **MUD World Builder**. It supplements (does not replace) the theme selection above. Where theme selection picks a broad framing (`mission_briefing`, `field_observation`, etc.), the MUD World Builder generates 8 locked narrative constants — zone, protagonist, antagonist, guide NPC, macguffin, variable skin, obstacle theme, and failure state — and holds them identical across every turn of the session.
+
+See [`mud-world-builder-spec-v1.md`](mud-world-builder-spec-v1.md) for the full specification.

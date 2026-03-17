@@ -29,10 +29,16 @@ runtime:
     - domain-packs/education/world-sim/magic-circle-consent-v1.md
     - domain-packs/education/world-sim/world-sim-spec-v1.md
     - domain-packs/education/world-sim/artifact-and-mastery-spec-v1.md
+    - domain-packs/education/world-sim/mud-world-builder-spec-v1.md
 
   world_sim:
     enabled: true
     default_theme: general_math
+    mud_world_builder:
+      enabled: true
+      # Templates are loaded from the file below at runtime and passed into
+      # build_initial_learning_state() as the mud_world_cfg["templates"] list.
+      templates_path: domain-packs/education/world-sim/mud-world-templates.yaml
     themes:
       space_exploration:
         setting_description: "You are the mission mathematician aboard the Helios research vessel. All problems are mission-critical calculations."
