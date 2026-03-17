@@ -244,18 +244,46 @@ def slm_interpret_physics_context(
 ) -> dict[str, Any]:
     """Use the SLM to compress incoming signals against domain physics.
 
-    Returns a dict with ``matched_invariants``, ``relevant_glossary_terms``,
-    ``context_summary``, and ``suggested_evidence_fields``.  Falls back to
-    an empty-enhancement dict on SLM failure.
+    Returns a dict with ``matched_invariants``, ``applicable_standing_orders``,
+    ``relevant_glossary_terms``, ``context_summary``, and
+    ``suggested_evidence_fields``.  Falls back to an empty-enhancement dict on
+    SLM failure.
+
+    The full standing-order detail (action, trigger_condition, max_attempts,
+    escalation_on_exhaust) and full invariant detail (description,
+    standing_order_on_violation, handled_by) are included so the SLM can reason
+    about which remediation paths are available for the current signals.
     """
     physics_subset = {
         "invariants": [
-            {"id": inv.get("id"), "check": inv.get("check"), "severity": inv.get("severity")}
+            {
+                "id": inv.get("id"),
+                "description": inv.get("description", ""),
+                "severity": inv.get("severity"),
+                "check": inv.get("check"),
+                "standing_order_on_violation": inv.get("standing_order_on_violation"),
+                "handled_by": inv.get("handled_by"),
+            }
             for inv in (domain_physics.get("invariants") or [])
         ],
         "standing_orders": [
-            {"id": so.get("id")}
+            {
+                "id": so.get("id"),
+                "action": so.get("action"),
+                "description": so.get("description", ""),
+                "trigger_condition": so.get("trigger_condition"),
+                "max_attempts": so.get("max_attempts"),
+                "escalation_on_exhaust": so.get("escalation_on_exhaust"),
+            }
             for so in (domain_physics.get("standing_orders") or [])
+        ],
+        "escalation_triggers": [
+            {
+                "id": et.get("id"),
+                "condition": et.get("condition", ""),
+                "target_role": et.get("target_role"),
+            }
+            for et in (domain_physics.get("escalation_triggers") or [])
         ],
         "glossary_terms": [
             entry.get("term") for entry in (glossary or [])
@@ -281,6 +309,7 @@ def slm_interpret_physics_context(
             return _empty_physics_context()
         return {
             "matched_invariants": result.get("matched_invariants") or [],
+            "applicable_standing_orders": result.get("applicable_standing_orders") or [],
             "relevant_glossary_terms": result.get("relevant_glossary_terms") or [],
             "context_summary": str(result.get("context_summary", "")),
             "suggested_evidence_fields": result.get("suggested_evidence_fields") or {},
@@ -293,6 +322,7 @@ def slm_interpret_physics_context(
 def _empty_physics_context() -> dict[str, Any]:
     return {
         "matched_invariants": [],
+        "applicable_standing_orders": [],
         "relevant_glossary_terms": [],
         "context_summary": "",
         "suggested_evidence_fields": {},

@@ -294,17 +294,126 @@ def domain_physics_constraint_refresh(
 def slm_hint_generation(
     domain_id: str,
     domain_physics: dict[str, Any],
+    call_slm_fn: Callable | None = None,
     **_kw: Any,
 ) -> TaskResult:
-    """Pre-generate SLM context hints for new content."""
+    """Pre-generate SLM context hints for each standing order + invariant pair.
+
+    For each standing order in domain physics, the SLM is prompted (using the
+    NIGHT_CYCLE persona) to produce a concise domain-language summary of what
+    is happening when that standing order fires.  The resulting hint is stored
+    as a Proposal of type ``slm_hint`` for Domain Authority review.  This avoids
+    per-session cold synthesis — the SLM works from static physics during the
+    night cycle and the approved hints are available inline at run-time.
+
+    If no ``call_slm_fn`` is provided the task skips hint generation gracefully
+    and records a warning rather than blocking the night cycle.
+    """
+    import json as _json
+
+    from lumina.core.persona_builder import PersonaContext, build_system_prompt
+
     start = time.monotonic()
-    # Placeholder — would call SLM to create context summaries
+    proposals: list[Proposal] = []
+
+    if call_slm_fn is None:
+        log.warning(
+            "slm_hint_generation: no call_slm_fn provided for domain %s — skipping",
+            domain_id,
+        )
+        return TaskResult(
+            task="slm_hint_generation",
+            domain_id=domain_id,
+            success=True,
+            duration_seconds=time.monotonic() - start,
+            metadata={"skipped": True, "reason": "no call_slm_fn provided"},
+        )
+
+    standing_orders = domain_physics.get("standing_orders") or []
+    invariants_by_id: dict[str, dict] = {
+        inv.get("id", ""): inv
+        for inv in (domain_physics.get("invariants") or [])
+    }
+    system_prompt = build_system_prompt(PersonaContext.NIGHT_CYCLE)
+
+    for so in standing_orders:
+        so_id = so.get("id", "unknown")
+        # Collect invariants that link to this standing order via
+        # standing_order_on_violation.
+        linked_invariants = [
+            inv for inv in (domain_physics.get("invariants") or [])
+            if inv.get("standing_order_on_violation") == so_id
+        ]
+
+        payload = {
+            "task": "generate_standing_order_hint",
+            "domain_id": domain_id,
+            "standing_order": {
+                "id": so_id,
+                "action": so.get("action"),
+                "description": so.get("description", ""),
+                "trigger_condition": so.get("trigger_condition"),
+                "max_attempts": so.get("max_attempts"),
+                "escalation_on_exhaust": so.get("escalation_on_exhaust"),
+            },
+            "linked_invariants": [
+                {
+                    "id": inv.get("id"),
+                    "description": inv.get("description", ""),
+                    "severity": inv.get("severity"),
+                    "check": inv.get("check"),
+                }
+                for inv in linked_invariants
+            ],
+            "instruction": (
+                "Produce a concise domain-language summary (1–2 sentences) describing "
+                "what is happening in the domain when this standing order fires. "
+                "Respond in JSON: {\"hint\": \"...\"}  — no other keys."
+            ),
+        }
+
+        try:
+            raw = call_slm_fn(
+                system=system_prompt,
+                user=_json.dumps(payload, indent=2, ensure_ascii=False),
+            )
+            text = raw.strip()
+            if text.startswith("```"):
+                text = text.split("\n", 1)[-1]
+            if text.endswith("```"):
+                text = text.rsplit("```", 1)[0]
+            parsed = _json.loads(text.strip())
+            hint_text = parsed.get("hint", "").strip()
+        except Exception as exc:
+            log.warning(
+                "slm_hint_generation: SLM call failed for standing order %s in %s: %s",
+                so_id, domain_id, exc,
+            )
+            hint_text = ""
+
+        if hint_text:
+            proposals.append(Proposal(
+                task="slm_hint_generation",
+                domain_id=domain_id,
+                proposal_type="slm_hint",
+                summary=f"Hint for standing order '{so_id}': {hint_text[:120]}",
+                detail={
+                    "standing_order_id": so_id,
+                    "hint": hint_text,
+                    "linked_invariant_ids": [inv.get("id") for inv in linked_invariants],
+                },
+            ))
+
     return TaskResult(
         task="slm_hint_generation",
         domain_id=domain_id,
         success=True,
         duration_seconds=time.monotonic() - start,
-        metadata={"note": "placeholder — needs SLM integration"},
+        proposals=proposals,
+        metadata={
+            "standing_orders_processed": len(standing_orders),
+            "hints_generated": len(proposals),
+        },
     )
 
 

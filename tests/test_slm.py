@@ -257,16 +257,26 @@ class TestPhysicsInterpretation:
     def test_returns_structured_context(self, mock_call: MagicMock) -> None:
         mock_call.return_value = json.dumps({
             "matched_invariants": ["moisture_deficit"],
+            "applicable_standing_orders": ["irrigate_on_deficit"],
             "relevant_glossary_terms": ["irrigation"],
             "context_summary": "Soil moisture below threshold.",
             "suggested_evidence_fields": {"deficit_severity": "moderate"},
         })
         result = slm_interpret_physics_context(
             incoming_signals={"moisture_pct": 12},
-            domain_physics={"invariants": [{"id": "moisture_deficit", "check": "moisture_pct < 20", "severity": "warning"}]},
+            domain_physics={
+                "invariants": [{"id": "moisture_deficit", "check": "moisture_pct < 20",
+                                 "severity": "warning", "description": "Soil moisture low",
+                                 "standing_order_on_violation": "irrigate_on_deficit"}],
+                "standing_orders": [{"id": "irrigate_on_deficit", "action": "schedule_irrigation",
+                                      "description": "Trigger irrigation cycle",
+                                      "trigger_condition": "moisture_pct < 20",
+                                      "max_attempts": 3, "escalation_on_exhaust": True}],
+            },
             glossary=[{"term": "irrigation"}],
         )
         assert result["matched_invariants"] == ["moisture_deficit"]
+        assert result["applicable_standing_orders"] == ["irrigate_on_deficit"]
         assert result["relevant_glossary_terms"] == ["irrigation"]
         assert result["context_summary"] == "Soil moisture below threshold."
         assert result["suggested_evidence_fields"] == {"deficit_severity": "moderate"}
@@ -274,7 +284,7 @@ class TestPhysicsInterpretation:
     @pytest.mark.unit
     @patch("lumina.core.slm.call_slm")
     def test_handles_markdown_fenced_json(self, mock_call: MagicMock) -> None:
-        mock_call.return_value = '```json\n{"matched_invariants": [], "relevant_glossary_terms": [], "context_summary": "clean", "suggested_evidence_fields": {}}\n```'
+        mock_call.return_value = '```json\n{"matched_invariants": [], "applicable_standing_orders": [], "relevant_glossary_terms": [], "context_summary": "clean", "suggested_evidence_fields": {}}\n```'
         result = slm_interpret_physics_context(
             incoming_signals={},
             domain_physics={"invariants": []},
@@ -289,6 +299,107 @@ class TestPhysicsInterpretation:
             domain_physics={"invariants": []},
         )
         assert result == _empty_physics_context()
+
+    @pytest.mark.unit
+    @patch("lumina.core.slm.call_slm")
+    def test_enriched_invariants_sent_to_slm(self, mock_call: MagicMock) -> None:
+        """Verify that description and standing_order_on_violation reach the SLM payload."""
+        mock_call.return_value = json.dumps({
+            "matched_invariants": [], "applicable_standing_orders": [],
+            "relevant_glossary_terms": [], "context_summary": "",
+            "suggested_evidence_fields": {},
+        })
+        slm_interpret_physics_context(
+            incoming_signals={"val": 1},
+            domain_physics={
+                "invariants": [{
+                    "id": "inv1",
+                    "description": "Value too high",
+                    "severity": "critical",
+                    "check": "val > 100",
+                    "standing_order_on_violation": "so1",
+                    "handled_by": "safety_module",
+                }],
+                "standing_orders": [{
+                    "id": "so1",
+                    "action": "shutdown",
+                    "description": "Emergency shutdown",
+                    "trigger_condition": "val > 100",
+                    "max_attempts": 1,
+                    "escalation_on_exhaust": True,
+                }],
+            },
+        )
+        call_args = mock_call.call_args
+        user_payload = json.loads(call_args[1].get("user") or call_args[0][1])
+        physics = user_payload["domain_physics"]
+        inv = physics["invariants"][0]
+        assert inv["description"] == "Value too high"
+        assert inv["standing_order_on_violation"] == "so1"
+        assert inv["handled_by"] == "safety_module"
+        so = physics["standing_orders"][0]
+        assert so["action"] == "shutdown"
+        assert so["max_attempts"] == 1
+        assert so["escalation_on_exhaust"] is True
+
+    @pytest.mark.unit
+    @patch("lumina.core.slm.call_slm")
+    def test_escalation_triggers_sent_to_slm(self, mock_call: MagicMock) -> None:
+        """Verify escalation_triggers block is included in the SLM payload."""
+        mock_call.return_value = json.dumps({
+            "matched_invariants": [], "applicable_standing_orders": [],
+            "relevant_glossary_terms": [], "context_summary": "",
+            "suggested_evidence_fields": {},
+        })
+        slm_interpret_physics_context(
+            incoming_signals={},
+            domain_physics={
+                "escalation_triggers": [{
+                    "id": "et1",
+                    "condition": "attempts_exhausted",
+                    "target_role": "domain_authority",
+                }],
+            },
+        )
+        call_args = mock_call.call_args
+        user_payload = json.loads(call_args[1].get("user") or call_args[0][1])
+        triggers = user_payload["domain_physics"]["escalation_triggers"]
+        assert len(triggers) == 1
+        assert triggers[0]["id"] == "et1"
+        assert triggers[0]["target_role"] == "domain_authority"
+
+    @pytest.mark.unit
+    @patch("lumina.core.slm.call_slm")
+    def test_applicable_standing_orders_returned(self, mock_call: MagicMock) -> None:
+        """applicable_standing_orders from SLM output is propagated in result."""
+        mock_call.return_value = json.dumps({
+            "matched_invariants": ["inv1"],
+            "applicable_standing_orders": ["so1", "so2"],
+            "relevant_glossary_terms": [],
+            "context_summary": "Two orders apply.",
+            "suggested_evidence_fields": {},
+        })
+        result = slm_interpret_physics_context(
+            incoming_signals={"x": 5},
+            domain_physics={},
+        )
+        assert result["applicable_standing_orders"] == ["so1", "so2"]
+
+    @pytest.mark.unit
+    @patch("lumina.core.slm.call_slm")
+    def test_missing_applicable_standing_orders_defaults_to_empty(self, mock_call: MagicMock) -> None:
+        """If SLM omits applicable_standing_orders, result defaults to []."""
+        mock_call.return_value = json.dumps({
+            "matched_invariants": [],
+            "relevant_glossary_terms": [],
+            "context_summary": "",
+            "suggested_evidence_fields": {},
+        })
+        result = slm_interpret_physics_context(
+            incoming_signals={},
+            domain_physics={},
+        )
+        assert result["applicable_standing_orders"] == []
 
     @pytest.mark.unit
     @patch("lumina.core.slm.call_slm", return_value="not json at all")
@@ -400,6 +511,7 @@ class TestEmptyPhysicsContext:
     def test_structure(self) -> None:
         ctx = _empty_physics_context()
         assert ctx["matched_invariants"] == []
+        assert ctx["applicable_standing_orders"] == []
         assert ctx["relevant_glossary_terms"] == []
         assert ctx["context_summary"] == ""
         assert ctx["suggested_evidence_fields"] == {}

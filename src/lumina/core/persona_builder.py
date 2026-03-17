@@ -140,13 +140,19 @@ _ROLE_DIRECTIVES: dict[PersonaContext, str] = {
         "In this operational context you are performing domain physics context "
         "compression. "
         "Given incoming signals (NLP anchors, sensor data, tool outputs) and domain "
-        "physics rules (invariants, standing orders, glossary), identify which "
-        "invariants and glossary terms are relevant to the current input. "
+        "physics rules (invariants, standing orders, escalation triggers, glossary), "
+        "identify which invariants are triggered, which standing orders are applicable, "
+        "and which glossary terms are relevant to the current input. "
         "Compress the context into a concise structured summary.\n\n"
+        "Standing orders in the input include their action, trigger_condition, "
+        "max_attempts, and escalation_on_exhaust fields. Invariants include "
+        "standing_order_on_violation linking them to the standing order that handles "
+        "their breach. Use these to determine applicable_standing_orders.\n\n"
         "Output constraints: Respond in JSON only — no prose, no markdown fences "
         "unless they wrap the JSON. Use this structure:\n"
         "{\n"
         '  "matched_invariants": ["invariant_id_1", ...],\n'
+        '  "applicable_standing_orders": ["standing_order_id_1", ...],\n'
         '  "relevant_glossary_terms": ["term1", ...],\n'
         '  "context_summary": "One-sentence summary of what the input means in '
         'domain context",\n'

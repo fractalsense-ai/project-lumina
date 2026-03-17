@@ -26,10 +26,12 @@ class NightCycleScheduler:
         config: dict[str, Any] | None = None,
         domain_loader: Callable[[], list[dict[str, Any]]] | None = None,
         persistence: Any = None,
+        call_slm_fn: Callable[..., str] | None = None,
     ) -> None:
         self._config = config or {}
         self._domain_loader = domain_loader  # returns list of {domain_id, physics}
         self._persistence = persistence
+        self._call_slm_fn = call_slm_fn
         self._lock = threading.Lock()
 
         # Run history (most recent first)
@@ -203,6 +205,7 @@ class NightCycleScheduler:
                             domain_id=domain_id,
                             domain_physics=domain_physics,
                             persistence=self._persistence,
+                            call_slm_fn=self._call_slm_fn,
                         )
                         report.task_results.append(result)
                     except Exception as exc:

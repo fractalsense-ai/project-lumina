@@ -320,3 +320,194 @@ class TestNightCycleScheduler:
         report = sched.trigger_manual(actor_id="user1", domain_ids=["edu"])
         domain_ids = {r.domain_id for r in report.task_results}
         assert domain_ids == {"edu"}
+
+    def test_call_slm_fn_threaded_to_tasks(self):
+        """Scheduler passes call_slm_fn to task functions via kwargs."""
+        import json
+        slm_calls: list[dict] = []
+
+        def mock_slm(system=None, user=None, **_):
+            slm_calls.append({"system": system, "user": user})
+            return json.dumps({"hint": "Irrigation triggered due to soil moisture deficit."})
+
+        domains = [{
+            "domain_id": "agri",
+            "physics": {
+                "standing_orders": [{
+                    "id": "irrigate", "action": "schedule_irrigation",
+                    "description": "Irrigate", "trigger_condition": "moisture < 20",
+                    "max_attempts": 3, "escalation_on_exhaust": True,
+                }],
+                "invariants": [{
+                    "id": "moisture_inv", "description": "Soil dry", "severity": "warning",
+                    "check": "moisture < 20", "standing_order_on_violation": "irrigate",
+                }],
+            },
+        }]
+        sched = NightCycleScheduler(
+            config={"tasks": ["slm_hint_generation"]},
+            domain_loader=lambda: domains,
+            call_slm_fn=mock_slm,
+        )
+        report = sched.trigger_manual(actor_id="user1")
+        assert report.status == "completed"
+        # SLM was called once for the one standing order
+        assert len(slm_calls) == 1
+        # A hint proposal was generated
+        all_proposals = [p for r in report.task_results for p in r.proposals]
+        assert len(all_proposals) == 1
+        assert all_proposals[0].proposal_type == "slm_hint"
+        assert all_proposals[0].detail["standing_order_id"] == "irrigate"
+
+
+# ── slm_hint_generation unit tests ──────────────────────────
+
+
+class TestSlmHintGeneration:
+    """Unit tests for the slm_hint_generation night-cycle task."""
+
+    _PHYSICS = {
+        "standing_orders": [
+            {
+                "id": "so_irrigate",
+                "action": "schedule_irrigation",
+                "description": "Schedule irrigation cycle",
+                "trigger_condition": "soil_moisture < 20",
+                "max_attempts": 3,
+                "escalation_on_exhaust": True,
+            },
+            {
+                "id": "so_drain",
+                "action": "open_drain_valve",
+                "description": "Open drain valve",
+                "trigger_condition": "soil_moisture > 80",
+                "max_attempts": 2,
+                "escalation_on_exhaust": False,
+            },
+        ],
+        "invariants": [
+            {
+                "id": "moisture_low",
+                "description": "Soil moisture below minimum",
+                "severity": "warning",
+                "check": "soil_moisture < 20",
+                "standing_order_on_violation": "so_irrigate",
+            },
+            {
+                "id": "moisture_high",
+                "description": "Soil moisture above maximum",
+                "severity": "warning",
+                "check": "soil_moisture > 80",
+                "standing_order_on_violation": "so_drain",
+            },
+        ],
+    }
+
+    def _mock_slm(self, hint_text: str):
+        import json
+        return lambda system=None, user=None, **_: json.dumps({"hint": hint_text})
+
+    def test_generates_proposal_per_standing_order(self):
+        result = slm_hint_generation(
+            domain_id="agri",
+            domain_physics=self._PHYSICS,
+            call_slm_fn=self._mock_slm("Soil moisture is low, irrigation needed."),
+        )
+        assert result.success is True
+        assert result.task == "slm_hint_generation"
+        assert len(result.proposals) == 2
+        so_ids = {p.detail["standing_order_id"] for p in result.proposals}
+        assert "so_irrigate" in so_ids
+        assert "so_drain" in so_ids
+
+    def test_proposal_type_is_slm_hint(self):
+        result = slm_hint_generation(
+            domain_id="agri",
+            domain_physics=self._PHYSICS,
+            call_slm_fn=self._mock_slm("A hint."),
+        )
+        for prop in result.proposals:
+            assert prop.proposal_type == "slm_hint"
+
+    def test_linked_invariants_in_proposal_detail(self):
+        result = slm_hint_generation(
+            domain_id="agri",
+            domain_physics=self._PHYSICS,
+            call_slm_fn=self._mock_slm("Hint text."),
+        )
+        irrigate_prop = next(p for p in result.proposals if p.detail["standing_order_id"] == "so_irrigate")
+        assert "moisture_low" in irrigate_prop.detail["linked_invariant_ids"]
+
+    def test_hint_text_stored_in_detail(self):
+        hint = "When soil moisture drops below 20%, the irrigation cycle activates."
+        result = slm_hint_generation(
+            domain_id="agri",
+            domain_physics=self._PHYSICS,
+            call_slm_fn=self._mock_slm(hint),
+        )
+        assert result.proposals[0].detail["hint"] == hint
+
+    def test_no_call_slm_fn_skips_gracefully(self):
+        result = slm_hint_generation(
+            domain_id="agri",
+            domain_physics=self._PHYSICS,
+        )
+        assert result.success is True
+        assert len(result.proposals) == 0
+        assert result.metadata["skipped"] is True
+
+    def test_slm_failure_skips_that_order(self):
+        import json
+
+        call_count = [0]
+
+        def flaky_slm(system=None, user=None, **_):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                raise RuntimeError("SLM timeout")
+            return json.dumps({"hint": "Good hint for second order."})
+
+        result = slm_hint_generation(
+            domain_id="agri",
+            domain_physics=self._PHYSICS,
+            call_slm_fn=flaky_slm,
+        )
+        assert result.success is True
+        # First order failed, second succeeded → 1 proposal
+        assert len(result.proposals) == 1
+
+    def test_metadata_counts(self):
+        result = slm_hint_generation(
+            domain_id="agri",
+            domain_physics=self._PHYSICS,
+            call_slm_fn=self._mock_slm("hint"),
+        )
+        assert result.metadata["standing_orders_processed"] == 2
+        assert result.metadata["hints_generated"] == 2
+
+    def test_empty_standing_orders(self):
+        result = slm_hint_generation(
+            domain_id="agri",
+            domain_physics={"standing_orders": [], "invariants": []},
+            call_slm_fn=self._mock_slm("hint"),
+        )
+        assert result.success is True
+        assert len(result.proposals) == 0
+        assert result.metadata["standing_orders_processed"] == 0
+
+    def test_handles_markdown_fenced_hint(self):
+        import json
+
+        def fenced_slm(system=None, user=None, **_):
+            return '```json\n{"hint": "Fenced hint text."}\n```'
+
+        result = slm_hint_generation(
+            domain_id="agri",
+            domain_physics={
+                "standing_orders": [{"id": "so1", "action": "act", "description": ""}],
+                "invariants": [],
+            },
+            call_slm_fn=fenced_slm,
+        )
+        assert len(result.proposals) == 1
+        assert result.proposals[0].detail["hint"] == "Fenced hint text."
