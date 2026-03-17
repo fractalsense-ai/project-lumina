@@ -4,7 +4,7 @@ runtime:
   turn_interpretation_prompt_path: domain-packs/education/prompts/turn-interpretation.md
 
   domain_physics_path: domain-packs/education/modules/algebra-level-1/domain-physics.json
-  subject_profile_path: domain-packs/education/modules/algebra-level-1/example-student-alice.yaml
+  subject_profile_path: domain-packs/education/modules/algebra-level-1/student-profile-template.yaml
 
   # Module routing: maps a student profile's domain_id to the correct domain-physics file.
   # The static domain_physics_path above is the default fallback for sessions without a domain_id.
