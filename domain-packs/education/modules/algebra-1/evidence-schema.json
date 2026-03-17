@@ -1,0 +1,79 @@
+{
+  "schema_id": "lumina:evidence:education:algebra-1:v1",
+  "version": "1.0",
+  "domain_id": "domain/edu/algebra-1/v1",
+  "description": "Evidence field vocabulary for the Lumina algebra-1 module (gr 9). The complete field set: all six diagnostic law signals plus universal base fields. All law-specific fields are populated by the deterministic algebra parser tool — never by LLM estimation. Law 6 (model_accurately_transcribed) uses an anti-cheat design: the teacher supplies model_params (abstract recipe), and the canonical equation is assembled by SymPy at evaluation time so the student cannot look it up.",
+  "fields": {
+    "response_latency_sec": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Wall-clock seconds from prompt delivery to response receipt. Universal base field."
+    },
+    "off_task_ratio": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Fraction of the response that does not engage with the current task. 0.0 = fully on-task, 1.0 = fully off-task. Universal base field."
+    },
+    "correctness": {
+      "type": ["string", "null"],
+      "enum": ["correct", "incorrect", "partial", null],
+      "description": "Whether the subject's answer is correct, incorrect, or partially correct. Null when correctness cannot be determined."
+    },
+    "hint_used": {
+      "type": ["boolean", "null"],
+      "description": "True if the subject's message explicitly requested or acknowledged a hint."
+    },
+    "frustration_marker_count": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Count of frustration signals detected in the subject's message."
+    },
+    "repeated_error": {
+      "type": ["boolean", "null"],
+      "description": "True if the same error type was made in consecutive turns."
+    },
+    "step_count": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Number of distinct algebraic transformation steps shown in the subject's response."
+    },
+    "min_steps": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Minimum number of steps required for a correct solution to this task (from curriculum)."
+    },
+    "solution_value": {
+      "type": ["number", "string", "null"],
+      "description": "The numeric or symbolic value extracted from the subject's proposed solution."
+    },
+    "equivalence_preserved": {
+      "type": ["boolean", "null"],
+      "description": "True if each transformation step preserves algebraic equivalence. Law 1 (Balance Principle)."
+    },
+    "reversibility_order_correct": {
+      "type": ["boolean", "null"],
+      "description": "True if constant was removed before coefficient was divided. Null for single-step equations. Law 2 (Inverse Operations)."
+    },
+    "inequality_direction_correct": {
+      "type": ["boolean", "null"],
+      "description": "True if inequality symbol was correctly flipped when dividing/multiplying by a negative. Null when no negative divisor present. Law 2 (Inverse Operations — inequality variant)."
+    },
+    "substitution_valid": {
+      "type": ["boolean", "null"],
+      "description": "True if the student's proposed (x, y) satisfies ALL system equations. Law 3 (Interchangeability)."
+    },
+    "relationship_correctly_mapped": {
+      "type": ["boolean", "null"],
+      "description": "True if extracted slope matches correct slope from task context. Null when no slope detectable. Law 5 (Relational Mapping)."
+    },
+    "structure_preserved": {
+      "type": ["boolean", "null"],
+      "description": "True if the student's polynomial expression, when expanded via SymPy, is algebraically identical to the original expression. Catches both distribution errors and incorrect factoring. Null on parse error. Deterministic: set by check_polynomial_structure tool call. Law 4 (Distribution/Factoring)."
+    },
+    "model_accurately_transcribed": {
+      "type": ["boolean", "null"],
+      "description": "True if the student's transcribed equation matches the canonical equation assembled from the teacher's model_params at evaluation time. The canonical form is never stored or shown to the student — only the abstract parameters are provided, making this check cheat-resistant. Null when model_params are absent or unparseable. Deterministic: set by check_model_transcription tool call. Law 6 (Abstraction/Translation)."
+    }
+  }
+}

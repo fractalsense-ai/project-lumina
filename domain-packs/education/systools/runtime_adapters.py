@@ -350,4 +350,137 @@ def interpret_turn_input(
     if evidence.get("equivalence_preserved") is None and "equivalence_preserved" in evidence:
         del evidence["equivalence_preserved"]
 
+    # ── Law 2A: step order (reversibility_order_correct) ──────
+    if algebra_parser_fn is not None and isinstance(current_problem, dict) and eq:
+        try:
+            _so_result = algebra_parser_fn({
+                "call_type": "check_step_order",
+                "equation": eq,
+                "target_variable": tvar,
+                "student_work": input_text,
+            })
+        except Exception:
+            _so_result = None
+        if _so_result is not None and _so_result.get("ok"):
+            if _so_result.get("reversibility_order_correct") is not None:
+                evidence["reversibility_order_correct"] = _so_result["reversibility_order_correct"]
+    if evidence.get("reversibility_order_correct") is None and "reversibility_order_correct" in evidence:
+        del evidence["reversibility_order_correct"]
+
+    # ── Law 2B: inequality direction (inequality_direction_correct) ──
+    if algebra_parser_fn is not None and isinstance(current_problem, dict):
+        _ineq_eq = current_problem.get("inequality") or eq
+        if _ineq_eq:
+            try:
+                _id_result = algebra_parser_fn({
+                    "call_type": "check_inequality_direction",
+                    "inequality": _ineq_eq,
+                    "target_variable": tvar,
+                    "student_work": input_text,
+                })
+            except Exception:
+                _id_result = None
+            if _id_result is not None and _id_result.get("ok"):
+                if _id_result.get("inequality_direction_correct") is not None:
+                    evidence["inequality_direction_correct"] = _id_result["inequality_direction_correct"]
+    if evidence.get("inequality_direction_correct") is None and "inequality_direction_correct" in evidence:
+        del evidence["inequality_direction_correct"]
+
+    # ── Law 3: system verification (substitution_valid) ───────
+    if algebra_parser_fn is not None and isinstance(current_problem, dict):
+        _sys_eqs = current_problem.get("system_equations") or []
+        if _sys_eqs:
+            _x_var = current_problem.get("x_variable", "x")
+            _y_var = current_problem.get("y_variable", "y")
+            # Extract proposed x and y values from student work
+            _xy_match = re.search(
+                r"\b" + re.escape(_x_var) + r"\s*=\s*([+-]?\d+\.?\d*)",
+                input_text,
+            )
+            _yy_match = re.search(
+                r"\b" + re.escape(_y_var) + r"\s*=\s*([+-]?\d+\.?\d*)",
+                input_text,
+            )
+            if _xy_match and _yy_match:
+                try:
+                    _sv_result = algebra_parser_fn({
+                        "call_type": "check_system_verification",
+                        "system_equations": _sys_eqs,
+                        "x_variable": _x_var,
+                        "y_variable": _y_var,
+                        "x_val": float(_xy_match.group(1)),
+                        "y_val": float(_yy_match.group(1)),
+                    })
+                except Exception:
+                    _sv_result = None
+                if _sv_result is not None and _sv_result.get("ok"):
+                    if _sv_result.get("substitution_valid") is not None:
+                        evidence["substitution_valid"] = _sv_result["substitution_valid"]
+    if evidence.get("substitution_valid") is None and "substitution_valid" in evidence:
+        del evidence["substitution_valid"]
+
+    # ── Law 5: slope computation (relationship_correctly_mapped) ─
+    if algebra_parser_fn is not None and isinstance(current_problem, dict):
+        _correct_slope = current_problem.get("correct_slope")
+        _table_data = current_problem.get("table_data")
+        if _correct_slope is not None or _table_data is not None:
+            try:
+                _sc_result = algebra_parser_fn({
+                    "call_type": "check_slope_computation",
+                    "student_work": input_text,
+                    "correct_slope": _correct_slope,
+                    "table_data": _table_data,
+                })
+            except Exception:
+                _sc_result = None
+            if _sc_result is not None and _sc_result.get("ok"):
+                if _sc_result.get("relationship_correctly_mapped") is not None:
+                    evidence["relationship_correctly_mapped"] = _sc_result["relationship_correctly_mapped"]
+    if evidence.get("relationship_correctly_mapped") is None and "relationship_correctly_mapped" in evidence:
+        del evidence["relationship_correctly_mapped"]
+
+    # ── Law 4: polynomial structure (structure_preserved) ─────
+    if algebra_parser_fn is not None and isinstance(current_problem, dict):
+        _orig_expr = current_problem.get("original_expression", "")
+        if _orig_expr:
+            # Extract student expression: prefer first equation-like token in input
+            _student_expr_match = re.search(r"([^=\n]+(?:\([^)]*\)[^=\n]*)?)", input_text)
+            _student_expr = _student_expr_match.group(1).strip() if _student_expr_match else input_text
+            try:
+                _ps_result = algebra_parser_fn({
+                    "call_type": "check_polynomial_structure",
+                    "original_expression": _orig_expr,
+                    "student_expression": _student_expr,
+                    "target_variable": tvar,
+                })
+            except Exception:
+                _ps_result = None
+            if _ps_result is not None and _ps_result.get("ok"):
+                if _ps_result.get("structure_preserved") is not None:
+                    evidence["structure_preserved"] = _ps_result["structure_preserved"]
+    if evidence.get("structure_preserved") is None and "structure_preserved" in evidence:
+        del evidence["structure_preserved"]
+
+    # ── Law 6: model transcription (model_accurately_transcribed) ─
+    if algebra_parser_fn is not None and isinstance(current_problem, dict):
+        _model_params = current_problem.get("model_params")
+        if _model_params:
+            # Extract the student's equation: first line containing '='
+            _eq_line_match = re.search(r"[^\n]*=[^\n]*", input_text)
+            _student_eq = _eq_line_match.group(0).strip() if _eq_line_match else input_text
+            try:
+                _mt_result = algebra_parser_fn({
+                    "call_type": "check_model_transcription",
+                    "model_params": _model_params,
+                    "student_equation": _student_eq,
+                    "target_variable": tvar,
+                })
+            except Exception:
+                _mt_result = None
+            if _mt_result is not None and _mt_result.get("ok"):
+                if _mt_result.get("model_accurately_transcribed") is not None:
+                    evidence["model_accurately_transcribed"] = _mt_result["model_accurately_transcribed"]
+    if evidence.get("model_accurately_transcribed") is None and "model_accurately_transcribed" in evidence:
+        del evidence["model_accurately_transcribed"]
+
     return evidence

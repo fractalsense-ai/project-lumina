@@ -1,0 +1,63 @@
+{
+  "schema_id": "lumina:evidence:education:pre-algebra:v1",
+  "version": "1.0",
+  "domain_id": "domain/edu/pre-algebra/v1",
+  "description": "Evidence field vocabulary for the Lumina pre-algebra module (gr 6-7). Extends the universal base fields with two deterministic diagnostic signals for Law 2 (Inverse Operations): step-order correctness and inequality-direction correctness. All fields are populated by the deterministic algebra parser tool — never by LLM estimation.",
+  "fields": {
+    "response_latency_sec": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Wall-clock seconds from prompt delivery to response receipt. Universal base field."
+    },
+    "off_task_ratio": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Fraction of the response that does not engage with the current task. 0.0 = fully on-task, 1.0 = fully off-task. Universal base field."
+    },
+    "correctness": {
+      "type": ["string", "null"],
+      "enum": ["correct", "incorrect", "partial", null],
+      "description": "Whether the subject's answer is correct, incorrect, or partially correct. Null when correctness cannot be determined."
+    },
+    "hint_used": {
+      "type": ["boolean", "null"],
+      "description": "True if the subject's message explicitly requested or acknowledged a hint."
+    },
+    "frustration_marker_count": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Count of frustration signals detected in the subject's message."
+    },
+    "repeated_error": {
+      "type": ["boolean", "null"],
+      "description": "True if the same error type was made in consecutive turns."
+    },
+    "step_count": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Number of distinct algebraic transformation steps shown in the subject's response."
+    },
+    "min_steps": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Minimum number of steps required for a correct solution to this task (from curriculum)."
+    },
+    "solution_value": {
+      "type": ["number", "string", "null"],
+      "description": "The numeric or symbolic value extracted from the subject's proposed solution."
+    },
+    "equivalence_preserved": {
+      "type": ["boolean", "null"],
+      "description": "True if each transformation step in the response preserves algebraic equivalence. Law 1 (Balance Principle)."
+    },
+    "reversibility_order_correct": {
+      "type": ["boolean", "null"],
+      "description": "True if the student removed the constant term (addition/subtraction) before dividing out the coefficient. False if the student divided the coefficient first. Null for single-step equations where no ordering decision is present. Deterministic: set by check_step_order tool call. Law 2 (Inverse Operations)."
+    },
+    "inequality_direction_correct": {
+      "type": ["boolean", "null"],
+      "description": "True if the student correctly flipped the inequality symbol when dividing or multiplying by a negative number. False if the symbol was not flipped when it should have been. Null when no negative multiplier or divisor was present in the solution. Deterministic: set by check_inequality_direction tool call. Law 2 (Inverse Operations — inequality variant)."
+    }
+  }
+}

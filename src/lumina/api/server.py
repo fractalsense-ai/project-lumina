@@ -763,8 +763,18 @@ def _build_domain_context(
         )
     else:
         subject_profile_path = Path(runtime["subject_profile_path"])
-    domain = PERSISTENCE.load_domain_physics(str(domain_physics_path))
+
+    # Load profile early so we can use domain_id for module routing.
     profile = PERSISTENCE.load_subject_profile(str(subject_profile_path))
+
+    # Module routing: if the student profile declares a domain_id that maps to a
+    # different module in the runtime module_map, override domain_physics_path.
+    _module_map = runtime.get("module_map") or {}
+    _profile_domain_id = profile.get("domain_id") or profile.get("subject_domain_id")
+    if _profile_domain_id and _profile_domain_id in _module_map:
+        domain_physics_path = Path(_module_map[_profile_domain_id]["domain_physics_path"])
+
+    domain = PERSISTENCE.load_domain_physics(str(domain_physics_path))
     ledger_path = PERSISTENCE.get_ctl_ledger_path(session_id, domain_id=resolved_domain_id)
     ps = persisted_state or {}
 

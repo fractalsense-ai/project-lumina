@@ -6,6 +6,16 @@ runtime:
   domain_physics_path: domain-packs/education/modules/algebra-level-1/domain-physics.json
   subject_profile_path: domain-packs/education/modules/algebra-level-1/example-student-alice.yaml
 
+  # Module routing: maps a student profile's domain_id to the correct domain-physics file.
+  # The static domain_physics_path above is the default fallback for sessions without a domain_id.
+  module_map:
+    domain/edu/pre-algebra/v1:
+      domain_physics_path: domain-packs/education/modules/pre-algebra/domain-physics.json
+    domain/edu/algebra-intro/v1:
+      domain_physics_path: domain-packs/education/modules/algebra-intro/domain-physics.json
+    domain/edu/algebra-1/v1:
+      domain_physics_path: domain-packs/education/modules/algebra-1/domain-physics.json
+
   access_control:
     required_role: user
     allowed_roles:
