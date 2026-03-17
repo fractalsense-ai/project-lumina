@@ -166,37 +166,33 @@ def _ensure_user_profile(user_id: str, domain_key: str, template_path: str) -> s
 
 
 def _default_current_problem(task_spec: dict[str, Any], runtime: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Create a session-scoped problem via the deterministic generator.
+    """Create a session-scoped problem via the domain-registered generator.
 
-    Falls back to the task_spec's ``current_problem`` if the generator
-    or tier config is unavailable.
+    Falls back to task_spec's ``current_problem`` and then to a generic
+    placeholder.  The core never encodes domain-specific task shapes — the
+    domain is responsible for populating ``task_spec.current_problem`` or
+    registering a ``generate_problem`` tool function.
     """
-    # Try dynamic generation from domain-physics tiers
+    # Try the domain-registered generator (opaque to the core — domain provides
+    # the fn and receives its own subsystem_configs so it can extract what it needs).
     if runtime is not None:
-        domain = runtime.get("domain") or {}
-        subsystem_configs = domain.get("subsystem_configs") or {}
-        tiers = subsystem_configs.get("equation_difficulty_tiers")
-        if isinstance(tiers, list) and tiers:
+        gen_fn = (runtime.get("tool_fns") or {}).get("generate_problem")
+        if gen_fn is not None:
             try:
-                gen_fn = (runtime.get("tool_fns") or {}).get("generate_problem")
-                if gen_fn is not None:
-                    difficulty = float(task_spec.get("nominal_difficulty", 0.5))
-                    return gen_fn(difficulty, tiers)
+                difficulty = float(task_spec.get("nominal_difficulty", 0.5))
+                subsystem_configs = (runtime.get("domain") or {}).get("subsystem_configs") or {}
+                return gen_fn(difficulty, subsystem_configs)
             except Exception:
                 log.warning("Problem generator unavailable; falling back to task_spec")
 
-    # Fallback: use whatever is in the task_spec
+    # Use whatever current_problem is already in the task_spec.
     current_problem = task_spec.get("current_problem")
     if isinstance(current_problem, dict):
         return dict(current_problem)
 
-    equation = task_spec.get("equation") or "2x + 3 = 11"
-    target_variable = task_spec.get("target_variable") or "x"
-    expected_answer = task_spec.get("expected_answer") or "x = 4"
+    # Generic placeholder — the domain is responsible for supplying task state.
     return {
-        "equation": str(equation),
-        "target_variable": str(target_variable),
-        "expected_answer": str(expected_answer),
+        "task_id": str(task_spec.get("task_id", "task")),
         "status": "in_progress",
     }
 
@@ -1019,8 +1015,24 @@ def process_message(
     elif deterministic_response:
         turn_data = dict(runtime.get("turn_input_defaults") or {})
     elif runtime.get("local_only"):
-        # local_only domains (e.g. system) skip external LLM classification entirely.
-        turn_data = dict(runtime.get("turn_input_defaults") or {})
+        # local_only domains use the SLM for turn classification when available;
+        # they never call the external LLM for any purpose.
+        if slm_available():
+            _li_interpreter = runtime["turn_interpreter_fn"]
+            _li_sig = inspect.signature(_li_interpreter)
+            _li_kwargs: dict[str, Any] = {
+                "call_llm": call_slm,
+                "input_text": input_text,
+                "task_context": task_context,
+                "prompt_text": runtime["turn_interpretation_prompt"],
+                "default_fields": runtime["turn_input_defaults"],
+                "tool_fns": runtime.get("tool_fns"),
+            }
+            if "call_slm" in _li_sig.parameters:
+                _li_kwargs["call_slm"] = call_slm
+            turn_data = _li_interpreter(**_li_kwargs)
+        else:
+            turn_data = dict(runtime.get("turn_input_defaults") or {})
     else:
         world_sim_theme = getattr(orch.state, "world_sim_theme", {})
         mud_world_state = getattr(orch.state, "mud_world_state", {})
@@ -1121,15 +1133,24 @@ def process_message(
                 try:
                     import dataclasses
                     profile_data = PERSISTENCE.load_subject_profile(profile_path)
-                    _ls_dict = dataclasses.asdict(orch.state)
-                    # .fluency is a dynamic attribute — not a dataclass field —
-                    # so dataclasses.asdict() silently omits it.  Merge manually.
-                    if hasattr(orch.state, "fluency"):
-                        _ls_dict["fluency"] = {
-                            "current_tier": orch.state.fluency.current_tier,
-                            "consecutive_correct": orch.state.fluency.consecutive_correct,
+                    if dataclasses.is_dataclass(orch.state):
+                        _ls_dict = dataclasses.asdict(orch.state)
+                        # .fluency is a dynamic attribute — not a dataclass field —
+                        # so dataclasses.asdict() silently omits it.  Merge manually.
+                        if hasattr(orch.state, "fluency"):
+                            _ls_dict["fluency"] = {
+                                "current_tier": orch.state.fluency.current_tier,
+                                "consecutive_correct": orch.state.fluency.consecutive_correct,
+                            }
+                        profile_data["learning_state"] = _ls_dict
+                    else:
+                        # Non-dataclass state (e.g. plain dict from system domain).
+                        # Save minimal session fields; there is no learning model to persist.
+                        _sd = orch.state if isinstance(orch.state, dict) else {}
+                        profile_data["session_state"] = {
+                            "turn_count": int(_sd.get("turn_count", 0)),
+                            "operator_id": str(_sd.get("operator_id", "")),
                         }
-                    profile_data["learning_state"] = _ls_dict
                     PERSISTENCE.save_subject_profile(profile_path, profile_data)
                 except Exception:
                     log.warning("Profile auto-save failed for session %s", session_id)

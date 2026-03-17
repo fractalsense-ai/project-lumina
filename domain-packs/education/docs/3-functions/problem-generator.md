@@ -9,7 +9,7 @@
 ```python
 from problem_generator import generate_problem, select_tier
 
-problem = generate_problem(difficulty, tiers)
+problem = generate_problem(difficulty, subsystem_configs)
 ```
 
 ## DESCRIPTION
@@ -32,7 +32,7 @@ All generation is server-side Python (stdlib `random` only) — no external depe
 
 ## FUNCTIONS
 
-### `generate_problem(difficulty, tiers) → dict`
+### `generate_problem(difficulty, subsystem_configs) → dict`
 
 Generate a random equation appropriate for the given difficulty value.
 
@@ -41,7 +41,7 @@ Generate a random equation appropriate for the given difficulty value.
 | Name | Type | Description |
 |------|------|-------------|
 | `difficulty` | `float` | Value in `[0, 1]` — typically `nominal_difficulty` or the current challenge estimate from the ZPD monitor |
-| `tiers` | `list[dict]` | Tier definitions from domain physics (`equation_difficulty_tiers`); each entry must have `min_difficulty`, `max_difficulty`, and `generator` keys |
+| `subsystem_configs` | `dict` | The `subsystem_configs` block from domain-physics.  The function reads `equation_difficulty_tiers` from it internally, keeping the call site in the core free of education-specific key names |
 
 **Returns**
 

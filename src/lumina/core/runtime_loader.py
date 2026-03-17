@@ -274,4 +274,5 @@ def load_runtime_context(repo_root: Path, runtime_config_path: str | None = None
         "nlp_pre_interpreter_fn": nlp_pre_interpreter_fn,
         "tool_fns": tool_fns,
         "world_sim": _world_sim_cfg,
+        "local_only": bool(runtime_cfg.get("local_only", False)),
     }

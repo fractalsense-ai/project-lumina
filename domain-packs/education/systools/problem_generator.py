@@ -112,7 +112,7 @@ _GENERATORS: dict[str, Any] = {
 
 def generate_problem(
     difficulty: float,
-    tiers: list[dict[str, Any]],
+    subsystem_configs: dict[str, Any],
 ) -> dict[str, Any]:
     """Generate a random equation appropriate for *difficulty*.
 
@@ -121,15 +121,17 @@ def generate_problem(
     difficulty:
         Float in ``[0, 1]`` — typically ``nominal_difficulty`` or the
         current challenge estimate from the ZPD monitor.
-    tiers:
-        The ``equation_difficulty_tiers`` list from domain-physics
-        ``subsystem_configs``.
+    subsystem_configs:
+        The ``subsystem_configs`` block from domain-physics.  This function
+        reads ``equation_difficulty_tiers`` from it; passing the whole block
+        keeps the call site in the core free of education-specific key names.
 
     Returns
     -------
     dict with keys: ``equation``, ``target_variable``, ``expected_answer``,
     ``equation_type``, ``difficulty_tier``, ``status``.
     """
+    tiers: list[dict[str, Any]] = subsystem_configs.get("equation_difficulty_tiers") or []
     tier = select_tier(difficulty, tiers)
     equation_type = str(tier.get("equation_type", "single_step_isolation"))
     tier_id = str(tier.get("tier_id", "tier_1"))

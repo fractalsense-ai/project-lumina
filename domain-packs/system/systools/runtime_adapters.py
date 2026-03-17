@@ -1,7 +1,26 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, Callable
+
+log = logging.getLogger("lumina-system-adapter")
+
+# Ordered mapping: query_type → resolved action name.
+_QUERY_TYPE_ACTION_MAP: dict[str, str] = {
+    "admin_command": "system_command",
+    "status_query": "system_status",
+    "diagnostic": "system_diagnostic",
+    "config_review": "system_config_review",
+    "out_of_domain": "out_of_domain",
+    "glossary_lookup": "system_general",
+    "general": "system_general",
+}
+
+# query_types that are candidates for structured command dispatch.
+_COMMAND_DISPATCH_TYPES: frozenset[str] = frozenset(
+    {"admin_command", "status_query", "config_review", "diagnostic"}
+)
 
 
 def build_system_state(
@@ -30,16 +49,28 @@ def system_domain_step(
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Advance the system-domain session state by one turn.
 
-    No domain-specific model updates are needed — the system domain is
-    conversational only.  Returns the incremented state and a neutral action dict.
+    Maps the classified query_type to a concrete action code so the orchestrator
+    can select the appropriate prompt template instead of defaulting to
+    ``task_presentation``.
     """
     new_state = dict(state)
     new_state["turn_count"] = int(new_state.get("turn_count", 0)) + 1
+
+    query_type: str = evidence.get("query_type") or "general"
+    has_command_dispatch = bool(evidence.get("command_dispatch"))
+
+    # A resolved structured command dispatch takes precedence over query_type.
+    if has_command_dispatch:
+        resolved_action = "system_command"
+    else:
+        resolved_action = _QUERY_TYPE_ACTION_MAP.get(query_type, "system_general")
+
     action: dict[str, Any] = {
         "tier": "ok",
-        "action": None,
-        "query_type": evidence.get("query_type", "general"),
+        "action": resolved_action,
+        "query_type": query_type,
         "target_component": evidence.get("target_component"),
+        "command_dispatch": evidence.get("command_dispatch"),
     }
     return new_state, action
 
@@ -60,8 +91,13 @@ def interpret_turn_input(
     prompt_text: str,
     default_fields: dict[str, Any] | None = None,
     tool_fns: dict[str, Callable[..., Any]] | None = None,
+    call_slm: Callable[..., Any] | None = None,
 ) -> dict[str, Any]:
-    """Classify the operator's message into a structured evidence dict."""
+    """Classify the operator's message into a structured evidence dict.
+
+    ``call_llm`` is expected to be the SLM callable for local-only domains;
+    ``call_slm`` is accepted as an alias and also used for command dispatch.
+    """
     raw_response = call_llm(
         system=prompt_text,
         user=f"Operator message: {input_text}",
@@ -82,5 +118,23 @@ def interpret_turn_input(
     for key, default_val in defaults.items():
         if key not in evidence or evidence[key] is None:
             evidence[key] = default_val
+
+    # Attempt structured command dispatch for query types that warrant it.
+    # Prefer call_slm alias when provided so the caller can pass the same fn
+    # without duplicating it; fall back to the _slm module helper.
+    _dispatch_callable = call_slm or call_llm
+    if evidence.get("query_type") in _COMMAND_DISPATCH_TYPES:
+        try:
+            from lumina.core.slm import slm_available, slm_parse_admin_command  # noqa: PLC0415
+
+            if slm_available():
+                evidence["command_dispatch"] = slm_parse_admin_command(input_text)
+            else:
+                evidence["command_dispatch"] = None
+        except Exception:  # noqa: BLE001
+            log.debug("command dispatch unavailable for input %r", input_text[:80])
+            evidence["command_dispatch"] = None
+    else:
+        evidence["command_dispatch"] = None
 
     return evidence

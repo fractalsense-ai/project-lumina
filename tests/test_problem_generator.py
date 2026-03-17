@@ -77,19 +77,19 @@ class TestSelectTier:
 class TestGenerateTier1:
 
     def test_equation_format(self):
-        problem = generate_problem(0.2, TIERS)
+        problem = generate_problem(0.2, {"equation_difficulty_tiers": TIERS})
         assert re.match(r"^x \+ \d+ = \d+$", problem["equation"])
 
     def test_integer_solution(self):
         for _ in range(20):
-            p = generate_problem(0.1, TIERS)
+            p = generate_problem(0.1, {"equation_difficulty_tiers": TIERS})
             # expected_answer is "x = <int>"
             answer_val = int(p["expected_answer"].split("=")[1].strip())
             assert answer_val >= 1
 
     def test_equation_is_correct(self):
         for _ in range(20):
-            p = generate_problem(0.2, TIERS)
+            p = generate_problem(0.2, {"equation_difficulty_tiers": TIERS})
             # parse: x + a = b  →  answer = b - a
             m = re.match(r"^x \+ (\d+) = (\d+)$", p["equation"])
             assert m, f"Unexpected format: {p['equation']}"
@@ -98,7 +98,7 @@ class TestGenerateTier1:
             assert answer == b - a
 
     def test_metadata(self):
-        p = generate_problem(0.15, TIERS)
+        p = generate_problem(0.15, {"equation_difficulty_tiers": TIERS})
         assert p["equation_type"] == "single_step_isolation"
         assert p["difficulty_tier"] == "tier_1"
         assert p["target_variable"] == "x"
@@ -111,18 +111,18 @@ class TestGenerateTier1:
 class TestGenerateTier2:
 
     def test_equation_format(self):
-        problem = generate_problem(0.5, TIERS)
+        problem = generate_problem(0.5, {"equation_difficulty_tiers": TIERS})
         assert re.match(r"^\d+x = \d+$", problem["equation"])
 
     def test_integer_solution(self):
         for _ in range(20):
-            p = generate_problem(0.5, TIERS)
+            p = generate_problem(0.5, {"equation_difficulty_tiers": TIERS})
             answer_val = int(p["expected_answer"].split("=")[1].strip())
             assert answer_val >= 1
 
     def test_equation_is_correct(self):
         for _ in range(20):
-            p = generate_problem(0.45, TIERS)
+            p = generate_problem(0.45, {"equation_difficulty_tiers": TIERS})
             m = re.match(r"^(\d+)x = (\d+)$", p["equation"])
             assert m, f"Unexpected format: {p['equation']}"
             a, b = int(m.group(1)), int(m.group(2))
@@ -131,7 +131,7 @@ class TestGenerateTier2:
             assert b % a == 0  # solution must be exact integer
 
     def test_metadata(self):
-        p = generate_problem(0.5, TIERS)
+        p = generate_problem(0.5, {"equation_difficulty_tiers": TIERS})
         assert p["equation_type"] == "variable_consolidation"
         assert p["difficulty_tier"] == "tier_2"
 
@@ -142,18 +142,18 @@ class TestGenerateTier2:
 class TestGenerateTier3:
 
     def test_equation_format(self):
-        problem = generate_problem(0.8, TIERS)
+        problem = generate_problem(0.8, {"equation_difficulty_tiers": TIERS})
         assert re.match(r"^\d+x [+-] \d+ = -?\d+$", problem["equation"])
 
     def test_integer_solution(self):
         for _ in range(30):
-            p = generate_problem(0.8, TIERS)
+            p = generate_problem(0.8, {"equation_difficulty_tiers": TIERS})
             answer_val = int(p["expected_answer"].split("=")[1].strip())
             assert answer_val >= 1
 
     def test_equation_is_correct(self):
         for _ in range(30):
-            p = generate_problem(0.75, TIERS)
+            p = generate_problem(0.75, {"equation_difficulty_tiers": TIERS})
             eq = p["equation"]
             answer = int(p["expected_answer"].split("=")[1].strip())
 
@@ -170,6 +170,6 @@ class TestGenerateTier3:
                 pytest.fail(f"Unexpected format: {eq}")
 
     def test_metadata(self):
-        p = generate_problem(0.8, TIERS)
+        p = generate_problem(0.8, {"equation_difficulty_tiers": TIERS})
         assert p["equation_type"] == "multi_step_linear"
         assert p["difficulty_tier"] == "tier_3"
