@@ -293,3 +293,173 @@ class TestDomainStepLatencyMapping:
         # solve_elapsed_sec defaults to 0.0 in fluency_monitor_step → counts as fast
         new_state, decision = domain_step(state, TASK_SPEC, evidence, PARAMS)
         assert decision["fluency"]["fluency_bottleneck"] is False
+
+
+# ===========================================================================
+# 6. task_complete LLM payload — answered-problem / next-problem separation
+# ===========================================================================
+
+class TestTaskCompletePayloadSeparation:
+    """process_message must pass the answered problem (not the new one) in
+    llm_payload['current_problem'] when a new problem is generated on
+    task_complete.  The newly generated problem is passed separately as
+    llm_payload['next_problem']."""
+
+    _OLD_PROBLEM = {"equation": "6x = 90", "target_variable": "x", "expected_answer": "x = 15"}
+    _NEW_PROBLEM = {"equation": "7x = 98", "target_variable": "x", "expected_answer": "x = 14"}
+
+    def _make_session(self) -> dict[str, Any]:
+        mock_orch = MagicMock()
+        mock_orch.state = SimpleNamespace(world_sim_theme={}, mud_world_state={})
+        mock_orch.last_domain_lib_decision = {}
+        mock_orch.process_turn.return_value = (
+            {
+                "prompt_type": "task_complete",
+                "domain_pack_id": "edu",
+                "domain_pack_version": "1",
+                "task_id": "t1",
+                "task_nominal_difficulty": 0.5,
+                "skills_targeted": [],
+                "theme": None,
+                "standing_order_trigger": None,
+                "references": [],
+                "grounded": True,
+            },
+            "task_complete",
+        )
+        mock_orch.ctl_records = []
+        mock_orch.get_standing_order_attempts.return_value = {}
+        mock_orch.append_provenance_trace.return_value = None
+        return {
+            "orchestrator": mock_orch,
+            "task_spec": {"task_id": "t1", "nominal_difficulty": 0.5, "skills_required": []},
+            "current_problem": dict(self._OLD_PROBLEM),
+            "turn_count": 0,
+            "domain_id": "education",
+            "problem_presented_at": 1_000_000.0,
+        }
+
+    def _make_runtime_with_generator(self, new_problem: dict[str, Any]) -> dict[str, Any]:
+        """Runtime that includes a problem generator returning new_problem."""
+        def _generate_problem(difficulty, domain):
+            return new_problem
+
+        return {
+            "system_prompt": "sys",
+            "domain": {
+                "id": "edu",
+                "version": "1",
+                "glossary": [],
+                "subsystem_configs": {
+                    "equation_difficulty_tiers": [
+                        {"tier_id": "tier_2", "min_difficulty": 0.35, "max_difficulty": 0.65},
+                    ],
+                },
+            },
+            "runtime_provenance": {},
+            "turn_input_schema": {},
+            "turn_input_defaults": {},
+            "slm_weight_overrides": {},
+            "tool_fns": {"generate_problem": _generate_problem},
+            "action_prompt_type_map": {},
+            "deterministic_templates": {},
+            "local_only": False,
+        }
+
+    def _make_runtime_no_generator(self) -> dict[str, Any]:
+        """Runtime without a problem generator (no advancement possible)."""
+        return {
+            "system_prompt": "sys",
+            "domain": {"id": "edu", "version": "1", "glossary": []},
+            "runtime_provenance": {},
+            "turn_input_schema": {},
+            "turn_input_defaults": {},
+            "slm_weight_overrides": {},
+            "tool_fns": None,
+            "action_prompt_type_map": {},
+            "deterministic_templates": {},
+            "local_only": False,
+        }
+
+    def _call_process_message(
+        self, session: dict[str, Any], runtime: dict[str, Any], problem_solved: bool
+    ) -> dict[str, Any]:
+        """Run process_message and return the kwargs passed to call_llm."""
+        from lumina.api import processing as proc
+
+        captured: dict[str, Any] = {}
+
+        def fake_llm(system: str, user: str, **kw) -> str:
+            import json as _json
+            captured["payload"] = _json.loads(user)
+            return "Great work!"
+
+        with (
+            patch.object(proc, "get_or_create_session", return_value=session),
+            patch.object(proc._cfg.DOMAIN_REGISTRY, "get_runtime_context", return_value=runtime),
+            patch.object(proc, "detect_glossary_query", return_value=None),
+            patch.object(
+                proc,
+                "interpret_turn_input",
+                return_value={
+                    "correctness": "correct",
+                    "problem_solved": problem_solved,
+                    "off_task_ratio": 0.0,
+                },
+            ),
+            patch.object(proc, "slm_available", return_value=False),
+            patch.object(proc, "call_llm", side_effect=fake_llm),
+            patch.object(proc, "normalize_turn_data", side_effect=lambda d, _s: d),
+            patch.object(proc, "apply_tool_call_policy", return_value=None),
+            patch.object(proc, "strip_latex_delimiters", side_effect=lambda s: s),
+            patch("lumina.api.processing.time") as mock_time,
+        ):
+            mock_time.time.side_effect = [1_000_010.0, 1_000_012.0]
+            proc.process_message("sess-payload", "6/6x = 90/6 so x = 15")
+
+        return captured.get("payload", {})
+
+    @pytest.mark.unit
+    def test_answered_problem_used_for_current_problem_in_payload(self):
+        """When problem is solved and a new problem generated, current_problem in the
+        LLM payload must be the answered problem — not the new generated problem."""
+        session = self._make_session()
+        runtime = self._make_runtime_with_generator(self._NEW_PROBLEM)
+
+        payload = self._call_process_message(session, runtime, problem_solved=True)
+
+        assert payload.get("current_problem") == self._OLD_PROBLEM, (
+            f"LLM payload current_problem should be the answered problem ({self._OLD_PROBLEM}), "
+            f"but got: {payload.get('current_problem')}"
+        )
+
+    @pytest.mark.unit
+    def test_next_problem_present_when_new_problem_generated(self):
+        """When a new problem is generated, llm_payload must contain a next_problem key
+        holding the new problem so the LLM can introduce it."""
+        session = self._make_session()
+        runtime = self._make_runtime_with_generator(self._NEW_PROBLEM)
+
+        payload = self._call_process_message(session, runtime, problem_solved=True)
+
+        assert "next_problem" in payload, (
+            "next_problem must be present in LLM payload when a new problem was generated"
+        )
+        assert payload["next_problem"] == self._NEW_PROBLEM, (
+            f"next_problem should be the newly generated problem ({self._NEW_PROBLEM}), "
+            f"but got: {payload.get('next_problem')}"
+        )
+
+    @pytest.mark.unit
+    def test_no_next_problem_when_no_advancement(self):
+        """When the problem is NOT solved (no advancement), next_problem must not appear
+        in the LLM payload."""
+        session = self._make_session()
+        runtime = self._make_runtime_no_generator()
+
+        payload = self._call_process_message(session, runtime, problem_solved=False)
+
+        assert "next_problem" not in payload, (
+            f"next_problem should not be present when there was no problem advancement, "
+            f"but payload keys are: {list(payload.keys())}"
+        )

@@ -34,6 +34,12 @@ SLM_ENDPOINT: str = os.environ.get("LUMINA_SLM_ENDPOINT", "http://localhost:1143
 SLM_TIMEOUT: float = float(os.environ.get("LUMINA_SLM_TIMEOUT", "60"))
 SLM_TEMPERATURE: float = 0.2
 SLM_MAX_TOKENS: int = 512
+# Physics interpretation needs larger output budget because the SLM must emit
+# a complete JSON document enumerating matched invariants, standing orders, and
+# a context summary.  Small models (e.g. gemma3:1b) truncate at 512 tokens,
+# producing unterminated JSON strings.  This limit is applied only for that
+# one call-site; all other SLM call-sites still use SLM_MAX_TOKENS.
+SLM_PHYSICS_MAX_TOKENS: int = int(os.environ.get("LUMINA_SLM_PHYSICS_MAX_TOKENS", "2048"))
 
 
 # ─────────────────────────────────────────────────────────────
@@ -100,7 +106,7 @@ def classify_task_weight(
 # ─────────────────────────────────────────────────────────────
 
 
-def _call_local_slm(system: str, user: str, model: str | None = None) -> str:
+def _call_local_slm(system: str, user: str, model: str | None = None, max_tokens: int | None = None) -> str:
     """Call a local Ollama-compatible endpoint (OpenAI chat format)."""
     try:
         import httpx
@@ -118,7 +124,7 @@ def _call_local_slm(system: str, user: str, model: str | None = None) -> str:
             {"role": "user", "content": user},
         ],
         "temperature": SLM_TEMPERATURE,
-        "max_tokens": SLM_MAX_TOKENS,
+        "max_tokens": max_tokens if max_tokens is not None else SLM_MAX_TOKENS,
     }
 
     resp = httpx.post(url, json=payload, timeout=SLM_TIMEOUT)
@@ -127,7 +133,7 @@ def _call_local_slm(system: str, user: str, model: str | None = None) -> str:
     return data["choices"][0]["message"]["content"] or ""
 
 
-def _call_openai_slm(system: str, user: str, model: str | None = None) -> str:
+def _call_openai_slm(system: str, user: str, model: str | None = None, max_tokens: int | None = None) -> str:
     try:
         from openai import OpenAI
     except ImportError:
@@ -141,12 +147,12 @@ def _call_openai_slm(system: str, user: str, model: str | None = None) -> str:
             {"role": "user", "content": user},
         ],
         temperature=SLM_TEMPERATURE,
-        max_tokens=SLM_MAX_TOKENS,
+        max_tokens=max_tokens if max_tokens is not None else SLM_MAX_TOKENS,
     )
     return response.choices[0].message.content or ""
 
 
-def _call_anthropic_slm(system: str, user: str, model: str | None = None) -> str:
+def _call_anthropic_slm(system: str, user: str, model: str | None = None, max_tokens: int | None = None) -> str:
     try:
         from anthropic import Anthropic
     except ImportError:
@@ -158,7 +164,7 @@ def _call_anthropic_slm(system: str, user: str, model: str | None = None) -> str
         system=system,
         messages=[{"role": "user", "content": user}],
         temperature=SLM_TEMPERATURE,
-        max_tokens=SLM_MAX_TOKENS,
+        max_tokens=max_tokens if max_tokens is not None else SLM_MAX_TOKENS,
     )
     return response.content[0].text
 
@@ -208,17 +214,24 @@ def slm_available() -> bool:
     return bool(os.environ.get("OPENAI_API_KEY"))
 
 
-def call_slm(system: str, user: str, model: str | None = None) -> str:
+def call_slm(system: str, user: str, model: str | None = None, max_tokens: int | None = None) -> str:
     """Send a request to the configured SLM provider.
 
     Raises ``RuntimeError`` on configuration or transport errors.
+
+    Parameters
+    ----------
+    max_tokens:
+        Override the default ``SLM_MAX_TOKENS`` cap for this call.  Useful
+        for calls that require a larger output budget (e.g. physics context
+        interpretation which must emit a complete JSON document).
     """
     _validate_slm_provider(SLM_PROVIDER)
     if SLM_PROVIDER == "local":
-        return _call_local_slm(system, user, model)
+        return _call_local_slm(system, user, model, max_tokens=max_tokens)
     if SLM_PROVIDER == "anthropic":
-        return _call_anthropic_slm(system, user, model)
-    return _call_openai_slm(system, user, model)
+        return _call_anthropic_slm(system, user, model, max_tokens=max_tokens)
+    return _call_openai_slm(system, user, model, max_tokens=max_tokens)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -297,7 +310,11 @@ def slm_interpret_physics_context(
     )
 
     try:
-        raw = call_slm(system=build_system_prompt(PersonaContext.PHYSICS_INTERPRETER), user=user_payload)
+        raw = call_slm(
+            system=build_system_prompt(PersonaContext.PHYSICS_INTERPRETER),
+            user=user_payload,
+            max_tokens=SLM_PHYSICS_MAX_TOKENS,
+        )
         # Strip markdown fences if present.
         text = raw.strip()
         if text.startswith("```"):

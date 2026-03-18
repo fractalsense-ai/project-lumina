@@ -13,6 +13,7 @@ import pytest
 
 from lumina.core.slm import (
     ADMIN_OPERATIONS,
+    SLM_PHYSICS_MAX_TOKENS,
     TaskWeight,
     _empty_physics_context,
     call_slm,
@@ -167,7 +168,7 @@ class TestCallSlm:
     def test_local_dispatch(self, _validate: Any, mock_local: MagicMock) -> None:
         result = call_slm("system prompt", "user message")
         assert result == "local response"
-        mock_local.assert_called_once_with("system prompt", "user message", None)
+        mock_local.assert_called_once_with("system prompt", "user message", None, max_tokens=None)
 
     @pytest.mark.unit
     @patch("lumina.core.slm.SLM_PROVIDER", "openai")
@@ -176,7 +177,7 @@ class TestCallSlm:
     def test_openai_dispatch(self, _validate: Any, mock_openai: MagicMock) -> None:
         result = call_slm("system prompt", "user message")
         assert result == "openai response"
-        mock_openai.assert_called_once_with("system prompt", "user message", None)
+        mock_openai.assert_called_once_with("system prompt", "user message", None, max_tokens=None)
 
     @pytest.mark.unit
     @patch("lumina.core.slm.SLM_PROVIDER", "anthropic")
@@ -185,7 +186,7 @@ class TestCallSlm:
     def test_anthropic_dispatch(self, _validate: Any, mock_anthropic: MagicMock) -> None:
         result = call_slm("system prompt", "user message")
         assert result == "anthropic response"
-        mock_anthropic.assert_called_once_with("system prompt", "user message", None)
+        mock_anthropic.assert_called_once_with("system prompt", "user message", None, max_tokens=None)
 
     @pytest.mark.unit
     @patch("lumina.core.slm.SLM_PROVIDER", "local")
@@ -193,7 +194,16 @@ class TestCallSlm:
     @patch("lumina.core.slm._validate_slm_provider")
     def test_custom_model_passed_through(self, _validate: Any, mock_local: MagicMock) -> None:
         call_slm("sys", "usr", model="custom-model")
-        mock_local.assert_called_once_with("sys", "usr", "custom-model")
+        mock_local.assert_called_once_with("sys", "usr", "custom-model", max_tokens=None)
+
+    @pytest.mark.unit
+    @patch("lumina.core.slm.SLM_PROVIDER", "local")
+    @patch("lumina.core.slm._call_local_slm", return_value="response")
+    @patch("lumina.core.slm._validate_slm_provider")
+    def test_max_tokens_forwarded_to_local(self, _validate: Any, mock_local: MagicMock) -> None:
+        """max_tokens kwarg must be threaded through to the provider function."""
+        call_slm("sys", "usr", max_tokens=2048)
+        mock_local.assert_called_once_with("sys", "usr", None, max_tokens=2048)
 
 
 # ── Provider Validation ──────────────────────────────────────────────────────
@@ -418,6 +428,33 @@ class TestPhysicsInterpretation:
             domain_physics={},
         )
         assert result == _empty_physics_context()
+
+    @pytest.mark.unit
+    @patch("lumina.core.slm.call_slm", return_value='{"matched_invariants": ["inv1"],')
+    def test_fallback_on_truncated_json(self, mock_call: MagicMock) -> None:
+        """Truncated JSON (e.g. from SLM hitting max_tokens) returns empty context."""
+        result = slm_interpret_physics_context(
+            incoming_signals={},
+            domain_physics={},
+        )
+        assert result == _empty_physics_context()
+
+    @pytest.mark.unit
+    @patch("lumina.core.slm.call_slm")
+    def test_physics_interpretation_uses_extended_token_budget(self, mock_call: MagicMock) -> None:
+        """slm_interpret_physics_context must pass SLM_PHYSICS_MAX_TOKENS, not SLM_MAX_TOKENS."""
+        mock_call.return_value = json.dumps({
+            "matched_invariants": [],
+            "applicable_standing_orders": [],
+            "relevant_glossary_terms": [],
+            "context_summary": "",
+            "suggested_evidence_fields": {},
+        })
+        slm_interpret_physics_context(incoming_signals={}, domain_physics={})
+        call_kwargs = mock_call.call_args[1]
+        assert call_kwargs.get("max_tokens") == SLM_PHYSICS_MAX_TOKENS, (
+            f"Expected max_tokens={SLM_PHYSICS_MAX_TOKENS}, got {call_kwargs.get('max_tokens')}"
+        )
 
 
 # ── Admin Command Parsing ─────────────────────────────────────────────────────
