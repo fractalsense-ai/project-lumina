@@ -363,3 +363,133 @@ class TestCtlQueries:
         ).json()["access_token"]
         resp = client.get("/api/ctl/sessions", headers=_auth_header(user_token))
         assert resp.status_code == 403
+
+
+# ─────────────────────────────────────────────────────────────
+# Phase 4: Domain Roles on User Update
+# ─────────────────────────────────────────────────────────────
+
+
+@pytest.mark.integration
+class TestUpdateUserDomainRoles:
+    def test_root_can_assign_domain_roles(self, client: TestClient) -> None:
+        root_token = _register_root(client)
+        user = _register_user(client, "bob")
+        resp = client.patch(
+            f"/api/auth/users/{user['user_id']}",
+            json={"domain_roles": {"education": "supervisor"}},
+            headers=_auth_header(root_token),
+        )
+        assert resp.status_code == 200
+
+    def test_domain_roles_persisted_after_update(self, client: TestClient, api_module) -> None:
+        root_token = _register_root(client)
+        user = _register_user(client, "carol")
+        client.patch(
+            f"/api/auth/users/{user['user_id']}",
+            json={"domain_roles": {"education": "employee"}},
+            headers=_auth_header(root_token),
+        )
+        stored = api_module.PERSISTENCE.get_user(user["user_id"])
+        assert stored is not None
+        assert stored.get("domain_roles", {}).get("education") == "employee"
+
+    def test_domain_roles_merge_on_second_update(self, client: TestClient, api_module) -> None:
+        root_token = _register_root(client)
+        user = _register_user(client, "dave")
+        client.patch(
+            f"/api/auth/users/{user['user_id']}",
+            json={"domain_roles": {"education": "supervisor"}},
+            headers=_auth_header(root_token),
+        )
+        client.patch(
+            f"/api/auth/users/{user['user_id']}",
+            json={"domain_roles": {"agriculture": "employee"}},
+            headers=_auth_header(root_token),
+        )
+        stored = api_module.PERSISTENCE.get_user(user["user_id"])
+        assert stored is not None
+        assert stored["domain_roles"].get("education") == "supervisor"
+        assert stored["domain_roles"].get("agriculture") == "employee"
+
+    def test_domain_roles_in_jwt_after_login(self, client: TestClient) -> None:
+        from lumina.auth.auth import verify_jwt
+
+        root_token = _register_root(client)
+        user = _register_user(client, "eve")
+        client.patch(
+            f"/api/auth/users/{user['user_id']}",
+            json={"domain_roles": {"education": "supervisor"}},
+            headers=_auth_header(root_token),
+        )
+        login_resp = client.post(
+            "/api/auth/login",
+            json={"username": "eve", "password": "test-pass-123"},
+        )
+        assert login_resp.status_code == 200
+        token = login_resp.json()["access_token"]
+        claims = verify_jwt(token)
+        assert claims is not None
+        assert claims.get("domain_roles", {}).get("education") == "supervisor"
+
+
+# ─────────────────────────────────────────────────────────────
+# Phase 5: Audit Log Scoping
+# ─────────────────────────────────────────────────────────────
+
+
+@pytest.mark.integration
+class TestAuditLogScoping:
+    def test_da_without_governed_modules_gets_403(self, client: TestClient) -> None:
+        root_token = _register_root(client)
+        user = _register_user(client, "da-user")
+        # Promote to domain_authority with NO governed_modules
+        client.patch(
+            f"/api/auth/users/{user['user_id']}",
+            json={"role": "domain_authority"},
+            headers=_auth_header(root_token),
+        )
+        da_token = client.post(
+            "/api/auth/login",
+            json={"username": "da-user", "password": "test-pass-123"},
+        ).json()["access_token"]
+        resp = client.get("/api/audit/log", headers=_auth_header(da_token))
+        assert resp.status_code == 403
+
+    def test_guest_role_gets_403(self, client: TestClient) -> None:
+        resp = client.get("/api/auth/guest-token")
+        guest_token = resp.json()["access_token"]
+        resp = client.get("/api/audit/log", headers=_auth_header(guest_token))
+        assert resp.status_code == 403
+
+
+# ─────────────────────────────────────────────────────────────
+# Phase 6: Staged Commands List
+# ─────────────────────────────────────────────────────────────
+
+
+@pytest.mark.integration
+class TestStagedCommandsList:
+    def test_unauthenticated_returns_401(self, client: TestClient) -> None:
+        resp = client.get("/api/admin/command/staged")
+        assert resp.status_code == 401
+
+    def test_user_role_returns_403(self, client: TestClient) -> None:
+        _register_root(client)
+        _register_user(client, "bob")
+        user_token = client.post(
+            "/api/auth/login",
+            json={"username": "bob", "password": "test-pass-123"},
+        ).json()["access_token"]
+        resp = client.get("/api/admin/command/staged", headers=_auth_header(user_token))
+        assert resp.status_code == 403
+
+    def test_root_sees_empty_staged_list_initially(self, client: TestClient) -> None:
+        root_token = _register_root(client)
+        resp = client.get("/api/admin/command/staged", headers=_auth_header(root_token))
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["total"] == 0
+        assert body["staged_commands"] == []
+        assert "limit" in body
+        assert "offset" in body

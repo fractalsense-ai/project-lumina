@@ -16,6 +16,8 @@ from lumina.ctl.admin_operations import (
     _canonical_sha256,
     _utc_now_iso,
     build_commitment_record,
+    build_domain_role_assignment,
+    build_domain_role_revocation,
     build_trace_event,
     can_govern_domain,
     map_role_to_actor_role,
@@ -212,3 +214,79 @@ def test_map_role_to_actor_role_known_roles() -> None:
 def test_map_role_to_actor_role_unknown_defaults_to_system() -> None:
     assert map_role_to_actor_role("unknown-role") == "system"
     assert map_role_to_actor_role("") == "system"
+
+
+# ── build_domain_role_assignment ──────────────────────────────────────────────
+
+
+@pytest.mark.unit
+def test_build_domain_role_assignment_minimal() -> None:
+    rec = build_domain_role_assignment(
+        actor_id="admin-001",
+        actor_role="administration",
+        target_user_id="user-abc",
+        module_id="education",
+        domain_role="supervisor",
+    )
+    assert rec["record_type"] == "CommitmentRecord"
+    assert rec["commitment_type"] == "domain_role_assignment"
+    assert rec["subject_id"] == "user-abc"
+    assert "education" in rec["summary"]
+    assert "supervisor" in rec["summary"]
+    meta = rec["metadata"]
+    assert meta["target_user_id"] == "user-abc"
+    assert meta["module_id"] == "education"
+    assert meta["domain_role"] == "supervisor"
+    assert rec["prev_record_hash"] == "genesis"
+    assert "record_id" in rec
+    assert "timestamp_utc" in rec
+
+
+@pytest.mark.unit
+def test_build_domain_role_assignment_custom_prev_hash() -> None:
+    rec = build_domain_role_assignment(
+        actor_id="admin-001",
+        actor_role="administration",
+        target_user_id="user-abc",
+        module_id="education",
+        domain_role="employee",
+        prev_record_hash="deadbeef12345",
+    )
+    assert rec["prev_record_hash"] == "deadbeef12345"
+
+
+# ── build_domain_role_revocation ──────────────────────────────────────────────
+
+
+@pytest.mark.unit
+def test_build_domain_role_revocation_minimal() -> None:
+    rec = build_domain_role_revocation(
+        actor_id="admin-001",
+        actor_role="administration",
+        target_user_id="user-abc",
+        module_id="education",
+        prev_role="supervisor",
+    )
+    assert rec["record_type"] == "CommitmentRecord"
+    assert rec["commitment_type"] == "domain_role_revocation"
+    assert rec["subject_id"] == "user-abc"
+    assert "supervisor" in rec["summary"]
+    assert "education" in rec["summary"]
+    meta = rec["metadata"]
+    assert meta["target_user_id"] == "user-abc"
+    assert meta["module_id"] == "education"
+    assert meta["prev_role"] == "supervisor"
+    assert rec["prev_record_hash"] == "genesis"
+
+
+@pytest.mark.unit
+def test_build_domain_role_revocation_custom_prev_hash() -> None:
+    rec = build_domain_role_revocation(
+        actor_id="admin-001",
+        actor_role="administration",
+        target_user_id="user-abc",
+        module_id="education",
+        prev_role="employee",
+        prev_record_hash="abc999xyz",
+    )
+    assert rec["prev_record_hash"] == "abc999xyz"

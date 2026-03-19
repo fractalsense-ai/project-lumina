@@ -101,6 +101,7 @@ class UserResponse(BaseModel):
 class UpdateUserRequest(BaseModel):
     role: str | None = None
     governed_modules: list[str] | None = None
+    domain_roles: dict[str, str] | None = None  # module_id → domain_role_id
 
 
 class RevokeRequest(BaseModel):
@@ -123,9 +124,16 @@ class DomainPhysicsUpdateRequest(BaseModel):
     summary: str
 
 
+class SessionUnlockRequest(BaseModel):
+    pin: str
+
+
 class EscalationResolveRequest(BaseModel):
     decision: str  # "approve", "reject", "defer"
     reasoning: str
+    generate_pin: bool = False          # generate OTP so child can self-unlock
+    intervention_notes: str | None = None  # teacher's description of what they did
+    generate_proposal: bool = False     # trigger domain-physics proposal from notes
 
 
 class AdminCommandRequest(BaseModel):

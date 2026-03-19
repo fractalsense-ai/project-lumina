@@ -112,6 +112,14 @@ class PersistenceAdapter(ABC):
         """Update stored password hash. Returns True if user found and updated."""
 
     @abstractmethod
+    def update_user_domain_roles(
+        self,
+        user_id: str,
+        domain_roles: dict[str, str],
+    ) -> dict[str, Any] | None:
+        """Merge domain_roles mapping into user record. Returns updated record (no password_hash) or None."""
+
+    @abstractmethod
     def query_ctl_records(
         self,
         session_id: str | None = None,
@@ -291,6 +299,15 @@ class NullPersistenceAdapter(PersistenceAdapter):
             return False
         self._users[user_id]["password_hash"] = new_hash
         return True
+
+    def update_user_domain_roles(self, user_id: str, domain_roles: dict[str, str]) -> dict[str, Any] | None:
+        self.__init_users()
+        if user_id not in self._users:
+            return None
+        existing = dict(self._users[user_id].get("domain_roles") or {})
+        existing.update(domain_roles)
+        self._users[user_id]["domain_roles"] = existing
+        return {k: v for k, v in self._users[user_id].items() if k != "password_hash"}
 
     def query_ctl_records(
         self,

@@ -29,6 +29,8 @@ from lumina.auth.auth import (
     verify_password,
 )
 from lumina.ctl.admin_operations import (
+    build_domain_role_assignment,
+    build_domain_role_revocation,
     build_trace_event,
     can_govern_domain,
     map_role_to_actor_role,
@@ -89,6 +91,7 @@ async def login(req: LoginRequest) -> TokenResponse:
         user_id=user["user_id"],
         role=user["role"],
         governed_modules=user.get("governed_modules") or [],
+        domain_roles=user.get("domain_roles") or {},
     )
     return TokenResponse(access_token=token, user_id=user["user_id"], role=user["role"])
 
@@ -115,6 +118,7 @@ async def refresh(
         user_id=user["user_id"],
         role=user["role"],
         governed_modules=user.get("governed_modules") or [],
+        domain_roles=user.get("domain_roles") or {},
     )
     return TokenResponse(access_token=token, user_id=user["user_id"], role=user["role"])
 
@@ -191,6 +195,44 @@ async def update_user(
     updated = await run_in_threadpool(_cfg.PERSISTENCE.update_user_role, user_id, new_role, new_governed)
     if updated is None:
         raise HTTPException(status_code=404, detail="User not found")
+
+    if req.domain_roles is not None:
+        dr_updated = await run_in_threadpool(
+            _cfg.PERSISTENCE.update_user_domain_roles, user_id, req.domain_roles
+        )
+        if dr_updated is not None:
+            updated = dr_updated
+        for module_id, domain_role in req.domain_roles.items():
+            prev_role = (target.get("domain_roles") or {}).get(module_id)
+            if prev_role and prev_role != domain_role:
+                record = build_domain_role_revocation(
+                    actor_id=user_data["sub"],
+                    actor_role=map_role_to_actor_role(user_data["role"]),
+                    target_user_id=user_id,
+                    module_id=module_id,
+                    prev_role=prev_role,
+                )
+                try:
+                    _cfg.PERSISTENCE.append_ctl_record(
+                        "admin", record,
+                        ledger_path=_cfg.PERSISTENCE.get_ctl_ledger_path("admin", domain_id="_admin"),
+                    )
+                except Exception:
+                    log.debug("Could not write domain_role_revocation CTL record")
+            record = build_domain_role_assignment(
+                actor_id=user_data["sub"],
+                actor_role=map_role_to_actor_role(user_data["role"]),
+                target_user_id=user_id,
+                module_id=module_id,
+                domain_role=domain_role,
+            )
+            try:
+                _cfg.PERSISTENCE.append_ctl_record(
+                    "admin", record,
+                    ledger_path=_cfg.PERSISTENCE.get_ctl_ledger_path("admin", domain_id="_admin"),
+                )
+            except Exception:
+                log.debug("Could not write domain_role_assignment CTL record")
 
     if new_role != old_role:
         event = build_trace_event(

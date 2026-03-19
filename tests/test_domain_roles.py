@@ -9,6 +9,10 @@ Covers:
 """
 from __future__ import annotations
 
+import importlib.util
+import sys
+from pathlib import Path
+
 import pytest
 
 from lumina.auth import auth
@@ -423,6 +427,354 @@ class TestAgricultureDomainRoles:
             domain_role="observer",
             domain_roles_config=AGRI_DOMAIN_ROLES,
         )
+
+
+# ===========================================================================
+# Phase 2 — Domain Roles core helper + API endpoint tests
+# ===========================================================================
+
+from fastapi.testclient import TestClient
+
+from lumina.persistence.adapter import NullPersistenceAdapter
+from lumina.core.yaml_loader import load_yaml as _load_yaml
+
+_REPO_ROOT_DR = Path(__file__).resolve().parents[1]
+
+
+def _load_api_module_dr():
+    module_path = _REPO_ROOT_DR / "src" / "lumina" / "api" / "server.py"
+    module_name = "lumina.api.server"
+    spec = importlib.util.spec_from_file_location(module_name, str(module_path))
+    if spec is None or spec.loader is None:
+        raise RuntimeError("Could not load lumina-api-server module")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+@pytest.fixture
+def dr_api_module(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("LUMINA_RUNTIME_CONFIG_PATH", "domain-packs/education/cfg/runtime-config.yaml")
+    monkeypatch.delenv("LUMINA_DOMAIN_REGISTRY_PATH", raising=False)
+    mod = _load_api_module_dr()
+    mod.PERSISTENCE = NullPersistenceAdapter()
+    mod.BOOTSTRAP_MODE = True
+    mod._session_containers.clear()
+    monkeypatch.setattr(auth, "JWT_SECRET", "test-secret-dr")
+    mod.PERSISTENCE.load_subject_profile = _load_yaml
+    return mod
+
+
+@pytest.fixture
+def dr_client(dr_api_module):
+    return TestClient(dr_api_module.app)
+
+
+def _dr_register_root(client: TestClient) -> str:
+    resp = client.post(
+        "/api/auth/register",
+        json={"username": "admin_dr", "password": "test-pass-123", "role": "user"},
+    )
+    assert resp.status_code == 200
+    return resp.json()["access_token"]
+
+
+def _dr_register_user(client: TestClient, username: str = "user_dr") -> dict:
+    resp = client.post(
+        "/api/auth/register",
+        json={"username": username, "password": "test-pass-123", "role": "user"},
+    )
+    assert resp.status_code == 200
+    return resp.json()
+
+
+def _dr_auth(token: str) -> dict:
+    return {"Authorization": f"Bearer {token}"}
+
+
+# ─────────────────────────────────────────────────────────────
+# Core helper unit tests
+# ─────────────────────────────────────────────────────────────
+
+
+@pytest.mark.unit
+class TestDomainRoleCoreHelpers:
+    """Tests for src/lumina/core/domain_roles.py helper functions."""
+
+    def test_get_default_role_defs_returns_list(self) -> None:
+        from lumina.core.domain_roles import get_default_role_defs
+
+        defs = get_default_role_defs()
+        assert isinstance(defs, list)
+        assert len(defs) >= 4
+
+    def test_default_role_defs_have_required_fields(self) -> None:
+        from lumina.core.domain_roles import get_default_role_defs
+
+        for defn in get_default_role_defs():
+            assert "role_id" in defn
+            assert "label" in defn
+            assert "tier_level" in defn
+            assert "default_access" in defn
+
+    def test_default_roles_ordered_by_tier_level(self) -> None:
+        from lumina.core.domain_roles import get_default_role_defs
+
+        levels = [d["tier_level"] for d in get_default_role_defs()]
+        assert levels == sorted(levels)
+
+    def test_get_default_role_defs_contains_all_four_tiers(self) -> None:
+        from lumina.core.domain_roles import get_default_role_defs
+
+        role_ids = {d["role_id"] for d in get_default_role_defs()}
+        for expected in ("supervisor", "employee", "user_member", "guest"):
+            assert expected in role_ids
+
+    def test_get_domain_role_def_known_role(self) -> None:
+        from lumina.core.domain_roles import get_domain_role_def
+
+        defn = get_domain_role_def("supervisor")
+        assert defn is not None
+        assert defn["role_id"] == "supervisor"
+        assert "r" in defn["default_access"]
+        assert "w" in defn["default_access"]
+
+    def test_get_domain_role_def_unknown_returns_none(self) -> None:
+        from lumina.core.domain_roles import get_domain_role_def
+
+        assert get_domain_role_def("nonexistent_role_xyz") is None
+
+    def test_check_scoped_capability_supervisor_write(self) -> None:
+        from lumina.core.domain_roles import check_scoped_capability
+
+        assert check_scoped_capability("supervisor", "w", {}) is True
+
+    def test_check_scoped_capability_guest_no_write(self) -> None:
+        from lumina.core.domain_roles import check_scoped_capability
+
+        assert check_scoped_capability("guest", "w", {}) is False
+
+    def test_check_scoped_capability_guest_read(self) -> None:
+        from lumina.core.domain_roles import check_scoped_capability
+
+        assert check_scoped_capability("guest", "r", {}) is True
+
+    def test_check_scoped_capability_unknown_role_false(self) -> None:
+        from lumina.core.domain_roles import check_scoped_capability
+
+        assert check_scoped_capability("phantom_role", "r", {}) is False
+
+    def test_get_active_role_defs_defaults_only(self) -> None:
+        from lumina.core.domain_roles import get_active_role_defs, get_default_role_defs
+
+        active_ids = {d["role_id"] for d in get_active_role_defs({})}
+        default_ids = {d["role_id"] for d in get_default_role_defs()}
+        assert default_ids.issubset(active_ids)
+
+    def test_get_active_role_defs_merges_domain_override(self) -> None:
+        from lumina.core.domain_roles import get_active_role_defs
+
+        physics = {
+            "domain_roles": {
+                "roles": [
+                    {
+                        "role_id": "supervisor",
+                        "label": "Department Head",
+                        "tier_level": 1,
+                        "default_access": "rwxi",
+                    }
+                ]
+            }
+        }
+        active = {d["role_id"]: d for d in get_active_role_defs(physics)}
+        assert active["supervisor"]["label"] == "Department Head"
+
+    def test_get_active_role_defs_adds_domain_only_role(self) -> None:
+        from lumina.core.domain_roles import get_active_role_defs
+
+        physics = {
+            "domain_roles": {
+                "roles": [
+                    {
+                        "role_id": "lab_assistant",
+                        "label": "Lab Assistant",
+                        "tier_level": 5,
+                        "default_access": "x",
+                    }
+                ]
+            }
+        }
+        active_ids = {d["role_id"] for d in get_active_role_defs(physics)}
+        assert "lab_assistant" in active_ids
+
+
+# ─────────────────────────────────────────────────────────────
+# API integration tests — /api/domain-roles/**
+# ─────────────────────────────────────────────────────────────
+
+
+@pytest.mark.integration
+class TestListDefaultRolesEndpoint:
+    def test_root_can_list_defaults(self, dr_client: TestClient) -> None:
+        root_token = _dr_register_root(dr_client)
+        resp = dr_client.get("/api/domain-roles/defaults", headers=_dr_auth(root_token))
+        assert resp.status_code == 200
+        roles = resp.json()
+        assert isinstance(roles, list)
+        role_ids = [r["role_id"] for r in roles]
+        for expected in ("supervisor", "employee", "user_member", "guest"):
+            assert expected in role_ids
+
+    def test_ordinary_user_gets_403(self, dr_client: TestClient) -> None:
+        _dr_register_root(dr_client)
+        user = _dr_register_user(dr_client, "plain_user_a")
+        token = dr_client.post(
+            "/api/auth/login",
+            json={"username": "plain_user_a", "password": "test-pass-123"},
+        ).json()["access_token"]
+        resp = dr_client.get("/api/domain-roles/defaults", headers=_dr_auth(token))
+        assert resp.status_code == 403
+
+    def test_unauthenticated_returns_401(self, dr_client: TestClient) -> None:
+        resp = dr_client.get("/api/domain-roles/defaults")
+        assert resp.status_code == 401
+
+
+@pytest.mark.integration
+class TestAssignDomainRoleEndpoint:
+    def test_root_can_assign_known_role(
+        self, dr_client: TestClient, dr_api_module
+    ) -> None:
+        root_token = _dr_register_root(dr_client)
+        user = _dr_register_user(dr_client, "carol_dr")
+        resp = dr_client.post(
+            "/api/domain-roles/education/assign",
+            json={"user_id": user["user_id"], "domain_role": "supervisor"},
+            headers=_dr_auth(root_token),
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["user_id"] == user["user_id"]
+        assert body["module_id"] == "education"
+        assert body["domain_role"] == "supervisor"
+        assert "record_id" in body
+
+    def test_unknown_domain_role_rejected(self, dr_client: TestClient) -> None:
+        root_token = _dr_register_root(dr_client)
+        user = _dr_register_user(dr_client, "dave_dr")
+        resp = dr_client.post(
+            "/api/domain-roles/education/assign",
+            json={"user_id": user["user_id"], "domain_role": "wizard"},
+            headers=_dr_auth(root_token),
+        )
+        assert resp.status_code == 400
+
+    def test_user_role_insufficient(self, dr_client: TestClient) -> None:
+        _dr_register_root(dr_client)
+        user = _dr_register_user(dr_client, "eve_dr")
+        token = dr_client.post(
+            "/api/auth/login",
+            json={"username": "eve_dr", "password": "test-pass-123"},
+        ).json()["access_token"]
+        resp = dr_client.post(
+            "/api/domain-roles/education/assign",
+            json={"user_id": user["user_id"], "domain_role": "supervisor"},
+            headers=_dr_auth(token),
+        )
+        assert resp.status_code == 403
+
+    def test_nonexistent_user_returns_404(self, dr_client: TestClient) -> None:
+        root_token = _dr_register_root(dr_client)
+        resp = dr_client.post(
+            "/api/domain-roles/education/assign",
+            json={"user_id": "ghost-id-555", "domain_role": "employee"},
+            headers=_dr_auth(root_token),
+        )
+        assert resp.status_code == 404
+
+    def test_role_persisted_in_adapter(
+        self, dr_client: TestClient, dr_api_module
+    ) -> None:
+        root_token = _dr_register_root(dr_client)
+        user = _dr_register_user(dr_client, "frank_dr")
+        dr_client.post(
+            "/api/domain-roles/education/assign",
+            json={"user_id": user["user_id"], "domain_role": "employee"},
+            headers=_dr_auth(root_token),
+        )
+        stored = dr_api_module.PERSISTENCE.get_user(user["user_id"])
+        assert stored is not None
+        assert stored.get("domain_roles", {}).get("education") == "employee"
+
+    def test_unauthenticated_returns_401(self, dr_client: TestClient) -> None:
+        resp = dr_client.post(
+            "/api/domain-roles/education/assign",
+            json={"user_id": "any", "domain_role": "guest"},
+        )
+        assert resp.status_code == 401
+
+
+@pytest.mark.integration
+class TestRevokeDomainRoleEndpoint:
+    def test_root_can_revoke_assigned_role(
+        self, dr_client: TestClient, dr_api_module
+    ) -> None:
+        root_token = _dr_register_root(dr_client)
+        user = _dr_register_user(dr_client, "grace_dr")
+        # assign first
+        dr_client.post(
+            "/api/domain-roles/education/assign",
+            json={"user_id": user["user_id"], "domain_role": "supervisor"},
+            headers=_dr_auth(root_token),
+        )
+        # revoke
+        resp = dr_client.delete(
+            f"/api/domain-roles/education/{user['user_id']}",
+            headers=_dr_auth(root_token),
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["revoked_role"] == "supervisor"
+        assert "record_id" in body
+
+    def test_revoke_user_with_no_role_returns_404(
+        self, dr_client: TestClient
+    ) -> None:
+        root_token = _dr_register_root(dr_client)
+        user = _dr_register_user(dr_client, "henry_dr")
+        resp = dr_client.delete(
+            f"/api/domain-roles/education/{user['user_id']}",
+            headers=_dr_auth(root_token),
+        )
+        assert resp.status_code == 404
+
+    def test_revoke_nonexistent_user_returns_404(
+        self, dr_client: TestClient
+    ) -> None:
+        root_token = _dr_register_root(dr_client)
+        resp = dr_client.delete(
+            "/api/domain-roles/education/ghost-id-xyz",
+            headers=_dr_auth(root_token),
+        )
+        assert resp.status_code == 404
+
+    def test_user_role_cannot_revoke(self, dr_client: TestClient) -> None:
+        _dr_register_root(dr_client)
+        user = _dr_register_user(dr_client, "iris_dr")
+        token = dr_client.post(
+            "/api/auth/login",
+            json={"username": "iris_dr", "password": "test-pass-123"},
+        ).json()["access_token"]
+        resp = dr_client.delete(
+            f"/api/domain-roles/education/{user['user_id']}",
+            headers=_dr_auth(token),
+        )
+        assert resp.status_code == 403
+
+    def test_unauthenticated_returns_401(self, dr_client: TestClient) -> None:
+        resp = dr_client.delete("/api/domain-roles/education/any-user")
+        assert resp.status_code == 401
 
 
 # ---------------------------------------------------------------------------

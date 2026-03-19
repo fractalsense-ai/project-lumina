@@ -361,6 +361,16 @@ class FilesystemPersistenceAdapter(PersistenceAdapter):
         self._save_users(users)
         return True
 
+    def update_user_domain_roles(self, user_id: str, domain_roles: dict[str, str]) -> dict[str, Any] | None:
+        users = self._load_users()
+        if user_id not in users:
+            return None
+        existing = dict(users[user_id].get("domain_roles") or {})
+        existing.update(domain_roles)
+        users[user_id]["domain_roles"] = existing
+        self._save_users(users)
+        return {k: v for k, v in users[user_id].items() if k != "password_hash"}
+
     def query_ctl_records(
         self,
         session_id: str | None = None,

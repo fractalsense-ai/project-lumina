@@ -128,6 +128,7 @@ from lumina.api.routes.chat import router as chat_router  # noqa: E402
 from lumina.api.routes.ctl import router as ctl_router  # noqa: E402
 from lumina.api.routes.dashboard import router as dashboard_router  # noqa: E402
 from lumina.api.routes.domain import router as domain_router  # noqa: E402
+from lumina.api.routes.domain_roles import router as domain_roles_router  # noqa: E402
 from lumina.api.routes.ingestion import (  # noqa: E402
     _detect_content_type,
     router as ingestion_router,
@@ -158,6 +159,7 @@ app.include_router(chat_router)
 app.include_router(auth_router)
 app.include_router(system_router)
 app.include_router(domain_router)
+app.include_router(domain_roles_router)
 app.include_router(ingestion_router)
 app.include_router(ctl_router)
 app.include_router(dashboard_router)

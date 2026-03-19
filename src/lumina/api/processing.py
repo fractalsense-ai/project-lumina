@@ -49,6 +49,32 @@ def process_message(
 ) -> dict[str, Any]:
     session = get_or_create_session(session_id, domain_id=domain_id, user=user)
 
+    # ── Frozen-session gate: block input until teacher issues unlock PIN ──
+    container = _session_containers.get(session_id)
+    if container is not None and container.frozen:
+        import re as _re
+        from lumina.core.session_unlock import validate_unlock_pin
+        _pin_candidate = input_text.strip()
+        if _re.fullmatch(r"\d{6}", _pin_candidate) and validate_unlock_pin(session_id, _pin_candidate):
+            container.frozen = False
+            log.info("[%s] Session unlocked via PIN in chat turn", session_id)
+            return {
+                "response": "Session unlocked. You may continue.",
+                "action": "session_unlocked",
+                "prompt_type": "session_unlocked",
+                "escalated": False,
+                "tool_results": {},
+                "domain_id": domain_id or session.get("domain_id", ""),
+            }
+        return {
+            "response": "This session is temporarily locked pending teacher review.",
+            "action": "session_frozen",
+            "prompt_type": "session_frozen",
+            "escalated": True,
+            "tool_results": {},
+            "domain_id": domain_id or session.get("domain_id", ""),
+        }
+
     # ── Capture student solve time at request arrival ─────────
     # Must be read before any LLM/SLM calls so server-side inference
     # latency is not counted against the student's response time.

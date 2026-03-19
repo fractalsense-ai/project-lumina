@@ -8,6 +8,7 @@ import os
 import threading
 import time
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -17,12 +18,15 @@ from starlette.concurrency import run_in_threadpool
 
 from lumina.api import config as _cfg
 from lumina.api.middleware import _bearer_scheme, get_current_user, require_auth, require_role
+from lumina.api.session import _session_containers
+from lumina.core.session_unlock import generate_unlock_pin, validate_unlock_pin
 from lumina.api.models import (
     AdminCommandRequest,
     CommandResolveRequest,
     EscalationResolveRequest,
     ManifestCheckResponse,
     ManifestRegenResponse,
+    SessionUnlockRequest,
 )
 from lumina.api.routes.ingestion import _get_ingest_service
 from lumina.api.routes.nightcycle import _get_night_scheduler
@@ -32,6 +36,8 @@ from lumina.core import slm as _slm_mod
 from lumina.ctl.admin_operations import (
     _canonical_sha256 as admin_canonical_sha256,
     build_commitment_record,
+    build_domain_role_assignment,
+    build_domain_role_revocation,
     build_trace_event,
     can_govern_domain,
     map_role_to_actor_role,
@@ -128,10 +134,53 @@ async def resolve_escalation(
         ledger_path=_cfg.PERSISTENCE.get_ctl_ledger_path(session_id, domain_id="_admin"),
     )
 
+    # ── PIN generation ── freeze session so student must unlock with OTP ──
+    response_extra: dict[str, Any] = {}
+    if req.generate_pin:
+        pin = generate_unlock_pin(session_id, escalation_id)
+        response_extra["unlock_pin"] = pin
+        container = _session_containers.get(session_id)
+        if container is not None:
+            container.frozen = True
+        log.info("[%s] Session frozen; unlock PIN issued for escalation %s", session_id, escalation_id)
+
+    # ── Intervention notes ── append to student profile if present ────────
+    if req.intervention_notes:
+        actor_id = target.get("actor_id", "")
+        if actor_id:
+            profile_path: str | None = None
+            container = _session_containers.get(session_id)
+            if container is not None:
+                try:
+                    profile_path = container.active_context.subject_profile_path
+                except (KeyError, AttributeError):
+                    pass
+            if profile_path:
+                try:
+                    profile = await run_in_threadpool(
+                        _cfg.PERSISTENCE.load_subject_profile, profile_path
+                    )
+                    if isinstance(profile, dict):
+                        history = list(profile.get("intervention_history") or [])
+                        history.append({
+                            "escalation_id": escalation_id,
+                            "teacher_id": user_data["sub"],
+                            "notes": req.intervention_notes,
+                            "recorded_utc": datetime.now(timezone.utc).isoformat(),
+                            "generated_proposal": bool(req.generate_proposal),
+                        })
+                        profile["intervention_history"] = history
+                        await run_in_threadpool(
+                            _cfg.PERSISTENCE.save_subject_profile, profile_path, profile
+                        )
+                except Exception:
+                    log.debug("Could not update student profile with intervention notes", exc_info=True)
+
     return {
         "record_id": record["record_id"],
         "escalation_id": escalation_id,
         "decision": req.decision,
+        **response_extra,
     }
 
 
@@ -153,8 +202,12 @@ async def audit_log(
     allowed_roles = ("root", "qa", "auditor")
     if user_data["role"] not in allowed_roles:
         if user_data["role"] == "domain_authority":
-            pass
+            # DA may only view records for domains they govern
+            governed = user_data.get("governed_modules") or []
+            if not governed:
+                raise HTTPException(status_code=403, detail="No governed modules")
         elif user_data["role"] == "user":
+            # Regular users may only view their own records
             pass
         else:
             raise HTTPException(status_code=403, detail="Insufficient permissions")
@@ -162,6 +215,18 @@ async def audit_log(
     records = await run_in_threadpool(
         _cfg.PERSISTENCE.query_ctl_records, session_id=session_id, domain_id=domain_id,
     )
+
+    # Scope records based on caller role
+    if user_data["role"] == "domain_authority":
+        governed = user_data.get("governed_modules") or []
+        records = [
+            r for r in records
+            if r.get("actor_id") == user_data["sub"]
+            or r.get("domain_id") in governed
+            or r.get("to_domain") in governed
+        ]
+    elif user_data["role"] == "user":
+        records = [r for r in records if r.get("actor_id") == user_data["sub"]]
 
     audit_event = build_trace_event(
         session_id="admin",
@@ -255,6 +320,8 @@ _KNOWN_OPERATIONS: frozenset[str] = frozenset({
     "commit_domain_physics",
     "update_user_role",
     "deactivate_user",
+    "assign_domain_role",
+    "revoke_domain_role",
     "resolve_escalation",
     "list_ingestions",
     "review_ingestion",
@@ -396,6 +463,77 @@ async def _execute_admin_operation(
         await run_in_threadpool(_cfg.PERSISTENCE.deactivate_user, target_user_id)
         result = {"operation": operation, "user_id": target_user_id}
 
+    elif operation == "assign_domain_role":
+        if user_data["role"] not in ("root", "domain_authority"):
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+        target_user_id = str(params.get("user_id", parsed.get("target", "")))
+        module_id = str(params.get("module_id", ""))
+        domain_role = str(params.get("domain_role", ""))
+        if not target_user_id or not module_id or not domain_role:
+            raise HTTPException(status_code=422, detail="user_id, module_id, and domain_role required")
+        if user_data["role"] == "domain_authority" and not can_govern_domain(user_data, module_id):
+            raise HTTPException(status_code=403, detail="Not authorized for this domain")
+        target = await run_in_threadpool(_cfg.PERSISTENCE.get_user, target_user_id)
+        if target is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        await run_in_threadpool(
+            _cfg.PERSISTENCE.update_user_domain_roles, target_user_id, {module_id: domain_role}
+        )
+        record = build_domain_role_assignment(
+            actor_id=user_data["sub"],
+            actor_role=map_role_to_actor_role(user_data["role"]),
+            target_user_id=target_user_id,
+            module_id=module_id,
+            domain_role=domain_role,
+        )
+        _cfg.PERSISTENCE.append_ctl_record(
+            "admin", record,
+            ledger_path=_cfg.PERSISTENCE.get_ctl_ledger_path("admin", domain_id="_admin"),
+        )
+        result = {
+            "operation": operation,
+            "user_id": target_user_id,
+            "module_id": module_id,
+            "domain_role": domain_role,
+            "record_id": record["record_id"],
+        }
+
+    elif operation == "revoke_domain_role":
+        if user_data["role"] not in ("root", "domain_authority"):
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+        target_user_id = str(params.get("user_id", parsed.get("target", "")))
+        module_id = str(params.get("module_id", ""))
+        if not target_user_id or not module_id:
+            raise HTTPException(status_code=422, detail="user_id and module_id required")
+        if user_data["role"] == "domain_authority" and not can_govern_domain(user_data, module_id):
+            raise HTTPException(status_code=403, detail="Not authorized for this domain")
+        target = await run_in_threadpool(_cfg.PERSISTENCE.get_user, target_user_id)
+        if target is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        prev_role = (target.get("domain_roles") or {}).get(module_id, "")
+        # Revoke by removing the key (set empty string signals removal; persistence merges)
+        await run_in_threadpool(
+            _cfg.PERSISTENCE.update_user_domain_roles, target_user_id, {module_id: ""}
+        )
+        record = build_domain_role_revocation(
+            actor_id=user_data["sub"],
+            actor_role=map_role_to_actor_role(user_data["role"]),
+            target_user_id=target_user_id,
+            module_id=module_id,
+            prev_role=prev_role or "unknown",
+        )
+        _cfg.PERSISTENCE.append_ctl_record(
+            "admin", record,
+            ledger_path=_cfg.PERSISTENCE.get_ctl_ledger_path("admin", domain_id="_admin"),
+        )
+        result = {
+            "operation": operation,
+            "user_id": target_user_id,
+            "module_id": module_id,
+            "prev_role": prev_role,
+            "record_id": record["record_id"],
+        }
+
     elif operation == "resolve_escalation":
         esc_id = str(params.get("escalation_id", parsed.get("target", "")))
         resolution = str(params.get("resolution", ""))
@@ -516,6 +654,50 @@ async def _execute_admin_operation(
         raise HTTPException(status_code=422, detail=f"Unknown operation: {operation}")
 
     return result
+
+
+@router.get("/api/admin/command/staged")
+async def list_staged_commands(
+    limit: int = 20,
+    offset: int = 0,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+) -> dict[str, Any]:
+    """List pending staged commands awaiting human resolution."""
+    _purge_expired_staged_commands()
+
+    current = await get_current_user(credentials)
+    user_data = require_auth(current)
+
+    if user_data["role"] not in ("root", "domain_authority", "it_support"):
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+    with _STAGED_COMMANDS_LOCK:
+        all_entries = list(_STAGED_COMMANDS.values())
+
+    # Non-root users only see their own staged commands
+    if user_data["role"] != "root":
+        all_entries = [e for e in all_entries if e.get("actor_id") == user_data["sub"]]
+
+    all_entries.sort(key=lambda e: e.get("staged_at", 0))
+    page = all_entries[offset : offset + limit]
+
+    return {
+        "total": len(all_entries),
+        "limit": limit,
+        "offset": offset,
+        "staged_commands": [
+            {
+                "staged_id": e["staged_id"],
+                "operation": e["parsed_command"].get("operation"),
+                "original_instruction": e["original_instruction"],
+                "actor_id": e["actor_id"],
+                "staged_at": e["staged_at"],
+                "expires_at": e["expires_at"],
+                "resolved": e["resolved"],
+            }
+            for e in page
+        ],
+    }
 
 
 @router.post("/api/admin/command")
@@ -703,3 +885,29 @@ async def admin_command_resolve(
         "result": exec_result,
         "ctl_record_id": record["record_id"],
     }
+
+
+# ─────────────────────────────────────────────────────────────
+# Session unlock via OTP PIN
+# ─────────────────────────────────────────────────────────────
+
+
+@router.post("/api/sessions/{session_id}/unlock")
+async def unlock_session(
+    session_id: str,
+    req: SessionUnlockRequest,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+) -> dict[str, Any]:
+    """Allow a student to unlock a frozen session by submitting the OTP issued by their teacher."""
+    current = await get_current_user(credentials)
+    require_auth(current)   # any authenticated user may attempt; PIN is the secret
+
+    if not validate_unlock_pin(session_id, req.pin):
+        raise HTTPException(status_code=403, detail="Invalid or expired unlock PIN")
+
+    container = _session_containers.get(session_id)
+    if container is not None:
+        container.frozen = False
+        log.info("[%s] Session unfrozen via PIN unlock", session_id)
+
+    return {"session_id": session_id, "unlocked": True}

@@ -66,6 +66,7 @@ class SQLitePersistenceAdapter(PersistenceAdapter):
             password_hash = Column(String(256), nullable=False)
             role = Column(String(64), nullable=False)
             governed_modules_json = Column(Text, nullable=False, server_default="[]")
+            domain_roles_json = Column(Text, nullable=False, server_default="{}")
             active = Column(Boolean, nullable=False, server_default="1")
             created_at_utc = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
             updated_at_utc = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
@@ -104,6 +105,13 @@ class SQLitePersistenceAdapter(PersistenceAdapter):
                     """
                 )
             )
+            # Add domain_roles_json column to existing databases (no-op for new ones).
+            try:
+                await conn.execute(
+                    text("ALTER TABLE users ADD COLUMN domain_roles_json TEXT NOT NULL DEFAULT '{}'")
+                )
+            except Exception:
+                pass  # Column already exists
 
     def load_domain_physics(self, path: str) -> dict[str, Any]:
         with open(path, encoding="utf-8") as fh:
@@ -370,6 +378,7 @@ class SQLitePersistenceAdapter(PersistenceAdapter):
             "password_hash": row.password_hash,
             "role": row.role,
             "governed_modules": json.loads(row.governed_modules_json),
+            "domain_roles": json.loads(row.domain_roles_json or "{}"),
             "active": bool(row.active),
         }
 
@@ -521,6 +530,32 @@ class SQLitePersistenceAdapter(PersistenceAdapter):
                 update(self._User).where(self._User.user_id == user_id).values(password_hash=new_hash)
             )
         return True
+
+    def update_user_domain_roles(
+        self, user_id: str, domain_roles: dict[str, str]
+    ) -> dict[str, Any] | None:
+        return asyncio.run(self._update_user_domain_roles_async(user_id, domain_roles))
+
+    async def _update_user_domain_roles_async(
+        self, user_id: str, domain_roles: dict[str, str]
+    ) -> dict[str, Any] | None:
+        from sqlalchemy import select, update
+
+        async with self._engine.begin() as conn:
+            result = await conn.execute(
+                select(self._User.domain_roles_json).where(self._User.user_id == user_id)
+            )
+            row = result.first()
+            if row is None:
+                return None
+            existing = dict(json.loads(row.domain_roles_json or "{}"))
+            existing.update(domain_roles)
+            await conn.execute(
+                update(self._User)
+                .where(self._User.user_id == user_id)
+                .values(domain_roles_json=json.dumps(existing, ensure_ascii=False))
+            )
+        return await self._get_user_async(user_id)
 
     def query_ctl_records(
         self,

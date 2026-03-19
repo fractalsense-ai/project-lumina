@@ -128,3 +128,53 @@ def map_role_to_actor_role(role: str) -> str:
         "user": "system",
     }
     return mapping.get(role, "system")
+
+
+def build_domain_role_assignment(
+    *,
+    actor_id: str,
+    actor_role: str,
+    target_user_id: str,
+    module_id: str,
+    domain_role: str,
+    prev_record_hash: str = "genesis",
+) -> dict[str, Any]:
+    """Build a CommitmentRecord for assigning a domain-scoped role to a user."""
+    return build_commitment_record(
+        actor_id=actor_id,
+        actor_role=actor_role,
+        commitment_type="domain_role_assignment",
+        subject_id=target_user_id,
+        summary=f"Assigned domain role '{domain_role}' in {module_id}",
+        metadata={
+            "target_user_id": target_user_id,
+            "module_id": module_id,
+            "domain_role": domain_role,
+        },
+        prev_record_hash=prev_record_hash,
+    )
+
+
+def build_domain_role_revocation(
+    *,
+    actor_id: str,
+    actor_role: str,
+    target_user_id: str,
+    module_id: str,
+    prev_role: str,
+    prev_record_hash: str = "genesis",
+) -> dict[str, Any]:
+    """Build a CommitmentRecord for revoking a domain-scoped role from a user."""
+    return build_commitment_record(
+        actor_id=actor_id,
+        actor_role=actor_role,
+        commitment_type="domain_role_revocation",
+        subject_id=target_user_id,
+        summary=f"Revoked domain role '{prev_role}' in {module_id}",
+        metadata={
+            "target_user_id": target_user_id,
+            "module_id": module_id,
+            "prev_role": prev_role,
+        },
+        prev_record_hash=prev_record_hash,
+    )

@@ -442,6 +442,8 @@ class PPAOrchestrator:
                 "domain_metric_pct": domain_lib_decision.get("drift_pct"),
             },
             "target_role": "domain_authority",
+            "escalation_target_id": self.profile.get("assigned_teacher_id") or None,
+            "assigned_room_id": self.profile.get("assigned_room_id") or None,
             "sla_minutes": 30,
             "metadata": dict(provenance_metadata or {}),
         }

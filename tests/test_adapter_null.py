@@ -152,3 +152,43 @@ def test_validate_ctl_chain_all_sessions():
     result = adapter.validate_ctl_chain()
     assert result["scope"] == "all"
     assert result["intact"] is True
+
+
+# ── update_user_domain_roles ──────────────────────────────────────────────────
+
+
+@pytest.mark.unit
+def test_update_user_domain_roles_not_found_returns_none():
+    adapter = NullPersistenceAdapter()
+    result = adapter.update_user_domain_roles("ghost-id", {"education": "supervisor"})
+    assert result is None
+
+
+@pytest.mark.unit
+def test_update_user_domain_roles_sets_new_entry():
+    adapter = NullPersistenceAdapter()
+    adapter.create_user("u10", "grace", "hash", "user")
+    result = adapter.update_user_domain_roles("u10", {"education": "supervisor"})
+    assert result is not None
+    assert result["domain_roles"] == {"education": "supervisor"}
+    assert "password_hash" not in result
+
+
+@pytest.mark.unit
+def test_update_user_domain_roles_merges_with_existing():
+    adapter = NullPersistenceAdapter()
+    adapter.create_user("u11", "henry", "hash", "user")
+    adapter.update_user_domain_roles("u11", {"education": "supervisor"})
+    result = adapter.update_user_domain_roles("u11", {"agriculture": "employee"})
+    assert result is not None
+    assert result["domain_roles"] == {"education": "supervisor", "agriculture": "employee"}
+
+
+@pytest.mark.unit
+def test_update_user_domain_roles_overwrites_same_module():
+    adapter = NullPersistenceAdapter()
+    adapter.create_user("u12", "iris", "hash", "user")
+    adapter.update_user_domain_roles("u12", {"education": "supervisor"})
+    result = adapter.update_user_domain_roles("u12", {"education": "employee"})
+    assert result is not None
+    assert result["domain_roles"]["education"] == "employee"
