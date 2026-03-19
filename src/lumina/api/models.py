@@ -149,3 +149,27 @@ class LogicScrapeRequest(BaseModel):
     prompt: str
     iterations: int | None = None
     domain_id: str
+
+
+# ── Invite / onboarding ──────────────────────────────────────
+
+class InviteUserRequest(BaseModel):
+    username: str
+    role: str = "user"
+    governed_modules: list[str] | None = None
+    email: str | None = None  # used for SMTP dispatch only; never persisted
+
+
+class SetupPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+class UserInvitationResponse(BaseModel):
+    user_id: str
+    username: str
+    role: str
+    governed_modules: list[str]
+    setup_token: str
+    setup_url: str
+    email_sent: bool

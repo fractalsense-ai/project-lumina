@@ -1,8 +1,8 @@
 # RBAC Administration
 
-**Version:** 1.1.0
+**Version:** 1.2.0
 **Status:** Active
-**Last updated:** 2026-03-15
+**Last updated:** 2026-03-22
 
 ---
 
@@ -87,6 +87,57 @@ curl -H "Authorization: Bearer <token>" /api/auth/me
 # List users (root/it_support only)
 curl -H "Authorization: Bearer <token>" /api/auth/users
 ```
+
+## Domain Authority Onboarding
+
+Domain Authority accounts **must** be created via the invite flow — not self-registration — because they require `governed_modules` to be assigned at creation time. Root or IT Support issues the invite; the new DA activates their own account by following the setup link.
+
+### Invite Flow Summary
+
+```
+root/it_support                           new Domain Authority
+      │                                          │
+      │──POST /api/auth/invite──────────────────►│  (setup_url returned)
+      │  {username, role: domain_authority,       │
+      │   governed_modules: [...]}                │
+      │                                           │
+      │  (optional: SMTP sends setup_url by email)│
+      │                                           │
+      │◄─────────────POST /api/auth/setup-password┤
+      │         {token, new_password}              │
+      │                                           │
+      │  account activated → JWT returned ────────►
+```
+
+### Step-by-Step
+
+```bash
+# 1. Root issues invite (SMTP optional — setup_url is always returned in the response)
+curl -X POST /api/auth/invite \
+  -H "Authorization: Bearer <root-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "dr-chen",
+    "role": "domain_authority",
+    "governed_modules": ["domain/edu/algebra-level-1/v1"],
+    "email": "dr.chen@example.com"
+  }'
+# Response includes: setup_url, setup_token, email_sent
+
+# 2. DA visits setup_url and POSTs credentials
+curl -X POST /api/auth/setup-password \
+  -H "Content-Type: application/json" \
+  -d '{"token": "<setup_token>", "new_password": "chosen-secure-pass"}'
+# Response: {"access_token": "...", "token_type": "bearer"}
+```
+
+### Key Rules
+
+- The invite token is **single-use** and expires after `LUMINA_INVITE_TOKEN_TTL_SECONDS` (default 24 h).
+- The user record is marked `active=false` until the password is set. Authentication attempts on an inactive account return 403.
+- `governed_modules` is **required** for `role: domain_authority` and must be a non-empty list of valid module IDs.
+- SMTP delivery failure is non-blocking — the `setup_url` is always returned in the API response.
+- The `invite_user` admin operation also triggers HITL staging (via `POST /api/admin/command`) so that an operator can approve DA creation before it executes. See [escalation-pin-unlock](./escalation-pin-unlock.md) for the staged-command resolve flow.
 
 ## Domain Role Management
 

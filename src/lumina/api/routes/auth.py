@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import uuid
 from typing import Any
 
@@ -13,12 +14,15 @@ from starlette.concurrency import run_in_threadpool
 from lumina.api import config as _cfg
 from lumina.api.middleware import _bearer_scheme, get_current_user, require_auth, require_role
 from lumina.api.models import (
+    InviteUserRequest,
     LoginRequest,
     PasswordResetRequest,
     RegisterRequest,
     RevokeRequest,
+    SetupPasswordRequest,
     TokenResponse,
     UpdateUserRequest,
+    UserInvitationResponse,
     UserResponse,
 )
 from lumina.auth.auth import (
@@ -35,6 +39,8 @@ from lumina.ctl.admin_operations import (
     can_govern_domain,
     map_role_to_actor_role,
 )
+from lumina.core.email_sender import send_invite_email
+from lumina.core.invite_store import generate_invite_token, validate_invite_token
 
 log = logging.getLogger("lumina-api")
 
@@ -364,3 +370,145 @@ async def password_reset(
         log.debug("Could not write password_reset trace event")
 
     return {"status": "password_updated"}
+
+
+# ── Invite / onboarding ──────────────────────────────────────
+
+
+@router.post("/api/auth/invite", response_model=UserInvitationResponse)
+async def invite_user(
+    req: InviteUserRequest,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+) -> UserInvitationResponse:
+    """Create a pending user account and return a one-time setup URL.
+
+    The invited user follows the setup URL to choose their own password and
+    activate the account.  No password is accepted in this request.
+
+    Required roles: ``root``, ``it_support``.
+    ``governed_modules`` is required when ``role == "domain_authority"``.
+    """
+    current = await get_current_user(credentials)
+    user_data = require_auth(current)
+    require_role(user_data, "root", "it_support")
+
+    if req.role not in VALID_ROLES:
+        raise HTTPException(status_code=400, detail=f"Invalid role: {req.role}")
+
+    if not req.username:
+        raise HTTPException(status_code=400, detail="username is required")
+
+    if req.role == "domain_authority" and not req.governed_modules:
+        raise HTTPException(
+            status_code=400,
+            detail="governed_modules is required when role is domain_authority",
+        )
+
+    existing = await run_in_threadpool(_cfg.PERSISTENCE.get_user_by_username, req.username)
+    if existing is not None:
+        raise HTTPException(status_code=409, detail="Username already taken")
+
+    user_id = str(uuid.uuid4())
+    # Create with empty password hash and active=False (pending setup)
+    await run_in_threadpool(
+        _cfg.PERSISTENCE.create_user,
+        user_id,
+        req.username,
+        "",  # no password until setup-password is called
+        req.role,
+        req.governed_modules,
+        False,  # active=False
+    )
+
+    token = generate_invite_token(user_id, req.username)
+    base_url = os.environ.get("LUMINA_BASE_URL", "").rstrip("/")
+    setup_url = f"{base_url}/api/auth/setup-password?token={token}"
+
+    email_sent = False
+    if req.email:
+        sent, _err = await run_in_threadpool(send_invite_email, req.email, req.username, setup_url)
+        email_sent = sent
+
+    event = build_trace_event(
+        session_id="admin",
+        actor_id=user_data["sub"],
+        event_type="other",
+        decision="user_invited",
+        evidence_summary={
+            "invited_user_id": user_id,
+            "invited_username": req.username,
+            "invited_role": req.role,
+            "governed_modules": req.governed_modules or [],
+            "email_sent": email_sent,
+        },
+    )
+    try:
+        _cfg.PERSISTENCE.append_ctl_record(
+            "admin", event,
+            ledger_path=_cfg.PERSISTENCE.get_ctl_ledger_path("admin", domain_id="_admin"),
+        )
+    except Exception:
+        log.debug("Could not write user_invited trace event")
+
+    log.info("Invited user %s (%s) with role %s", req.username, user_id, req.role)
+    return UserInvitationResponse(
+        user_id=user_id,
+        username=req.username,
+        role=req.role,
+        governed_modules=req.governed_modules or [],
+        setup_token=token,
+        setup_url=setup_url,
+        email_sent=email_sent,
+    )
+
+
+@router.post("/api/auth/setup-password", response_model=TokenResponse)
+async def setup_password(req: SetupPasswordRequest) -> TokenResponse:
+    """Activate a pending user account by setting a password.
+
+    The ``token`` field must be the one-time setup token returned by
+    ``POST /api/auth/invite``.  No JWT authentication is required — the token
+    is the credential.  On success the account is activated and a JWT is
+    returned so the user is immediately logged in.
+    """
+    if len(req.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+
+    user_id = validate_invite_token(req.token)
+    if user_id is None:
+        raise HTTPException(status_code=403, detail="Invalid or expired setup token")
+
+    new_hash = hash_password(req.new_password)
+    pw_ok = await run_in_threadpool(_cfg.PERSISTENCE.update_user_password, user_id, new_hash)
+    if not pw_ok:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    await run_in_threadpool(_cfg.PERSISTENCE.activate_user, user_id)
+
+    user = await run_in_threadpool(_cfg.PERSISTENCE.get_user, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found after activation")
+
+    event = build_trace_event(
+        session_id="admin",
+        actor_id=user_id,
+        event_type="other",
+        decision="account_activated",
+        evidence_summary={"user_id": user_id},
+    )
+    try:
+        _cfg.PERSISTENCE.append_ctl_record(
+            "admin", event,
+            ledger_path=_cfg.PERSISTENCE.get_ctl_ledger_path("admin", domain_id="_admin"),
+        )
+    except Exception:
+        log.debug("Could not write account_activated trace event")
+
+    token = create_jwt(
+        user_id=user["user_id"],
+        role=user["role"],
+        governed_modules=user.get("governed_modules") or [],
+        domain_roles=user.get("domain_roles") or {},
+    )
+    log.info("Account activated for user %s", user_id)
+    return TokenResponse(access_token=token, user_id=user["user_id"], role=user["role"])

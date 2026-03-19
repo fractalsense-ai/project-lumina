@@ -79,6 +79,7 @@ class PersistenceAdapter(ABC):
         password_hash: str,
         role: str,
         governed_modules: list[str] | None = None,
+        active: bool = True,
     ) -> dict[str, Any]:
         """Persist a new user record.  Returns the stored representation."""
 
@@ -102,6 +103,10 @@ class PersistenceAdapter(ABC):
         governed_modules: list[str] | None = None,
     ) -> dict[str, Any] | None:
         """Update role/governed_modules for an existing user. Returns updated record or None."""
+
+    @abstractmethod
+    def activate_user(self, user_id: str) -> bool:
+        """Activate a pending user account. Returns True if found and activated."""
 
     @abstractmethod
     def deactivate_user(self, user_id: str) -> bool:
@@ -241,6 +246,7 @@ class NullPersistenceAdapter(PersistenceAdapter):
         password_hash: str,
         role: str,
         governed_modules: list[str] | None = None,
+        active: bool = True,
     ) -> dict[str, Any]:
         self.__init_users()
         record = {
@@ -249,7 +255,7 @@ class NullPersistenceAdapter(PersistenceAdapter):
             "password_hash": password_hash,
             "role": role,
             "governed_modules": governed_modules or [],
-            "active": True,
+            "active": active,
         }
         self._users[user_id] = record
         return {k: v for k, v in record.items() if k != "password_hash"}
@@ -285,6 +291,13 @@ class NullPersistenceAdapter(PersistenceAdapter):
         if governed_modules is not None:
             self._users[user_id]["governed_modules"] = governed_modules
         return {k: v for k, v in self._users[user_id].items() if k != "password_hash"}
+
+    def activate_user(self, user_id: str) -> bool:
+        self.__init_users()
+        if user_id not in self._users:
+            return False
+        self._users[user_id]["active"] = True
+        return True
 
     def deactivate_user(self, user_id: str) -> bool:
         self.__init_users()

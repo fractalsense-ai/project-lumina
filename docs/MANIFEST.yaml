@@ -93,9 +93,9 @@ artifacts:
   - path: docs/2-syscalls/lumina-api-server.md
     type: doc
     section: 2
-    doc_version: 1.2.0
+    doc_version: 1.3.0
     status: active
-    last_updated: 2026-03-19
+    last_updated: 2026-03-22
     sha256: pending
 
   # ── Section 3: Functions ───────────────────────────────────────────────────
@@ -305,10 +305,10 @@ artifacts:
   - path: docs/8-admin/rbac-administration.md
     type: doc
     section: 8
-    doc_version: 1.1.0
+    doc_version: 1.2.0
     status: active
-    last_updated: 2026-03-15
-    sha256: 0fca402d7b9e1ca57ac5c7e1c011d2f790005d36ee96df58121d88a8a2032f4f
+    last_updated: 2026-03-22
+    sha256: pending
 
   - path: docs/8-admin/secrets-and-runtime-config.md
     type: doc

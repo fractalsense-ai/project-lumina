@@ -1,8 +1,8 @@
 # lumina-api-server(2)
 
-**Version:** 1.2.0  
+**Version:** 1.3.0  
 **Status:** Active  
-**Last updated:** 2026-03-19  
+**Last updated:** 2026-03-22  
 
 ---
 
@@ -36,6 +36,8 @@ Generic runtime host for D.S.A. orchestration with built-in JWT authentication. 
 | `processing.py` | `process_message` — six-stage per-turn pipeline; frozen-session gate |
 | `runtime_helpers.py` | `render_contract_response`, `invoke_runtime_tool` |
 | `core/session_unlock.py` | In-memory OTP PIN store for session unlock |
+| `core/invite_store.py` | In-memory one-time invite token store (pending-user activation flow) |
+| `core/email_sender.py` | Optional SMTP dispatch; stdlib-only, never raises |
 | `utils/text.py` | LaTeX regex helpers, `strip_latex_delimiters` |
 | `utils/glossary.py` | `detect_glossary_query`, per-domain definition cache |
 | `utils/coercion.py` | `normalize_turn_data`, field-type coercers |
@@ -88,6 +90,13 @@ Generic runtime host for D.S.A. orchestration with built-in JWT authentication. 
 | `LUMINA_STAGED_CMD_TTL_SECONDS` | `300` | TTL for HITL-staged admin commands before they expire |
 | `LUMINA_MAX_CONTEXTS_PER_SESSION` | `10` | Maximum number of per-domain contexts a single session may hold |
 | `LUMINA_UNLOCK_PIN_TTL_SECONDS` | `900` | TTL in seconds for in-memory session-unlock OTP PINs |
+| `LUMINA_INVITE_TOKEN_TTL_SECONDS` | `86400` | TTL in seconds for pending-user invite tokens (default 24 h) |
+| `LUMINA_BASE_URL` | `http://localhost:8000` | Public base URL used to construct invite setup links |
+| `LUMINA_SMTP_HOST` | — | SMTP server hostname; leave unset to disable email dispatch |
+| `LUMINA_SMTP_PORT` | `587` | SMTP STARTTLS port |
+| `LUMINA_SMTP_USER` | — | SMTP auth username |
+| `LUMINA_SMTP_PASSWORD` | — | SMTP auth password |
+| `LUMINA_SMTP_FROM` | `noreply@lumina` | From address for invite emails |
 
 Notes:
 
@@ -375,6 +384,40 @@ Reset a user's password. Root may reset any user; non-root may only reset their 
 **Request:** `PasswordResetRequest` — `user_id`, `new_password`
 
 **Auth:** Bearer token required.
+
+---
+
+### POST /api/auth/invite
+
+Create a pending user and return a single-use setup link. Optionally sends the link by email when SMTP is configured.
+
+**Request:** `InviteUserRequest` — `username`, `role` (default `user`), `governed_modules` (required for `domain_authority`), `email` (optional; used only for SMTP dispatch, never persisted)
+
+**Response:** `UserInvitationResponse` — `user_id`, `username`, `role`, `governed_modules`, `setup_token`, `setup_url`, `email_sent`
+
+**Auth:** Bearer token required. Roles: `root`, `it_support`.
+
+**Notes:**
+- The created user has `active=false` until `POST /api/auth/setup-password` completes successfully.
+- `setup_url` format: `{LUMINA_BASE_URL}/api/auth/setup-password?token=<token>`
+- Token TTL controlled by `LUMINA_INVITE_TOKEN_TTL_SECONDS` (default 24 h).
+- Token is single-use; consumed on first successful call to `POST /api/auth/setup-password`.
+
+---
+
+### POST /api/auth/setup-password
+
+Activate a pending user account by setting their password using the one-time invite token.
+
+**Request:** `SetupPasswordRequest` — `token`, `new_password`
+
+**Response:** `TokenResponse` — `access_token`, `token_type` (same shape as `/api/auth/login`)
+
+**Auth:** None — the invite token is the credential.
+
+**Notes:**
+- Validates the invite token; returns 403 if expired or already used.
+- Sets the password hash, marks the account `active=true`, and logs a `account_activated` CTL trace event.
 
 ---
 

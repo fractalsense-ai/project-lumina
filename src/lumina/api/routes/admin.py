@@ -33,6 +33,8 @@ from lumina.api.routes.nightcycle import _get_night_scheduler
 from lumina.auth.auth import VALID_ROLES
 from lumina.core.domain_registry import DomainNotFoundError
 from lumina.core import slm as _slm_mod
+from lumina.core.email_sender import send_invite_email
+from lumina.core.invite_store import generate_invite_token
 from lumina.ctl.admin_operations import (
     _canonical_sha256 as admin_canonical_sha256,
     build_commitment_record,
@@ -649,6 +651,77 @@ async def _execute_admin_operation(
             resolved_id = str(params.get("domain_id", parsed.get("target", "")))
             proposals = scheduler.get_pending_proposals(domain_id=resolved_id)
             result = {"operation": operation, "proposals": proposals, "count": len(proposals)}
+
+    elif operation == "invite_user":
+        if user_data["role"] not in ("root", "it_support"):
+            raise HTTPException(status_code=403, detail="Only root or it_support can invite users")
+        username = str(params.get("username", parsed.get("target", "")))
+        role = str(params.get("role", "user"))
+        governed_modules_raw = params.get("governed_modules", [])
+        governed_modules: list[str] = list(governed_modules_raw) if governed_modules_raw else []
+        email = str(params.get("email", "")) or None
+
+        if not username:
+            raise HTTPException(status_code=422, detail="username required")
+        if role not in VALID_ROLES:
+            raise HTTPException(status_code=400, detail=f"Invalid role: {role}")
+        if role == "domain_authority" and not governed_modules:
+            raise HTTPException(
+                status_code=400,
+                detail="governed_modules is required when role is domain_authority",
+            )
+
+        existing = await run_in_threadpool(_cfg.PERSISTENCE.get_user_by_username, username)
+        if existing is not None:
+            raise HTTPException(status_code=409, detail="Username already taken")
+
+        import uuid as _uuid_mod
+        new_user_id = str(_uuid_mod.uuid4())
+        await run_in_threadpool(
+            _cfg.PERSISTENCE.create_user,
+            new_user_id, username, "", role, governed_modules or None, False,
+        )
+
+        invite_token = generate_invite_token(new_user_id, username)
+        base_url = os.environ.get("LUMINA_BASE_URL", "").rstrip("/")
+        setup_url = f"{base_url}/api/auth/setup-password?token={invite_token}"
+
+        email_sent = False
+        if email:
+            sent, _err = await run_in_threadpool(send_invite_email, email, username, setup_url)
+            email_sent = sent
+
+        invite_event = build_trace_event(
+            session_id="admin",
+            actor_id=user_data["sub"],
+            event_type="other",
+            decision="user_invited",
+            evidence_summary={
+                "invited_user_id": new_user_id,
+                "invited_username": username,
+                "invited_role": role,
+                "governed_modules": governed_modules,
+                "email_sent": email_sent,
+                "via": "hitl_command",
+            },
+        )
+        try:
+            _cfg.PERSISTENCE.append_ctl_record(
+                "admin", invite_event,
+                ledger_path=_cfg.PERSISTENCE.get_ctl_ledger_path("admin", domain_id="_admin"),
+            )
+        except Exception:
+            log.debug("Could not write user_invited trace event")
+
+        result = {
+            "operation": operation,
+            "user_id": new_user_id,
+            "username": username,
+            "role": role,
+            "governed_modules": governed_modules,
+            "setup_url": setup_url,
+            "email_sent": email_sent,
+        }
 
     else:
         raise HTTPException(status_code=422, detail=f"Unknown operation: {operation}")

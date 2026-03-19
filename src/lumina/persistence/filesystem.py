@@ -300,6 +300,7 @@ class FilesystemPersistenceAdapter(PersistenceAdapter):
         password_hash: str,
         role: str,
         governed_modules: list[str] | None = None,
+        active: bool = True,
     ) -> dict[str, Any]:
         users = self._load_users()
         record = {
@@ -308,7 +309,7 @@ class FilesystemPersistenceAdapter(PersistenceAdapter):
             "password_hash": password_hash,
             "role": role,
             "governed_modules": governed_modules or [],
-            "active": True,
+            "active": active,
         }
         users[user_id] = record
         self._save_users(users)
@@ -344,6 +345,14 @@ class FilesystemPersistenceAdapter(PersistenceAdapter):
             users[user_id]["governed_modules"] = governed_modules
         self._save_users(users)
         return {k: v for k, v in users[user_id].items() if k != "password_hash"}
+
+    def activate_user(self, user_id: str) -> bool:
+        users = self._load_users()
+        if user_id not in users:
+            return False
+        users[user_id]["active"] = True
+        self._save_users(users)
+        return True
 
     def deactivate_user(self, user_id: str) -> bool:
         users = self._load_users()
