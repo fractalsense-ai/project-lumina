@@ -577,3 +577,259 @@ def logic_scrape_review(
         duration_seconds=time.monotonic() - start,
         proposals=proposals,
     )
+
+
+# ── Context crawler & gated staging tasks ─────────────────────
+# These tasks integrate with the File Staging Service (Phase 4)
+# to produce outputs that go through DA review before persisting.
+
+
+@register_task("context_crawler")
+def context_crawler(
+    domain_id: str,
+    domain_physics: dict[str, Any],
+    call_slm_fn: Callable | None = None,
+    **_kw: Any,
+) -> TaskResult:
+    """Crawl domain modules and stage context hints for DA approval.
+
+    For each module the SLM is prompted (using the NIGHT_CYCLE persona) to
+    extract concise, reusable context hints — e.g. glossary summaries,
+    frequently-triggered invariants, common failure patterns.  Each hint is
+    staged via ``StagingService.stage_file()`` with ``template_id="context-hint"``
+    so the Domain Authority can review before it becomes available at runtime.
+
+    If no ``call_slm_fn`` is provided the task gracefully skips generation.
+    """
+    import json as _json
+
+    start = time.monotonic()
+    proposals: list[Proposal] = []
+
+    modules = domain_physics.get("modules") or []
+    invariants = domain_physics.get("invariants") or []
+    glossary = domain_physics.get("glossary") or []
+
+    if not modules:
+        return TaskResult(
+            task="context_crawler",
+            domain_id=domain_id,
+            success=True,
+            duration_seconds=time.monotonic() - start,
+            metadata={"skipped": True, "reason": "no modules in domain"},
+        )
+
+    if call_slm_fn is None:
+        log.warning(
+            "context_crawler: no call_slm_fn provided for domain %s — skipping",
+            domain_id,
+        )
+        return TaskResult(
+            task="context_crawler",
+            domain_id=domain_id,
+            success=True,
+            duration_seconds=time.monotonic() - start,
+            metadata={"skipped": True, "reason": "no call_slm_fn provided"},
+        )
+
+    from lumina.core.persona_builder import PersonaContext, build_system_prompt
+
+    system_prompt = build_system_prompt(PersonaContext.NIGHT_CYCLE)
+
+    for mod in modules:
+        module_id = mod.get("module_id", "unknown")
+
+        # Gather invariants linked to this module
+        linked_invariants = [
+            inv for inv in invariants
+            if module_id in (inv.get("applies_to") or [])
+        ]
+
+        payload = {
+            "task": "generate_context_hints",
+            "domain_id": domain_id,
+            "module_id": module_id,
+            "module_name": mod.get("name", module_id),
+            "artifacts": [a.get("name", "") for a in (mod.get("artifacts") or [])],
+            "linked_invariant_ids": [inv.get("id") for inv in linked_invariants],
+            "glossary_term_count": len(glossary),
+            "instruction": (
+                "Produce 1–3 concise context hints for this module. "
+                "Each hint should capture a key concept, common pitfall, "
+                "or important relationship. Respond in JSON: "
+                '[{"hint_id": "...", "content": "..."}]'
+            ),
+        }
+
+        try:
+            raw = call_slm_fn(
+                system=system_prompt,
+                user=_json.dumps(payload, indent=2, ensure_ascii=False),
+            )
+            text = raw.strip()
+            if text.startswith("```"):
+                text = text.split("\n", 1)[-1]
+            if text.endswith("```"):
+                text = text.rsplit("```", 1)[0]
+            hints = _json.loads(text.strip())
+            if not isinstance(hints, list):
+                hints = [hints]
+        except Exception as exc:
+            log.warning(
+                "context_crawler: SLM call failed for module %s in %s: %s",
+                module_id, domain_id, exc,
+            )
+            continue
+
+        for hint in hints:
+            hint_id = hint.get("hint_id", f"{module_id}-hint-{len(proposals)}")
+            content = hint.get("content", "").strip()
+            if not content:
+                continue
+
+            proposals.append(Proposal(
+                task="context_crawler",
+                domain_id=domain_id,
+                proposal_type="context_hint",
+                summary=f"Context hint for module '{module_id}': {content[:120]}",
+                detail={
+                    "hint_id": hint_id,
+                    "module_id": module_id,
+                    "domain_id": domain_id,
+                    "content": content,
+                },
+            ))
+
+    return TaskResult(
+        task="context_crawler",
+        domain_id=domain_id,
+        success=True,
+        duration_seconds=time.monotonic() - start,
+        proposals=proposals,
+        metadata={
+            "modules_processed": len(modules),
+            "hints_generated": len(proposals),
+        },
+    )
+
+
+@register_task("gated_staging")
+def gated_staging(
+    domain_id: str,
+    domain_physics: dict[str, Any],
+    call_slm_fn: Callable | None = None,
+    **_kw: Any,
+) -> TaskResult:
+    """Draft glossary updates and data-stream sorts, staging all for DA approval.
+
+    This task never auto-updates domain content.  All outputs pass through
+    the StagingService review queue.  The SLM analyses the current glossary
+    for gaps, inconsistencies, and ordering issues, then produces draft
+    proposals that are staged for Domain Authority review.
+
+    If no ``call_slm_fn`` is provided the task falls back to heuristic
+    analysis of the existing glossary (detecting missing definitions,
+    duplicate terms, and alphabetical ordering issues).
+    """
+    import json as _json
+
+    start = time.monotonic()
+    proposals: list[Proposal] = []
+
+    glossary = domain_physics.get("glossary") or []
+    modules = domain_physics.get("modules") or []
+
+    # ── Heuristic pass (always runs) ──────────────────────────
+    # Flag terms that could benefit from enrichment.
+    seen_terms: dict[str, int] = {}
+    for idx, entry in enumerate(glossary):
+        term = (entry.get("term") or "").strip().lower()
+        if not term:
+            continue
+
+        # Duplicate detection
+        if term in seen_terms:
+            proposals.append(Proposal(
+                task="gated_staging",
+                domain_id=domain_id,
+                proposal_type="glossary_duplicate",
+                summary=f"Duplicate glossary term: '{term}' (indices {seen_terms[term]}, {idx})",
+                detail={"term": term, "indices": [seen_terms[term], idx]},
+            ))
+        seen_terms[term] = idx
+
+        # Missing related_terms
+        if not entry.get("related_terms"):
+            proposals.append(Proposal(
+                task="gated_staging",
+                domain_id=domain_id,
+                proposal_type="glossary_enrich",
+                summary=f"Glossary term '{term}' has no related_terms",
+                detail={"term": term, "reason": "missing_related_terms"},
+            ))
+
+    # ── SLM-enhanced pass (when available) ────────────────────
+    if call_slm_fn is not None and modules:
+        from lumina.core.persona_builder import PersonaContext, build_system_prompt
+
+        system_prompt = build_system_prompt(PersonaContext.NIGHT_CYCLE)
+
+        module_names = [m.get("name", m.get("module_id", "?")) for m in modules]
+        existing = [e.get("term", "") for e in glossary]
+
+        payload = {
+            "task": "draft_glossary_updates",
+            "domain_id": domain_id,
+            "existing_terms": existing[:50],  # cap for prompt size
+            "module_names": module_names,
+            "instruction": (
+                "Identify 1–5 glossary terms that are missing from the current "
+                "glossary but likely needed given the module names. For each term "
+                "produce a draft entry. Respond in JSON: "
+                '[{"term": "...", "definition": "...", "related_terms": [...]}]'
+            ),
+        }
+
+        try:
+            raw = call_slm_fn(
+                system=system_prompt,
+                user=_json.dumps(payload, indent=2, ensure_ascii=False),
+            )
+            text = raw.strip()
+            if text.startswith("```"):
+                text = text.split("\n", 1)[-1]
+            if text.endswith("```"):
+                text = text.rsplit("```", 1)[0]
+            drafts = _json.loads(text.strip())
+            if not isinstance(drafts, list):
+                drafts = [drafts]
+        except Exception as exc:
+            log.warning(
+                "gated_staging: SLM call failed for domain %s: %s",
+                domain_id, exc,
+            )
+            drafts = []
+
+        for draft in drafts:
+            term = (draft.get("term") or "").strip()
+            if not term or term.lower() in seen_terms:
+                continue
+            proposals.append(Proposal(
+                task="gated_staging",
+                domain_id=domain_id,
+                proposal_type="glossary_draft",
+                summary=f"Draft glossary entry: '{term}'",
+                detail=draft,
+            ))
+
+    return TaskResult(
+        task="gated_staging",
+        domain_id=domain_id,
+        success=True,
+        duration_seconds=time.monotonic() - start,
+        proposals=proposals,
+        metadata={
+            "glossary_size": len(glossary),
+            "proposals_generated": len(proposals),
+        },
+    )

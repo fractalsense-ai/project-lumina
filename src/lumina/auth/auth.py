@@ -29,6 +29,23 @@ JWT_ALGORITHM: str = os.environ.get("LUMINA_JWT_ALGORITHM", "HS256").upper()
 JWT_TTL_MINUTES: int = int(os.environ.get("LUMINA_JWT_TTL_MINUTES", "60"))
 JWT_ISSUER: str = "lumina"
 
+# ── Air-gapped admin auth ─────────────────────────────────────
+# Separate secrets and issuers for admin (root, domain_authority, it_support)
+# vs end-user (user, qa, auditor, guest) tokens.
+# When either env var is unset, both paths fall back to JWT_SECRET for
+# backward compatibility during migration.
+
+ADMIN_JWT_SECRET: str = os.environ.get("LUMINA_ADMIN_JWT_SECRET", "")
+USER_JWT_SECRET: str = os.environ.get("LUMINA_USER_JWT_SECRET", "")
+
+ADMIN_JWT_ISSUER: str = "lumina-admin"
+USER_JWT_ISSUER: str = "lumina-user"
+
+# Roles considered "admin-tier" — tokens for these are signed with
+# the admin secret and carry token_scope="admin".
+ADMIN_ROLES: frozenset[str] = frozenset({"root", "domain_authority", "it_support"})
+USER_ROLES: frozenset[str] = frozenset({"user", "qa", "auditor", "guest"})
+
 # Password hashing — supported values: "argon2id", "bcrypt", "sha256"
 PASSWORD_HASH_ALGORITHM: str = os.environ.get(
     "LUMINA_PASSWORD_HASH_ALGORITHM", "argon2id"
@@ -351,3 +368,158 @@ def verify_jwt(token: str) -> dict[str, Any]:
         raise TokenInvalidError("Token has been revoked")
 
     return payload
+
+
+# ---------------------------------------------------------------------------
+# Air-gapped admin/user scoped JWT functions
+# ---------------------------------------------------------------------------
+
+
+def _resolve_secret(scope: str) -> str:
+    """Return the signing secret for the given scope, falling back to JWT_SECRET."""
+    if scope == "admin":
+        return ADMIN_JWT_SECRET or JWT_SECRET
+    if scope == "user":
+        return USER_JWT_SECRET or JWT_SECRET
+    return JWT_SECRET
+
+
+def _resolve_issuer(scope: str) -> str:
+    if scope == "admin":
+        return ADMIN_JWT_ISSUER
+    if scope == "user":
+        return USER_JWT_ISSUER
+    return JWT_ISSUER
+
+
+def create_scoped_jwt(
+    user_id: str,
+    role: str,
+    governed_modules: list[str] | None = None,
+    domain_roles: dict[str, str] | None = None,
+    ttl_minutes: int | None = None,
+) -> str:
+    """Create a JWT with automatic scope based on the role.
+
+    Admin-tier roles (root, domain_authority, it_support) are signed with
+    ``LUMINA_ADMIN_JWT_SECRET`` and carry ``token_scope: "admin"`` +
+    ``iss: "lumina-admin"``.
+
+    User-tier roles are signed with ``LUMINA_USER_JWT_SECRET`` and carry
+    ``token_scope: "user"`` + ``iss: "lumina-user"``.
+
+    When the scoped secrets are not configured, falls back to the
+    legacy ``JWT_SECRET`` with ``iss: "lumina"`` for backward compat.
+    """
+    if role not in VALID_ROLES:
+        raise ValueError(f"Invalid role: {role!r}")
+    if JWT_ALGORITHM != "HS256":
+        raise AuthError(f"Unsupported algorithm: {JWT_ALGORITHM}")
+
+    scope = "admin" if role in ADMIN_ROLES else "user"
+    secret = _resolve_secret(scope)
+    if not secret:
+        raise AuthError(
+            "JWT secret is not configured. Set LUMINA_JWT_SECRET "
+            "(or LUMINA_ADMIN_JWT_SECRET / LUMINA_USER_JWT_SECRET)."
+        )
+
+    issuer = _resolve_issuer(scope)
+    now = int(time.time())
+    ttl = ttl_minutes if ttl_minutes is not None else JWT_TTL_MINUTES
+
+    header = {"alg": "HS256", "typ": "JWT"}
+    payload: dict[str, Any] = {
+        "sub": user_id,
+        "role": role,
+        "governed_modules": governed_modules or [],
+        "iat": now,
+        "exp": now + ttl * 60,
+        "iss": issuer,
+        "jti": secrets.token_hex(16),
+        "token_scope": scope,
+    }
+    if domain_roles:
+        payload["domain_roles"] = domain_roles
+
+    h = _b64url_encode(json.dumps(header, separators=(",", ":")).encode("utf-8"))
+    p = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+    message = f"{h}.{p}".encode("ascii")
+    sig = _b64url_encode(_sign_hs256(message, secret))
+    return f"{h}.{p}.{sig}"
+
+
+def verify_scoped_jwt(token: str, required_scope: str | None = None) -> dict[str, Any]:
+    """Verify a scoped JWT, optionally enforcing a required scope.
+
+    Verification strategy:
+      1. Decode the payload (without verifying signature) to read ``iss``.
+      2. Pick the correct secret based on the issuer claim.
+      3. Verify the signature with that secret.
+      4. Standard checks (exp, revocation).
+      5. If ``required_scope`` is set, reject tokens with a different scope.
+
+    For legacy tokens (``iss: "lumina"``), the scope is inferred from
+    the role claim to maintain backward compatibility.
+    """
+    parts = token.split(".")
+    if len(parts) != 3:
+        raise TokenInvalidError("Malformed token")
+
+    h_part, p_part, s_part = parts
+
+    # Peek at the payload to determine the issuer
+    try:
+        raw_payload = json.loads(_b64url_decode(p_part))
+    except Exception as exc:
+        raise TokenInvalidError(f"Invalid payload: {exc}") from exc
+
+    if not isinstance(raw_payload, dict):
+        raise TokenInvalidError("Payload is not a JSON object")
+
+    iss = raw_payload.get("iss", "")
+    role = raw_payload.get("role", "")
+
+    # Determine which secret to verify against
+    if iss == ADMIN_JWT_ISSUER:
+        secret = _resolve_secret("admin")
+        token_scope = "admin"
+    elif iss == USER_JWT_ISSUER:
+        secret = _resolve_secret("user")
+        token_scope = "user"
+    elif iss == JWT_ISSUER:
+        # Legacy token — infer scope from role, verify with legacy secret
+        secret = JWT_SECRET
+        token_scope = "admin" if role in ADMIN_ROLES else "user"
+    else:
+        raise TokenInvalidError(f"Unexpected issuer: {iss!r}")
+
+    if not secret:
+        raise AuthError("JWT secret is not configured for this token scope")
+
+    # Verify signature
+    message = f"{h_part}.{p_part}".encode("ascii")
+    expected_sig = _sign_hs256(message, secret)
+    actual_sig = _b64url_decode(s_part)
+    if not hmac.compare_digest(expected_sig, actual_sig):
+        raise TokenInvalidError("Signature verification failed")
+
+    # Standard temporal / revocation checks
+    exp = raw_payload.get("exp")
+    if isinstance(exp, (int, float)) and time.time() > exp:
+        raise TokenExpiredError("Token has expired")
+
+    jti = raw_payload.get("jti")
+    if jti and is_token_revoked(jti):
+        raise TokenInvalidError("Token has been revoked")
+
+    # Enforce required scope
+    if required_scope and token_scope != required_scope:
+        raise TokenInvalidError(
+            f"Token scope mismatch: expected {required_scope!r}, "
+            f"got {token_scope!r}"
+        )
+
+    # Ensure the payload carries the scope for downstream code
+    raw_payload["token_scope"] = token_scope
+    return raw_payload

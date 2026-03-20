@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://projectlumina.org/standards/staged-file-schema-v1.json",
+  "title": "Staged File Envelope V1",
+  "description": "Schema for a staged file envelope written by the StagingService. Each envelope captures the payload, template, actor, and approval state.",
+  "type": "object",
+  "required": [
+    "staged_id",
+    "template_id",
+    "actor_id",
+    "actor_role",
+    "payload",
+    "staged_at",
+    "approval_status"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "staged_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this staged file (UUID v4)."
+    },
+    "template_id": {
+      "type": "string",
+      "description": "Identifier of the template used (e.g. 'domain-physics', 'tool-adapter')."
+    },
+    "actor_id": {
+      "type": "string",
+      "description": "Pseudonymous ID of the actor who staged the file."
+    },
+    "actor_role": {
+      "type": "string",
+      "description": "RBAC role of the staging actor.",
+      "enum": ["root", "domain_authority", "it_support", "qa", "auditor", "user", "guest"]
+    },
+    "payload": {
+      "type": "object",
+      "description": "The validated file payload to be written on approval."
+    },
+    "staged_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when the file was staged."
+    },
+    "approval_status": {
+      "type": "string",
+      "enum": ["pending", "approved", "rejected"],
+      "description": "Current lifecycle state."
+    },
+    "approver_id": {
+      "type": ["string", "null"],
+      "description": "Pseudonymous ID of the approver/rejecter, or null if still pending."
+    },
+    "resolved_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when the file was approved or rejected."
+    },
+    "final_path": {
+      "type": ["string", "null"],
+      "description": "Absolute path where the file was written (populated on approval)."
+    },
+    "ctl_record_id": {
+      "type": ["string", "null"],
+      "description": "ID of the most recent CTL commitment record for this staged file."
+    }
+  }
+}

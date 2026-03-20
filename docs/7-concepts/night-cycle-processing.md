@@ -32,6 +32,9 @@ The design philosophy is **digestive**: after a day of ingestions, chat sessions
 | `domain_physics_constraint_refresh` | Validates invariant constraints still hold after content changes |
 | `slm_hint_generation` | Pre-generates SLM context hints for new content to speed daytime inference |
 | `telemetry_summary_refresh` | Rebuilds aggregate telemetry metrics for dashboard display |
+| `logic_scrape_review` | Surfaces pending logic scrape proposals for DA review |
+| `context_crawler` | Crawls domain modules via SLM to stage context hints (glossary summaries, common failure patterns) for DA approval |
+| `gated_staging` | Drafts glossary updates and data-stream sorts; stages all outputs for DA review — never auto-updates |
 
 ## Proposal Workflow
 
@@ -70,6 +73,8 @@ night_cycle:
     - domain_physics_constraint_refresh
     - slm_hint_generation
     - telemetry_summary_refresh
+    - context_crawler
+    - gated_staging
   max_duration_minutes: 240
   notify_on_completion: true
 ```
@@ -102,5 +107,6 @@ The Night Cycle tab in the Governance Dashboard displays:
 - `src/lumina/nightcycle/scheduler.py` — Run lifecycle and proposal management
 - `src/lumina/nightcycle/tasks.py` — Individual task implementations
 - `src/lumina/nightcycle/report.py` — Report and proposal dataclasses
+- `src/lumina/staging/staging_service.py` — File staging service (used by context_crawler and gated_staging)
 - `src/web/components/dashboard/NightCyclePanel.tsx` — Dashboard UI component
 - `cfg/system-runtime-config.yaml` — Night cycle configuration

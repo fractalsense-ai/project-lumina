@@ -134,6 +134,8 @@ from lumina.api.routes.ingestion import (  # noqa: E402
     router as ingestion_router,
 )
 from lumina.api.routes.nightcycle import router as nightcycle_router  # noqa: E402
+from lumina.api.routes.staging import router as staging_router  # noqa: E402
+from lumina.api.routes.admin_auth import router as admin_auth_router  # noqa: E402
 from lumina.api.routes.system import router as system_router  # noqa: E402
 
 # ─────────────────────────────────────────────────────────────
@@ -164,6 +166,8 @@ app.include_router(ingestion_router)
 app.include_router(ctl_router)
 app.include_router(dashboard_router)
 app.include_router(nightcycle_router)
+app.include_router(staging_router)
+app.include_router(admin_auth_router)
 app.include_router(admin_router)
 
 

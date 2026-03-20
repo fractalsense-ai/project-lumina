@@ -16,6 +16,8 @@ from lumina.nightcycle.tasks import (
     domain_physics_constraint_refresh,
     slm_hint_generation,
     telemetry_summary_refresh,
+    context_crawler,
+    gated_staging,
     list_tasks,
 )
 
@@ -85,12 +87,14 @@ class TestNightCycleReport:
 
 
 class TestTaskRegistry:
-    def test_all_nine_registered(self):
+    def test_all_registered(self):
         tasks = list_tasks()
-        assert len(tasks) == 10
+        assert len(tasks) == 12
         assert "glossary_expansion" in tasks
         assert "telemetry_summary_refresh" in tasks
         assert "logic_scrape_review" in tasks
+        assert "context_crawler" in tasks
+        assert "gated_staging" in tasks
 
     def test_get_task(self):
         fn = get_task("glossary_expansion")

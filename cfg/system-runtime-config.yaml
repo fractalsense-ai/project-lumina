@@ -27,5 +27,7 @@ night_cycle:
     - domain_physics_constraint_refresh
     - slm_hint_generation
     - telemetry_summary_refresh
+    - context_crawler
+    - gated_staging
   max_duration_minutes: 240
   notify_on_completion: true
