@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lumina://standards/admin-command-schemas/explain-reasoning.json",
+  "title": "explain_reasoning",
+  "description": "Retrieve the causal-trace explanation for a specific CTL event.",
+  "type": "object",
+  "required": ["operation", "params"],
+  "additionalProperties": false,
+  "properties": {
+    "operation": { "const": "explain_reasoning" },
+    "target": { "type": "string" },
+    "params": {
+      "type": "object",
+      "required": ["event_id"],
+      "additionalProperties": false,
+      "properties": {
+        "event_id": { "type": "string" }
+      }
+    }
+  }
+}

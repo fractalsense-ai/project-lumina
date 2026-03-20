@@ -250,7 +250,7 @@ def load_runtime_context(repo_root: Path, runtime_config_path: str | None = None
                 _mud_builder["templates"] = _tpl_data.get("templates") or []
                 _world_sim_cfg["mud_world_builder"] = _mud_builder
 
-    return {
+    ctx = {
         "domain_physics_path": str(domain_physics_path),
         "subject_profile_path": str(repo_root / runtime_cfg["subject_profile_path"]),
         "default_task_spec": runtime_cfg.get("default_task_spec") or {},
@@ -274,3 +274,18 @@ def load_runtime_context(repo_root: Path, runtime_config_path: str | None = None
         "world_sim": _world_sim_cfg,
         "local_only": bool(runtime_cfg.get("local_only", False)),
     }
+
+    # --- Optional: merge auto-discovered tool adapter metadata --------
+    # Explicit runtime-config declarations always take precedence.
+    try:
+        from lumina.core.adapter_indexer import scan_tool_adapters
+
+        domain_pack_dir = (repo_root / cfg_path).parent.parent
+        discovered = scan_tool_adapters(domain_pack_dir)
+        ctx["discovered_tool_adapters"] = {
+            aid: entry.to_dict() for aid, entry in discovered.items()
+        }
+    except Exception:
+        ctx["discovered_tool_adapters"] = {}
+
+    return ctx

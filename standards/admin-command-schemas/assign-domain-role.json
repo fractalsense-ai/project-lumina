@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lumina://standards/admin-command-schemas/assign-domain-role.json",
+  "title": "assign_domain_role",
+  "description": "Assign a domain-specific role to a user for a particular module.",
+  "type": "object",
+  "required": ["operation", "params"],
+  "additionalProperties": false,
+  "properties": {
+    "operation": { "const": "assign_domain_role" },
+    "target": { "type": "string" },
+    "params": {
+      "type": "object",
+      "required": ["user_id", "module_id", "domain_role"],
+      "additionalProperties": false,
+      "properties": {
+        "user_id": { "type": "string", "minLength": 1 },
+        "module_id": { "type": "string", "minLength": 1 },
+        "domain_role": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

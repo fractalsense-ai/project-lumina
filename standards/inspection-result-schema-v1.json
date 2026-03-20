@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lumina://standards/inspection-result-schema-v1.json",
+  "title": "InspectionResult",
+  "description": "Schema for the output of the Inspection Middleware pipeline (Tier 2 of the Three-Tier Execution Pipeline). Every pipeline run produces an InspectionResult that records the approval verdict, any violations, invariant evaluation summaries, and NLP extraction anchors.",
+  "type": "object",
+  "required": ["approved", "violations"],
+  "additionalProperties": false,
+  "properties": {
+    "approved": {
+      "type": "boolean",
+      "description": "True when the payload passed all inspection stages and is cleared for execution."
+    },
+    "violations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Human-readable descriptions of schema, invariant, or NLP violations that occurred during inspection."
+    },
+    "invariant_summary": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "passed", "severity"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Invariant identifier from the domain physics definition."
+          },
+          "passed": {
+            "type": "boolean",
+            "description": "True when the invariant holds for the inspected payload."
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["critical", "warning", "info"],
+            "description": "Severity level declared in the domain physics invariant definition."
+          }
+        }
+      },
+      "description": "Per-invariant pass/fail results with severity, used for CTL audit logging."
+    },
+    "nlp_anchors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key", "value"],
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Field name that the NLP extractor targets."
+          },
+          "value": {
+            "description": "Extracted value from the NLP pre-processing stage."
+          }
+        }
+      },
+      "description": "Deterministic pre-LLM extractions that were merged into the payload."
+    }
+  }
+}

@@ -112,104 +112,16 @@ def load_domain_physics(path: str | Path) -> dict[str, Any]:
 # ─────────────────────────────────────────────────────────────
 # Domain-pack-driven invariant check evaluator
 #
-# Evaluates the ``check`` predicate declared in each domain-pack invariant
-# definition against the flat evidence dict passed in by the caller.
-#
-# Supported expression forms:
-#   <field>                  – truthy check on evidence[field]
-#   <field> == <literal>     – equality   ([] / true / false / number / string)
-#   <field> != <literal>     – inequality
-#   <field> >= <number>      – numeric GTE (also >, <, <=)
-#
-# Returns True  — invariant passes.
-#         False — invariant fails.
-#         None  — required evidence field is absent; caller should skip.
+# Canonical implementation lives in lumina.middleware.invariant_checker.
+# These module-level aliases preserve backward compatibility for external
+# callers that import from ppa_orchestrator directly.
 # ─────────────────────────────────────────────────────────────
 
-def _parse_check_literal(raw: str) -> Any:
-    """Parse the right-hand side literal of a check expression."""
-    raw = raw.strip()
-    if raw == "[]":
-        return []
-    if raw.lower() == "true":
-        return True
-    if raw.lower() == "false":
-        return False
-    try:
-        return int(raw)
-    except ValueError:
-        pass
-    try:
-        return float(raw)
-    except ValueError:
-        pass
-    log.debug("Check literal %r treated as plain string", raw)
-    return raw
-
-
-def _evaluate_check_expr(check_expr: str, evidence: dict[str, Any]) -> bool | None:
-    """
-    Evaluate a domain-pack ``check`` expression against the evidence dict.
-
-    The expression must reference a flat evidence-dict key directly.
-    Supported forms::
-
-        equivalence_preserved          # truthy
-        illegal_operations == []       # equality with empty list
-        substitution_check             # truthy
-        method_recognized              # truthy
-        step_count >= 3                # numeric comparison
-
-    Expressions are tokenised by whitespace into at most three parts
-    (field, operator, right-hand-side literal).  String literals that
-    contain spaces are therefore **not** supported as right-hand-side values.
-
-    Returns True if the invariant passes, False if it fails, or None when
-    the referenced evidence field is absent (caller skips the invariant).
-    """
-    tokens = check_expr.strip().split(None, 2)
-
-    if len(tokens) == 1:
-        # Bare field name — truthy check
-        field = tokens[0]
-        if field not in evidence:
-            return None
-        # Treat an explicit None value the same as an absent field: skip
-        # the invariant rather than coercing None to False and producing a
-        # false positive failure (e.g. equivalence_preserved=null from LLM).
-        if evidence[field] is None:
-            return None
-        return bool(evidence[field])
-
-    if len(tokens) == 3:
-        field, op, raw_val = tokens
-        if field not in evidence:
-            return None
-        ev_val = evidence[field]
-        rhs = _parse_check_literal(raw_val)
-        # If the RHS parsed as a plain string it may be a field reference
-        # (e.g. "step_count >= min_steps"). Resolve it from evidence.
-        if isinstance(rhs, str):
-            if raw_val not in evidence:
-                return None
-            rhs = evidence[raw_val]
-        if op == "==":
-            return ev_val == rhs
-        if op == "!=":
-            return ev_val != rhs
-        if op == ">=":
-            return ev_val >= rhs
-        if op == "<=":
-            return ev_val <= rhs
-        if op == ">":
-            return ev_val > rhs
-        if op == "<":
-            return ev_val < rhs
-        log.warning("Unknown operator %r in check expression %r", op, check_expr)
-        return None
-
-    log.warning("Cannot parse check expression %r — skipping invariant", check_expr)
-    return None
+from lumina.middleware.invariant_checker import (
+    evaluate_check_expr as _evaluate_check_expr,
+    evaluate_invariants as _mw_evaluate_invariants,
+    parse_check_literal as _parse_check_literal,
+)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -474,43 +386,9 @@ class PPAOrchestrator:
         missing from the supplied dict are skipped with a log message (no false
         negatives from missing data).
         """
-        results: list[dict[str, Any]] = []
-        for inv in self.domain.get("invariants", []):
-            inv_id: str = inv["id"]
-
-            # Skip invariants delegated to another subsystem (e.g. domain lib)
-            if inv.get("handled_by"):
-                continue
-
-            check_expr: str | None = inv.get("check")
-            if not check_expr:
-                log.debug("No check expression for invariant %r — skipping", inv_id)
-                continue
-
-            try:
-                result = _evaluate_check_expr(check_expr, evidence)
-            except Exception as exc:
-                log.warning("Invariant %r check raised %r — skipping", inv_id, exc)
-                continue
-
-            if result is None:
-                log.debug(
-                    "Missing evidence for invariant %r (check=%r) — skipping",
-                    inv_id,
-                    check_expr,
-                )
-                continue
-
-            results.append(
-                {
-                    "id": inv_id,
-                    "severity": inv.get("severity", "warning"),
-                    "passed": result,
-                    "standing_order_on_violation": inv.get("standing_order_on_violation"),
-                    "signal_type": inv.get("signal_type"),
-                }
-            )
-        return results
+        return _mw_evaluate_invariants(
+            self.domain.get("invariants", []), evidence
+        )
 
     def _resolve_action(
         self,

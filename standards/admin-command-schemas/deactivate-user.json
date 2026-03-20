@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lumina://standards/admin-command-schemas/deactivate-user.json",
+  "title": "deactivate_user",
+  "description": "Deactivate a user account. Only root may perform this operation.",
+  "type": "object",
+  "required": ["operation", "params"],
+  "additionalProperties": false,
+  "properties": {
+    "operation": { "const": "deactivate_user" },
+    "target": { "type": "string" },
+    "params": {
+      "type": "object",
+      "required": ["user_id"],
+      "additionalProperties": false,
+      "properties": {
+        "user_id": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

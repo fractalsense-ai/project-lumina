@@ -44,6 +44,7 @@ from lumina.ctl.admin_operations import (
     can_govern_domain,
     map_role_to_actor_role,
 )
+from lumina.middleware.command_schema_registry import validate_command
 from lumina.systools.manifest_integrity import check_manifest_report, regen_manifest_report
 
 log = logging.getLogger("lumina-api")
@@ -797,6 +798,16 @@ async def admin_command(
     if operation not in _KNOWN_OPERATIONS:
         raise HTTPException(status_code=422, detail=f"Unknown operation: {operation}")
 
+    # Default Deny: validate parsed params against registered command schema
+    cmd_approved, cmd_violations = validate_command(
+        operation, parsed.get("params", {}), parsed.get("target", ""),
+    )
+    if not cmd_approved:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Command schema validation failed: {'; '.join(cmd_violations)}",
+        )
+
     staged_id = str(uuid.uuid4())
     expires_at = time.time() + _STAGED_CMD_TTL_SECONDS
 
@@ -917,6 +928,17 @@ async def admin_command_resolve(
         modified_op = req.modified_schema.get("operation", "")
         if modified_op not in _KNOWN_OPERATIONS:
             raise HTTPException(status_code=422, detail=f"Unknown operation in modified_schema: {modified_op}")
+        # Default Deny: validate modified params against registered command schema
+        mod_approved, mod_violations = validate_command(
+            modified_op,
+            req.modified_schema.get("params", {}),
+            req.modified_schema.get("target", ""),
+        )
+        if not mod_approved:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Modified command schema validation failed: {'; '.join(mod_violations)}",
+            )
         delta = _compute_schema_delta(parsed, req.modified_schema)
         parsed = req.modified_schema
         commitment_type: str = "hitl_command_modified"

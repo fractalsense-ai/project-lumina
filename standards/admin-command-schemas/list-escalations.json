@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lumina://standards/admin-command-schemas/list-escalations.json",
+  "title": "list_escalations",
+  "description": "List escalation records, optionally filtered by domain and status.",
+  "type": "object",
+  "required": ["operation", "params"],
+  "additionalProperties": false,
+  "properties": {
+    "operation": { "const": "list_escalations" },
+    "target": { "type": "string" },
+    "params": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "domain_id": { "type": "string" },
+        "status": { "type": "string" }
+      }
+    }
+  }
+}

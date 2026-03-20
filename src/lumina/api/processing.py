@@ -195,6 +195,39 @@ def process_message(
 
     log.info("[%s] Turn Data: %s", session_id, json.dumps(turn_data, default=str))
 
+    # ── Inspection Middleware Gate ─────────────────────────────
+    # Run the three-stage inspection pipeline (NLP → schema → invariants)
+    # before allowing the orchestrator to process the turn.
+    from lumina.middleware import InspectionPipeline
+
+    _turn_schema = runtime.get("turn_input_schema") or {}
+    _domain_invariants = (runtime.get("domain") or {}).get("invariants", [])
+    _inspection = InspectionPipeline(
+        turn_input_schema=_turn_schema,
+        invariants=_domain_invariants,
+        strict=not runtime.get("local_only", False),
+    )
+    _inspection_result = _inspection.run(
+        turn_data, input_text=input_text, task_context=task_context,
+    )
+    if not _inspection_result.approved:
+        log.warning(
+            "[%s] Inspection denied: %s",
+            session_id,
+            _inspection_result.violations,
+        )
+        return {
+            "response": "I cannot process this input \u2014 it does not satisfy the domain constraints.",
+            "action": "inspection_denied",
+            "prompt_type": "inspection_denied",
+            "escalated": True,
+            "tool_results": {},
+            "domain_id": resolved_domain_id,
+            "_inspection": _inspection_result.to_dict(),
+        }
+    # Use sanitized payload (defaults filled, NLP anchors merged)
+    turn_data = _inspection_result.sanitized_payload or turn_data
+
     turn_provenance: dict[str, Any] = dict(runtime_provenance)
     turn_provenance["turn_data_hash"] = _canonical_sha256(turn_data)
     if model_id is not None:

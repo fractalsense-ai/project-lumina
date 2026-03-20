@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lumina://standards/admin-command-schemas/resolve-escalation.json",
+  "title": "resolve_escalation",
+  "description": "Resolve a domain-authority escalation with an outcome and rationale.",
+  "type": "object",
+  "required": ["operation", "params"],
+  "additionalProperties": false,
+  "properties": {
+    "operation": { "const": "resolve_escalation" },
+    "target": { "type": "string" },
+    "params": {
+      "type": "object",
+      "required": ["escalation_id", "resolution", "rationale"],
+      "additionalProperties": false,
+      "properties": {
+        "escalation_id": { "type": "string", "minLength": 1 },
+        "resolution": {
+          "type": "string",
+          "enum": ["approved", "rejected", "deferred"]
+        },
+        "rationale": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

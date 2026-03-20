@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lumina://standards/admin-command-schemas/trigger-night-cycle.json",
+  "title": "trigger_night_cycle",
+  "description": "Manually trigger a night cycle run, optionally scoped to a domain and specific tasks.",
+  "type": "object",
+  "required": ["operation", "params"],
+  "additionalProperties": false,
+  "properties": {
+    "operation": { "const": "trigger_night_cycle" },
+    "target": { "type": "string" },
+    "params": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "domain_id": { "type": "string" },
+        "tasks": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Specific task names to trigger. If omitted, all registered tasks run."
+        }
+      }
+    }
+  }
+}

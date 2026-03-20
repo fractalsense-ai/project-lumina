@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lumina://standards/admin-command-schemas/reject-ingestion.json",
+  "title": "reject_ingestion",
+  "description": "Reject an ingestion record with a stated reason.",
+  "type": "object",
+  "required": ["operation", "params"],
+  "additionalProperties": false,
+  "properties": {
+    "operation": { "const": "reject_ingestion" },
+    "target": { "type": "string" },
+    "params": {
+      "type": "object",
+      "required": ["ingestion_id", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "ingestion_id": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
