@@ -370,6 +370,14 @@ artifacts:
     last_updated: 2026-03-21
     sha256: 3231da1c71406cdd5d1a200eff06deedd488ca2bdbb2d57821c26cb4018bf6ad
 
+  - path: docs/7-concepts/domain-pack-anatomy.md
+    type: doc
+    section: 7
+    doc_version: 1.0.0
+    status: active
+    last_updated: 2026-03-21
+    sha256: 42815eb5aa46a0d332f3379807f18adaff10709e753f4a5e9f903c7243754c86
+
 
   # ── Section 8: Administration ─────────────────────────────────────────────
 
