@@ -49,7 +49,7 @@ src/lumina/api/
     ├── chat.py          ← POST /api/chat
     ├── auth.py          ← auth and user-management endpoints
     ├── admin.py         ← escalation, audit, manifest, HITL admin-command endpoints
-    ├── ctl.py           ← System Log record-browsing endpoints
+    ├── system_log.py    ← System Log record-browsing endpoints
     ├── domain.py        ← domain-pack lifecycle and session-close endpoints
     ├── ingestion.py     ← document ingestion pipeline endpoints
     ├── system.py        ← health, domain listing, tool adapter, System Log validate

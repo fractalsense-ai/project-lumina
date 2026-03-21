@@ -1,19 +1,36 @@
 ---
-version: 1.0.0
-last_updated: 2026-03-20
+version: 1.2.0
+last_updated: 2026-03-21
 ---
 
-# installation-and-packaging
+# installation-and-packaging(1)
 
-**Version:** 1.1.0  
+**Version:** 1.2.0  
 **Status:** Active  
-**Last updated:** 2026-03-14  
+**Last updated:** 2026-03-21  
 
 ---
 
-Installation and packaging workflows for Project Lumina.
+## NAME
 
-Before running live LLM mode, configure runtime secrets and environment settings: [secrets-and-runtime-config](../8-admin/secrets-and-runtime-config.md).
+installation-and-packaging — install, configure, and run Project Lumina
+
+## SYNOPSIS
+
+```
+pip install -e .[nlp,providers,sqlite]
+lumina-api
+```
+
+## DESCRIPTION
+
+Installation and packaging workflows for Project Lumina. Covers dependency
+installation, the editable package install, primary LLM and SLM provider
+setup, JWT secret configuration, CLI entrypoints, the React frontend, and
+PowerShell utility scripts.
+
+Before running live LLM mode, configure runtime secrets and environment
+settings: [secrets-and-runtime-config](../8-admin/secrets-and-runtime-config.md).
 
 ## Requirements files workflow (pip)
 
@@ -84,6 +101,115 @@ uv pip install -e ".[nlp,providers,sqlite]"
 | `providers` | `openai`, `anthropic` | Live LLM mode |
 | `sqlite` | `sqlalchemy[asyncio]`, `aiosqlite` | SQLite persistence backend |
 | `dev` | `pytest`, `pytest-cov` | Running the test suite |
+
+## Primary LLM setup
+
+The primary LLM handles all instructional, corrective, and high-weight
+conversational turns. Two deployment modes are supported:
+
+### Local provider (air-gapped / development / self-hosted)
+
+`LUMINA_LLM_PROVIDER=local` connects to any OpenAI-compatible HTTP endpoint.
+Supported local runtimes include **Ollama**, **vLLM**, **LM Studio**, **TGI**
+(Text Generation Inference), and **OpenRouter** (local mode).
+
+**Step 1 — Install a local runtime (Ollama example):**
+
+```powershell
+# Windows
+winget install Ollama.Ollama
+```
+
+```bash
+# macOS / Linux
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+**Step 2 — Pull a model:**
+
+```bash
+ollama pull llama3
+```
+
+**Step 3 — Start the runtime (if not running as a service):**
+
+```bash
+ollama serve
+# Listens on http://localhost:11434 by default
+```
+
+**Step 4 — Set environment variables:**
+
+```powershell
+# PowerShell
+$env:LUMINA_LLM_PROVIDER = "local"
+$env:LUMINA_LLM_ENDPOINT = "http://localhost:11434"  # default
+$env:LUMINA_LLM_MODEL    = "llama3"                  # default
+$env:LUMINA_LLM_TIMEOUT  = "120"                     # seconds; increase on modest hardware
+```
+
+```bash
+# POSIX
+export LUMINA_LLM_PROVIDER=local
+export LUMINA_LLM_ENDPOINT=http://localhost:11434
+export LUMINA_LLM_MODEL=llama3
+export LUMINA_LLM_TIMEOUT=120
+```
+
+### Primary LLM environment variable reference
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LUMINA_LLM_PROVIDER` | `local` | Provider: `local`, `openai`, `anthropic`, `google`, `azure`, `mistral`; leave unset for deterministic mode |
+| `LUMINA_LLM_ENDPOINT` | `http://localhost:11434` | Base URL for the local OpenAI-compatible endpoint; ignored for cloud providers |
+| `LUMINA_LLM_MODEL` | `llama3` | Model name forwarded to the provider |
+| `LUMINA_LLM_TIMEOUT` | `120` | HTTP timeout in seconds for local calls |
+
+### Cloud providers
+
+Install the `providers` extra, then set the appropriate API key:
+
+```bash
+pip install -e ".[providers]"
+```
+
+| Provider | Variable | Example model |
+|----------|----------|---------------|
+| `openai` | `OPENAI_API_KEY` | `gpt-4o` |
+| `anthropic` | `ANTHROPIC_API_KEY` | `claude-3-5-sonnet-20241022` |
+| `google` | `GOOGLE_API_KEY` | `gemini-1.5-pro` |
+| `azure` | `AZURE_OPENAI_API_KEY` + `LUMINA_AZURE_OPENAI_ENDPOINT` + `LUMINA_AZURE_OPENAI_DEPLOYMENT` | depends on deployment |
+| `mistral` | `MISTRAL_API_KEY` | `mistral-large-latest` |
+
+Deterministic mode (no provider set, no API key required) is always available as a fallback.
+
+## Authentication setup
+
+Lumina uses a **dual-secret JWT architecture** that isolates admin-tier and
+user-tier tokens at the cryptographic level. Three environment variables
+control JWT signing:
+
+| Variable | Required | Signed roles | `iss` claim |
+|----------|----------|--------------|-------------|
+| `LUMINA_JWT_SECRET` | Always | Legacy fallback for all tokens | `lumina` |
+| `LUMINA_ADMIN_JWT_SECRET` | Production admin tier | `root`, `domain_authority`, `it_support` | `lumina-admin` |
+| `LUMINA_USER_JWT_SECRET` | Production user tier | `user`, `qa`, `auditor`, `guest` | `lumina-user` |
+
+When `LUMINA_ADMIN_JWT_SECRET` and `LUMINA_USER_JWT_SECRET` are both set,
+admin-tier tokens are issued by `POST /api/admin/auth/login` and user-tier
+tokens by `POST /api/auth/login`. The `iss` claim in each token selects the
+correct secret for validation — the two tiers are cryptographically separated.
+When only `LUMINA_JWT_SECRET` is set all tokens use it as a single shared
+secret (development mode).
+
+```bash
+# Generate secrets
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+See [air-gapped-admin-architecture(8)](../8-admin/air-gapped-admin-architecture.md)
+and [secrets-and-runtime-config(8)](../8-admin/secrets-and-runtime-config.md) for
+production key-management guidance.
 
 ## SLM (Small Language Model) setup
 
@@ -214,6 +340,10 @@ lumina-security-freeze    # check for exposed secrets / security hygiene
 lumina-yaml-convert       # convert YAML files to JSON
 ```
 
+`lumina-api` starts the FastAPI server on `LUMINA_PORT` (default: `8000`).
+For the complete endpoint reference, all environment variables, and
+authentication details see [lumina-api-server(2)](../2-syscalls/lumina-api-server.md).
+
 ## Frontend (src/web)
 
 The reference UI is a Vite + React + TypeScript app located in `src/web/`. Node.js 20+ is required.
@@ -286,21 +416,25 @@ installation without a venv:
 ### seed-system-physics-log.ps1
 
 Computes the canonical SHA-256 of `cfg/system-physics.json` and writes a
-`system_physics_activation` CommitmentRecord to the system log
+`system_physics_activation` CommitmentRecord to the System Log
 (`$LUMINA_LOG_DIR/system/system.jsonl`). Safe to run multiple times — idempotent
 if the hash is already committed.
 
 Run this whenever `cfg/system-physics.yaml` is edited and recompiled. The server
 will refuse to start until the active hash is committed.
 
+The System Log directory is resolved from the `-LogDir` parameter, then from
+`LUMINA_LOG_DIR` (primary), then `LUMINA_CTL_DIR` (backward-compat fallback),
+then a temp directory. Set `LUMINA_LOG_DIR` in production.
+
 ```powershell
-# Default (uses .venv)
+# Default (uses .venv, LUMINA_LOG_DIR from environment)
 .\scripts\seed-system-physics-log.ps1
 
 # Custom actor and System Log directory
 .\scripts\seed-system-physics-log.ps1 `
     -ActorId "ci-pipeline" `
-    -CtlDir "C:\lumina-data\ctl"
+    -LogDir "C:\lumina-data\system-log"
 
 # Custom Python
 .\scripts\seed-system-physics-log.ps1 -PythonExe "C:\Python312\python.exe"
@@ -308,6 +442,11 @@ will refuse to start until the active hash is committed.
 
 See [system-domain-operations](../8-admin/system-domain-operations.md) for the
 full system-physics activation workflow.
+
+| Variable | Description |
+|----------|-------------|
+| `LUMINA_LOG_DIR` | Primary System Log root directory |
+| `LUMINA_CTL_DIR` | Backward-compatible fallback (deprecated — prefer `LUMINA_LOG_DIR`) |
 
 ### integrity-check.ps1
 
@@ -318,6 +457,16 @@ PENDING and MISSING entries produce warnings but do not fail the check.
 ```powershell
 .\scripts\integrity-check.ps1
 .\scripts\integrity-check.ps1 -PythonExe "C:\Python312\python.exe"
+```
+
+---
+
+## SEE ALSO
+
+- [lumina-api-server(2)](../2-syscalls/lumina-api-server.md) — full endpoint and environment variable reference
+- [secrets-and-runtime-config(8)](../8-admin/secrets-and-runtime-config.md) — production secret management and runtime modes
+- [air-gapped-admin-architecture(8)](../8-admin/air-gapped-admin-architecture.md) — dual JWT air-gap architecture
+- [slm-compute-distribution(7)](../7-concepts/slm-compute-distribution.md) — SLM routing architecture and weight classification
 ```
 
 ### manifest-regenerate.ps1

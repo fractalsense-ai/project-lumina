@@ -22,7 +22,7 @@
     Pseudonymous actor ID to record in the CommitmentRecord
     (default: "system-operator").
 
-.PARAMETER CtlDir
+.PARAMETER LogDir
     System Log root directory. Defaults to LUMINA_LOG_DIR env var, then
     a temp directory matching the server default.
 
@@ -32,13 +32,13 @@
 .EXAMPLE
     .\scripts\seed-system-physics-log.ps1 `
         -ActorId "ci-pipeline" `
-        -CtlDir "C:\lumina-data\ctl"
+        -LogDir "C:\lumina-data\system-log"
 #>
 param(
     [string]$PythonExe        = ".\.venv\Scripts\python.exe",
     [string]$SystemPhysicsFile = "cfg\system-physics.json",
     [string]$ActorId           = "system-operator",
-    [string]$CtlDir            = ""
+    [string]$LogDir            = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -63,19 +63,22 @@ try {
     }
 
     # Resolve System Log directory
-    if ([string]::IsNullOrWhiteSpace($CtlDir)) {
-        $CtlDir = $env:LUMINA_LOG_DIR
+    if ([string]::IsNullOrWhiteSpace($LogDir)) {
+        $LogDir = $env:LUMINA_LOG_DIR
     }
-    if ([string]::IsNullOrWhiteSpace($CtlDir)) {
-        $CtlDir = Join-Path ([System.IO.Path]::GetTempPath()) "lumina-log"
+    if ([string]::IsNullOrWhiteSpace($LogDir)) {
+        $LogDir = $env:LUMINA_CTL_DIR
+    }
+    if ([string]::IsNullOrWhiteSpace($LogDir)) {
+        $LogDir = Join-Path ([System.IO.Path]::GetTempPath()) "lumina-log"
     }
 
     Write-Host "System-physics file : $SystemPhysicsFile"
-    Write-Host "System Log directory       : $CtlDir"
+    Write-Host "System Log directory       : $LogDir"
     Write-Host "Actor ID            : $ActorId"
     Write-Host ""
 
-    $ledgerDir  = Join-Path $CtlDir "system"
+    $ledgerDir  = Join-Path $LogDir "system"
     $ledgerFile = Join-Path $ledgerDir "system.jsonl"
 
     # Python inline script: compute canonical hash, check for existing

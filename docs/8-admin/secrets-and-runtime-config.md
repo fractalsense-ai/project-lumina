@@ -1,13 +1,13 @@
 ---
-version: 1.0.0
-last_updated: 2026-03-20
+version: 1.2.0
+last_updated: 2026-03-21
 ---
 
 # secrets-and-runtime-config
 
-**Version:** 1.1.0
+**Version:** 1.2.0
 **Status:** Active
-**Last updated:** 2026-03-15
+**Last updated:** 2026-03-21
 
 ---
 
@@ -22,12 +22,44 @@ Use environment injection for secrets in staging/production, never committed sec
 - Deterministic mode: no provider API key required (`deterministic_response=true`).
 - Live LLM mode: provider API key is required for cloud providers (see below).
 - Live mode guardrail: runtime rejects live provider calls when the selected provider key is missing.
-- Local/self-hosted mode (`LUMINA_LLM_PROVIDER=local`): no API key required; connects to Ollama, vLLM, LM Studio, TGI, OpenRouter, or any OpenAI-compatible cluster endpoint.
+- Local/self-hosted mode (`LUMINA_LLM_PROVIDER=local`): no API key required; connects to Ollama, vLLM, LM Studio, TGI, OpenRouter, or any OpenAI-compatible cluster endpoint. Set `LUMINA_LLM_ENDPOINT`, `LUMINA_LLM_MODEL`, and optionally `LUMINA_LLM_TIMEOUT`. See [installation-and-packaging — Primary LLM setup](../1-commands/installation-and-packaging.md#primary-llm-setup) for step-by-step Ollama setup.
 
 ## Required production variables
 
 - `LUMINA_RUNTIME_CONFIG_PATH` (single-domain) **or** `LUMINA_DOMAIN_REGISTRY_PATH` (multi-domain)
-- `LUMINA_JWT_SECRET`
+- `LUMINA_LOG_DIR` — System Log root directory; auto-created at startup
+
+### JWT secrets
+
+Lumina uses a **dual-secret JWT architecture** separating admin-tier and user-tier tokens:
+
+| Variable | Required when | Description |
+|----------|---------------|-------------|
+| `LUMINA_JWT_SECRET` | Always | Legacy shared secret; fallback when tier-specific secrets are absent |
+| `LUMINA_ADMIN_JWT_SECRET` | Production (admin tier) | Signs tokens for `root`, `domain_authority`, `it_support`; `iss: lumina-admin` |
+| `LUMINA_USER_JWT_SECRET` | Production (user tier) | Signs tokens for `user`, `qa`, `auditor`, `guest`; `iss: lumina-user` |
+
+#### JWT air-gap setup
+
+When `LUMINA_ADMIN_JWT_SECRET` and `LUMINA_USER_JWT_SECRET` are both set, the two
+tiers are cryptographically isolated:
+
+- Admin roles authenticate via `POST /api/admin/auth/login` — tokens carry `iss: lumina-admin`
+  and are validated exclusively against `LUMINA_ADMIN_JWT_SECRET`.
+- User roles authenticate via `POST /api/auth/login` — tokens carry `iss: lumina-user`
+  and are validated exclusively against `LUMINA_USER_JWT_SECRET`.
+
+A compromised user-tier secret cannot be used to forge admin-tier tokens, and vice
+versa. When only `LUMINA_JWT_SECRET` is set all tokens share one secret (development
+mode only — not recommended for production).
+
+See [air-gapped-admin-architecture(8)](air-gapped-admin-architecture.md) for
+the full three-tier model, token lifecycle, and rotation guidance.
+
+```bash
+# Generate each secret independently
+python -c "import secrets; print(secrets.token_hex(32))"
+```
 
 Conditionally required:
 
@@ -46,6 +78,13 @@ Conditionally required:
 - `LUMINA_CORS_ORIGINS`
 - `LUMINA_PORT`
 - `LUMINA_PASSWORD_HASH_ALGORITHM` (default: `argon2id`)
+
+### System Log directory
+
+| Variable | Description |
+|----------|-------------|
+| `LUMINA_LOG_DIR` | Primary System Log root; auto-created at startup. **Set this in production.** |
+| `LUMINA_CTL_DIR` | Backward-compatible fallback (deprecated — prefer `LUMINA_LOG_DIR`; still accepted) |
 
 ## Local development setup
 
@@ -175,6 +214,7 @@ Full setup instructions including Ollama install steps and end-to-end verificati
 
 ## Related docs
 
-- [installation-and-packaging](../1-commands/installation-and-packaging.md)
+- [installation-and-packaging(1)](../1-commands/installation-and-packaging.md)
 - [lumina-api-server(2)](../2-syscalls/lumina-api-server.md)
+- [air-gapped-admin-architecture(8)](air-gapped-admin-architecture.md)
 - [rbac-administration](rbac-administration.md)
