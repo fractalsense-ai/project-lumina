@@ -94,15 +94,47 @@ def interpret_turn_input(
     default_fields: dict[str, Any] | None = None,
     tool_fns: dict[str, Callable[..., Any]] | None = None,
     call_slm: Callable[..., Any] | None = None,
+    nlp_pre_interpreter_fn: Callable[..., Any] | None = None,
 ) -> dict[str, Any]:
     """Classify the operator's message into a structured evidence dict.
 
     ``call_llm`` is expected to be the SLM callable for local-only domains;
     ``call_slm`` is accepted as an alias and also used for command dispatch.
+    If ``nlp_pre_interpreter_fn`` is provided it is called before the SLM and
+    its anchors are injected into the prompt as grounding context.
     """
+    # ── NLP pre-interpreter (deterministic anchors) ───────────────────────
+    context_hint = ""
+    if nlp_pre_interpreter_fn is not None:
+        try:
+            nlp_evidence = nlp_pre_interpreter_fn(input_text, task_context)
+        except Exception:  # noqa: BLE001
+            nlp_evidence = None
+
+        if nlp_evidence is not None:
+            anchors = nlp_evidence.get("_nlp_anchors") or []
+            if anchors:
+                lines = ["\nNLP pre-analysis (deterministic):"]
+                for a in anchors:
+                    line = f"- {a['field']}: {a['value']}"
+                    if "confidence" in a:
+                        line += f" (confidence: {a['confidence']})"
+                    if "detail" in a:
+                        line += f" — {a['detail']}"
+                    lines.append(line)
+                lines.append("Use these as starting values. Override if your analysis disagrees.")
+                context_hint = "\n" + "\n".join(lines)
+
+            # Compound command: help the SLM pick a single operation
+            if nlp_evidence.get("is_compound_command"):
+                context_hint += (
+                    "\nCompound command detected: pick only the single most"
+                    " specific mutation operation."
+                )
+
     raw_response = call_llm(
         system=prompt_text,
-        user=f"Operator message: {input_text}",
+        user=f"Operator message: {input_text}{context_hint}",
         model=None,
     )
 

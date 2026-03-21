@@ -85,6 +85,10 @@ runtime:
       default: null
 
 adapters:
+  nlp_pre_interpreter:
+    module_path: domain-packs/system/systools/nlp_pre_interpreter.py
+    callable: nlp_preprocess
+
   state_builder:
     module_path: domain-packs/system/systools/runtime_adapters.py
     callable: build_system_state

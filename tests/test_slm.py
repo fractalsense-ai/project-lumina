@@ -525,6 +525,12 @@ class TestAdminCommandParsing:
         assert "resolve_escalation" in op_names
 
     @pytest.mark.unit
+    def test_update_user_role_has_governed_modules(self) -> None:
+        """update_user_role must advertise governed_modules so DA promotions\n        carry domain scope in a single operation."""
+        op = next(o for o in ADMIN_OPERATIONS if o["name"] == "update_user_role")
+        assert "governed_modules" in op["params_schema"]
+
+    @pytest.mark.unit
     @patch("lumina.core.slm.call_slm")
     def test_custom_operations_list_used(self, mock_call: MagicMock) -> None:
         mock_call.return_value = json.dumps({"operation": "custom_op", "target": "t", "params": {}})

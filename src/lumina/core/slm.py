@@ -370,10 +370,15 @@ ADMIN_OPERATIONS: list[dict[str, Any]] = [
     },
     {
         "name": "update_user_role",
-        "description": "Change a user's role.",
+        "description": "Change a user's role. When promoting to domain_authority, include governed_modules.",
         "params_schema": {
             "user_id": "string — target user identifier",
             "new_role": "string — one of: root, domain_authority, it_support, qa, auditor, user",
+            "governed_modules": (
+                "array of strings — domain module IDs required when new_role is"
+                " domain_authority (e.g. ['domain/edu/algebra-level-1/v1'])."
+                " Omit for other roles."
+            ),
         },
     },
     {

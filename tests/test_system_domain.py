@@ -32,8 +32,9 @@ _SYSTOOLS = _REPO_ROOT / "domain-packs" / "system" / "systools"
 if str(_SYSTOOLS) in sys.path:
     sys.path.remove(str(_SYSTOOLS))
 sys.path.insert(0, str(_SYSTOOLS))
-# Evict any cached tool_adapters from a different domain pack
+# Evict any cached tool_adapters or nlp_pre_interpreter from a different domain pack
 sys.modules.pop("tool_adapters", None)
+sys.modules.pop("nlp_pre_interpreter", None)
 
 from runtime_adapters import (  # noqa: E402
     build_system_state,
@@ -485,3 +486,235 @@ class TestListSystemLogRecords:
         result = list_log_records({"limit": 500})
         # limit is capped at 200; we only wrote 10 so all 10 come back
         assert result["count"] == 10
+
+
+# ===========================================================================
+# nlp_pre_interpreter — unit tests for each extractor
+# ===========================================================================
+
+# Import the new module (same sys.path as runtime_adapters already inserted above)
+from nlp_pre_interpreter import (  # noqa: E402
+    detect_compound_command,
+    extract_admin_verb,
+    extract_glossary_match,
+    extract_target_role,
+    extract_target_user,
+    nlp_preprocess,
+)
+
+
+class TestNlpPreInterpreter:
+
+    # --- extract_admin_verb ---
+
+    @pytest.mark.unit
+    def test_mutation_verb_remove(self) -> None:
+        result = extract_admin_verb("please remove root from the user")
+        assert result["intent_type"] == "mutation"
+        assert result["verb"] == "remove"
+        assert result["confidence"] >= 0.85
+
+    @pytest.mark.unit
+    def test_mutation_verb_give(self) -> None:
+        result = extract_admin_verb("give user Matt domain authority access")
+        assert result["intent_type"] == "mutation"
+        assert result["verb"] == "give"
+
+    @pytest.mark.unit
+    def test_read_verb_list(self) -> None:
+        result = extract_admin_verb("list all active users")
+        assert result["intent_type"] == "read"
+        assert result["verb"] == "list"
+
+    @pytest.mark.unit
+    def test_read_verb_show(self) -> None:
+        result = extract_admin_verb("show me the current domain physics")
+        assert result["intent_type"] == "read"
+
+    @pytest.mark.unit
+    def test_polite_mutation_still_detected(self) -> None:
+        result = extract_admin_verb("Can you please remove root from user Alice")
+        assert result["intent_type"] == "mutation"
+
+    @pytest.mark.unit
+    def test_unknown_intent_when_no_verbs(self) -> None:
+        result = extract_admin_verb("hello there")
+        assert result["intent_type"] == "unknown"
+        assert result["confidence"] == 0.0
+
+    # --- extract_target_user ---
+
+    @pytest.mark.unit
+    def test_user_named_pattern(self) -> None:
+        result = extract_target_user("remove root from user named Matt")
+        assert result["target_user"] == "Matt"
+        assert result["confidence"] == 0.95
+
+    @pytest.mark.unit
+    def test_for_user_pattern(self) -> None:
+        result = extract_target_user("assign domain authority for user Alice")
+        assert result["target_user"] == "Alice"
+
+    @pytest.mark.unit
+    def test_bare_user_pattern(self) -> None:
+        result = extract_target_user("deactivate user Bob")
+        assert result["target_user"] == "Bob"
+
+    @pytest.mark.unit
+    def test_no_user_found(self) -> None:
+        result = extract_target_user("list all escalations")
+        assert result["target_user"] is None
+        assert result["confidence"] == 0.0
+
+    # --- extract_target_role ---
+
+    @pytest.mark.unit
+    def test_domain_authority_with_domain(self) -> None:
+        result = extract_target_role("give domain authority access to education")
+        assert result["target_role"] == "domain_authority"
+        assert result["governed_domains"] == ["education"]
+
+    @pytest.mark.unit
+    def test_remove_root_role(self) -> None:
+        result = extract_target_role("Can you please remove root from user Matt")
+        assert result["target_role"] == "root"
+        assert result["confidence"] >= 0.85
+
+    @pytest.mark.unit
+    def test_plain_role_name_auditor(self) -> None:
+        result = extract_target_role("promote user Sam to auditor")
+        assert result["target_role"] == "auditor"
+
+    @pytest.mark.unit
+    def test_no_role_found(self) -> None:
+        result = extract_target_role("show me the system log")
+        assert result["target_role"] is None
+
+    # --- detect_compound_command ---
+
+    @pytest.mark.unit
+    def test_compound_remove_and_give(self) -> None:
+        msg = "remove root from user Matt and give domain authority access to Education only"
+        result = detect_compound_command(msg)
+        assert result["is_compound"] is True
+        assert result["operation_count_estimate"] == 2
+
+    @pytest.mark.unit
+    def test_single_operation_not_compound(self) -> None:
+        result = detect_compound_command("remove root from user Alice")
+        assert result["is_compound"] is False
+
+    # --- extract_glossary_match ---
+
+    @pytest.mark.unit
+    def test_glossary_ctl_matched(self) -> None:
+        result = extract_glossary_match("check the ctl for recent commits")
+        assert "ctl" in result["glossary_terms_matched"]
+
+    @pytest.mark.unit
+    def test_glossary_underscore_form_matched(self) -> None:
+        result = extract_glossary_match("review the domain physics file")
+        assert "domain_physics" in result["glossary_terms_matched"]
+
+    @pytest.mark.unit
+    def test_no_glossary_match(self) -> None:
+        result = extract_glossary_match("hello how are you today")
+        assert result["glossary_terms_matched"] == []
+
+    # --- nlp_preprocess (integration) ---
+
+    @pytest.mark.unit
+    def test_full_preprocess_produces_anchors(self) -> None:
+        msg = "Can you please remove root from user named Matt"
+        result = nlp_preprocess(msg, {})
+        anchors = result["_nlp_anchors"]
+        assert isinstance(anchors, list)
+        fields = [a["field"] for a in anchors]
+        assert "intent_type" in fields
+        assert "target_user" in fields
+        assert "target_role" in fields
+
+    @pytest.mark.unit
+    def test_compound_command_anchor_present(self) -> None:
+        msg = "remove root from user Matt and give domain authority access to Education only"
+        result = nlp_preprocess(msg, {})
+        fields = [a["field"] for a in result["_nlp_anchors"]]
+        assert "compound_command" in fields
+        assert result.get("is_compound_command") is True
+
+    @pytest.mark.unit
+    def test_empty_context_does_not_raise(self) -> None:
+        result = nlp_preprocess("", {})
+        assert "_nlp_anchors" in result
+
+
+# ===========================================================================
+# interpret_turn_input — NLP anchor injection
+# ===========================================================================
+
+
+class TestInterpretTurnInputNlp:
+
+    _defaults: dict[str, Any] = {
+        "query_type": "general",
+        "target_component": None,
+        "response_latency_sec": 5.0,
+    }
+
+    @pytest.mark.unit
+    def test_nlp_fn_anchors_injected_into_prompt(self) -> None:
+        """Anchor block must appear in the user= argument passed to call_llm."""
+        def fake_nlp(text: str, ctx: dict) -> dict:
+            return {
+                "_nlp_anchors": [
+                    {"field": "intent_type", "value": "mutation", "confidence": 0.90, "detail": "verb: remove"},
+                ],
+            }
+
+        call_llm = MagicMock(return_value=json.dumps({"query_type": "admin_command"}))
+        with patch("lumina.core.slm.slm_available", return_value=False):
+            interpret_turn_input(
+                call_llm, "remove root", {}, "prompt",
+                self._defaults, nlp_pre_interpreter_fn=fake_nlp,
+            )
+        user_arg = call_llm.call_args[1].get("user") or call_llm.call_args[0][1]
+        assert "NLP pre-analysis (deterministic)" in user_arg
+        assert "intent_type: mutation" in user_arg
+
+    @pytest.mark.unit
+    def test_compound_hint_appended_when_is_compound(self) -> None:
+        """When NLP fn sets is_compound_command, the compound hint must appear in prompt."""
+        def fake_nlp(text: str, ctx: dict) -> dict:
+            return {
+                "_nlp_anchors": [],
+                "is_compound_command": True,
+            }
+
+        call_llm = MagicMock(return_value=json.dumps({"query_type": "general"}))
+        with patch("lumina.core.slm.slm_available", return_value=False):
+            interpret_turn_input(
+                call_llm, "remove X and give Y", {}, "prompt",
+                self._defaults, nlp_pre_interpreter_fn=fake_nlp,
+            )
+        user_arg = call_llm.call_args[1].get("user") or call_llm.call_args[0][1]
+        assert "Compound command detected" in user_arg
+
+    @pytest.mark.unit
+    def test_nlp_fn_not_required(self) -> None:
+        """Omitting nlp_pre_interpreter_fn must not raise and must not change behaviour."""
+        call_llm = MagicMock(return_value=json.dumps({"query_type": "general"}))
+        evidence = interpret_turn_input(call_llm, "hello", {}, "prompt", self._defaults)
+        assert evidence["query_type"] == "general"
+
+    @pytest.mark.unit
+    def test_nlp_fn_exception_is_swallowed(self) -> None:
+        """A crashing NLP fn must not propagate — interpret_turn_input should still return."""
+        def bad_nlp(text: str, ctx: dict) -> dict:
+            raise RuntimeError("explode")
+
+        call_llm = MagicMock(return_value=json.dumps({"query_type": "general"}))
+        evidence = interpret_turn_input(
+            call_llm, "hello", {}, "prompt",
+            self._defaults, nlp_pre_interpreter_fn=bad_nlp,
+        )
+        assert evidence["query_type"] == "general"
