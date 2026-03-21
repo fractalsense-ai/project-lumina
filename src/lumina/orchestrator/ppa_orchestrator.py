@@ -1,62 +1,55 @@
-"""
-ppa-orchestrator.py — Project Lumina Prompt Packet Assembly (PPA) Orchestrator
+﻿"""
+ppa_orchestrator.py â€” Project Lumina Prompt Packet Assembly (PPA) Orchestrator
 
-Version: 0.3.0
+Version: 0.4.0
 Conforms to: specs/dsa-framework-v1.md
-                         standards/system-log-v1.md
+             standards/system-log-v1.md
 
-Implements the Action layer of the D.S.A. framework, connecting:
-        Domain Physics -> (optional domain lib) -> System Log -> Prompt Contract
+Implements the Action layer of the D.S.A. framework as a thin pipeline
+coordinator.  Heavy concerns are delegated to three focused collaborators:
 
-The orchestrator:
-    1. Loads Domain Physics (JSON) defining invariants and standing orders.
-    2. Holds the current domain-lib state (initialised by the caller, or None).
-    3. For every session turn:
-         a. Evaluates non-delegated invariants against structured evidence by
-                interpreting the ``check`` expression declared in each invariant
-                definition. No domain-specific logic is baked into the engine.
-         b. Steps any registered domain lib to obtain an updated state and
-                a decision dict. If no lib is registered the decision is empty.
-         c. Resolves the final action (invariant failures trump state drift).
-         d. Builds a prompt_contract JSON object conforming to the domain schema.
-         e. Appends a hash-chained TraceEvent (and, when needed, an
-                EscalationRecord) to the System Logs.
-    4. Opens the session with a CommitmentRecord in the System Logs.
+    ActionResolver  (the Judge)  â€” invariant evaluation + action/escalation logic
+    ContractDrafter (the Clerk)  â€” prompt-contract assembly
+    SystemLogWriter (the Scribe) â€” hash-chained System Log I/O
+
+Pipeline (process_turn)::
+
+    invariant_results  = resolver.check_invariants(evidence)
+    domain_lib_decision = _step_domain_lib(task_spec, evidence)
+    action, escalate, trigger = resolver.resolve(invariant_results, domain_lib_decision)
+    prompt_contract    = drafter.build(task_spec, action, domain_lib_decision, trigger)
+    writer.record_turn(...)   # fire-and-wait today; wiring-ready for async later
+
+Backward compatibility:
+    All private methods and attributes that tests call directly
+    (_resolve_action, _standing_order_attempts, etc.) are preserved as
+    one-liner delegates to the appropriate collaborator.
 
 Invariant evaluation (domain-pack-driven):
     Each invariant in the domain-pack may carry a ``check`` field whose value
     is a simple predicate expression referencing flat evidence-dict keys:
 
-        ``<field>``                  — truthy check on evidence[field]
-        ``<field> == <literal>``     — equality check (supports [] / true / false)
-        ``<field> != <literal>``     — inequality check
-        ``<field> >= <number>``      — numeric comparison (also >, <, <=)
+        ``<field>``                  â€” truthy check on evidence[field]
+        ``<field> == <literal>``     â€” equality check (supports [] / true / false)
+        ``<field> != <literal>``     â€” inequality check
+        ``<field> >= <number>``      â€” numeric comparison (also >, <, <=)
 
     Invariants marked with ``"handled_by": "<subsystem>"`` are skipped here
     and delegated entirely to the registered domain lib (or ignored when no
-    lib is registered). This mechanism is domain-agnostic: an agriculture
-    domain can define ``soil_moisture_drift_minor`` with
-    ``handled_by: soil_health_monitor`` using the same pattern.
+    lib is registered).
 
 Design constraints:
-    - Standard library only (no external dependencies).
-    - All System Log records are hash-chained with SHA-256 canonical JSON, exactly as
-        implemented in system-log-validator.py.
-    - No domain-specific domain-lib implementation is imported or required by
-        the engine. Domain integrations wire up their domain libs externally and pass
-        them in via ``domain_lib_step_fn`` / ``initial_state``.
+    - Standard library only (no external dependencies in this module).
+    - All System Log records are hash-chained with SHA-256 canonical JSON.
+    - No domain-specific domain-lib implementation is imported or required.
 
-Usage:
-        from ppa_orchestrator import PPAOrchestrator, load_domain_physics
-        from yaml_loader import load_yaml
-        domain = load_domain_physics("domain-packs/education/modules/algebra-level-1/domain-physics.json")
-        profile = load_yaml("domain-packs/education/modules/algebra-level-1/example-student-alice.yaml")
-        # For a domain with no domain lib:
-        orch = PPAOrchestrator(domain, profile, ledger_path="session.jsonl")
-        # For the education domain example, wire up the ZPD monitor externally:
-        orch = PPAOrchestrator(domain, profile, ledger_path="session.jsonl",
-                                                     domain_lib_step_fn=zpd_monitor_step, initial_state=initial_learning_state)
-        contract, action = orch.process_turn(task_spec, evidence)
+Usage::
+
+    from lumina.orchestrator.ppa_orchestrator import PPAOrchestrator, load_domain_physics
+    domain  = load_domain_physics("domain-packs/education/modules/algebra-level-1/domain-physics.json")
+    profile = load_yaml("domain-packs/education/modules/algebra-level-1/example-student-alice.yaml")
+    orch    = PPAOrchestrator(domain, profile, ledger_path="session.jsonl")
+    contract, action = orch.process_turn(task_spec, evidence)
 """
 
 from __future__ import annotations
@@ -65,43 +58,48 @@ import hashlib
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+from lumina.orchestrator.action_resolver import ActionResolver
+from lumina.orchestrator.contract_drafter import ContractDrafter
+from lumina.orchestrator.system_log_writer import (
+    SystemLogWriter,
+    canonical_json as _canonical_json,
+    hash_record as _hash_record,
+    hash_payload as _hash_payload,
+)
 
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Logging
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 log = logging.getLogger("ppa_orchestrator")
 
 
-# ─────────────────────────────────────────────────────────────
-# System Log Hash Utilities
-# (identical pattern to system-log-validator.py lines 49-60)
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Module-level re-exports
+# (backward compatibility â€” external callers import these from ppa_orchestrator)
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def canonical_json(record: dict[str, Any]) -> bytes:
     """Canonical JSON: keys sorted, no whitespace, UTF-8."""
-    return json.dumps(
-        record, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    ).encode("utf-8")
+    return _canonical_json(record)
 
 
 def hash_record(record: dict[str, Any]) -> str:
     """Compute SHA-256 of a canonical System Log record."""
-    return hashlib.sha256(canonical_json(record)).hexdigest()
+    return _hash_record(record)
 
 
 def hash_payload(payload: dict[str, Any]) -> str:
     """Hash arbitrary structured payload with canonical JSON rules."""
-    return hashlib.sha256(canonical_json(payload)).hexdigest()
+    return _hash_payload(payload)
 
 
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Domain Physics Loader
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def load_domain_physics(path: str | Path) -> dict[str, Any]:
     """Load domain physics from a JSON file."""
@@ -109,13 +107,13 @@ def load_domain_physics(path: str | Path) -> dict[str, Any]:
         return json.load(fh)
 
 
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Domain-pack-driven invariant check evaluator
 #
 # Canonical implementation lives in lumina.middleware.invariant_checker.
 # These module-level aliases preserve backward compatibility for external
 # callers that import from ppa_orchestrator directly.
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 from lumina.middleware.invariant_checker import (
     evaluate_check_expr as _evaluate_check_expr,
@@ -124,32 +122,23 @@ from lumina.middleware.invariant_checker import (
 )
 
 
-# ─────────────────────────────────────────────────────────────
-# Action → Prompt Type Mapping
-# ─────────────────────────────────────────────────────────────
-
-_DEFAULT_ACTION_TO_PROMPT_TYPE: dict[str | None, str] = {
-    # Core domain-agnostic actions
-    None: "task_presentation",
-}
-
-
-# ─────────────────────────────────────────────────────────────
-# PPAOrchestrator
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# PPAOrchestrator â€” thin pipeline coordinator
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class PPAOrchestrator:
     """
     D.S.A. Action layer orchestrator.
 
-    Connects Domain Physics → (optional domain lib) → System Log → Prompt Contract
-    for a single session.
+    Connects Domain Physics â†’ (optional domain lib) â†’ System Log â†’ Prompt Contract
+    for a single session.  Decision logic, contract formatting, and log I/O are
+    each handled by a dedicated collaborator; this class wires them together and
+    owns the domain-lib state machine.
 
     Attributes:
         domain      Domain physics dict loaded from JSON.
         profile     Subject profile dict (domain-agnostic; loaded by the caller).
-        state       Current domain-lib state supplied by the caller; updated each
-                turn when a ``domain_lib_step_fn`` is registered.
+        state       Current domain-lib state (opaque to the engine).
         session_id  UUID string identifying this session in the System Logs.
     """
 
@@ -179,112 +168,108 @@ class PPAOrchestrator:
                              ``(state, task_spec, evidence) -> (new_state, decision_dict)``.
                              Pass ``None`` (default) for domain packs that declare
                              no domain-lib subsystem.
-            initial_state:   Initial domain-lib state to pass to ``domain_lib_step_fn`` on
-                             the first turn.  Ignored when ``domain_lib_step_fn`` is
-                             ``None``.  For the education domain this is a
-                             ``LearningState`` object built by the caller from the
-                             subject profile.
+            initial_state:   Initial domain-lib state passed to ``domain_lib_step_fn``
+                             on the first turn.  Ignored when ``domain_lib_step_fn``
+                             is ``None``.
             action_prompt_type_map: Optional action-to-prompt_type mapping loaded
-                             from domain runtime config. Unknown actions still
-                             pass through as prompt_type values.
-            policy_commitment: Optional policy commitment metadata containing
-                             authoritative subject/version/hash values used when
-                             writing session-open CommitmentRecord.
+                             from domain runtime config.
+            policy_commitment: Optional policy commitment metadata with authoritative
+                             subject/version/hash values for the CommitmentRecord.
         """
         self.domain = domain_physics
         self.profile = subject_profile
-        self.ledger_path = Path(ledger_path)
         self.session_id = session_id or str(uuid.uuid4())
-        self._prev_hash: str = "genesis"
-        self._records: list[dict[str, Any]] = []
-        self._domain_lib_step_fn = domain_lib_step_fn
-        self._action_prompt_type_map: dict[str | None, str] = dict(_DEFAULT_ACTION_TO_PROMPT_TYPE)
-        for action, prompt_type in (action_prompt_type_map or {}).items():
-            self._action_prompt_type_map[str(action)] = str(prompt_type)
         self._policy_commitment = dict(policy_commitment or {})
-        self._log_append_callback = log_append_callback
-        self._system_physics_hash = system_physics_hash
-
-        # Diagnostics for the most recently processed turn (read-only for callers)
-        self.last_invariant_results: list[dict[str, Any]] = []
-        self.last_domain_lib_decision: dict[str, Any] = {}
-        self.last_standing_order_id: str | None = None
-        self.last_standing_order_attempt: int | None = None
+        self._domain_lib_step_fn = domain_lib_step_fn
 
         # Domain-lib state: managed externally; the engine treats it as opaque.
         self.state = initial_state
 
-        # Standing-order attempts are tracked per standing-order ID.
-        self._standing_order_attempts: dict[str, int] = {}
+        # Diagnostics for the most recently processed turn (read-only for callers)
+        self.last_invariant_results: list[dict[str, Any]] = []
+        self.last_domain_lib_decision: dict[str, Any] = {}
+
+        # â”€â”€ Three collaborators â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        self._resolver = ActionResolver(domain_physics)
+        self._drafter = ContractDrafter(domain_physics, subject_profile, action_prompt_type_map)
+        self._writer = SystemLogWriter(
+            ledger_path,
+            self.session_id,
+            subject_profile,
+            system_physics_hash=system_physics_hash,
+            log_append_callback=log_append_callback,
+        )
 
         # Write the session-open CommitmentRecord
-        self._write_commitment_record()
+        self._writer.write_commitment_record(domain_physics, self._policy_commitment)
 
-    # ── State construction ────────────────────────────────────
+    # â”€â”€ Backward-compat read-only properties â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    @property
+    def ledger_path(self) -> Path:
+        return self._writer.ledger_path
 
     @property
     def log_records(self) -> list[dict[str, Any]]:
         """Read-only view of all System Log records written in this session."""
-        return list(self._records)
+        return self._writer.log_records
+
+    # â”€â”€ Backward-compat: standing-order state (tests read this directly) â”€â”€
+
+    @property
+    def _standing_order_attempts(self) -> dict[str, int]:
+        """Live reference to the resolver's attempt counters (tests mutate via _resolve_action)."""
+        return self._resolver._standing_order_attempts
+
+    @property
+    def last_standing_order_id(self) -> str | None:
+        return self._resolver.last_standing_order_id
+
+    @last_standing_order_id.setter
+    def last_standing_order_id(self, value: str | None) -> None:
+        self._resolver.last_standing_order_id = value
+
+    @property
+    def last_standing_order_attempt(self) -> int | None:
+        return self._resolver.last_standing_order_attempt
+
+    @last_standing_order_attempt.setter
+    def last_standing_order_attempt(self, value: int | None) -> None:
+        self._resolver.last_standing_order_attempt = value
+
+    # â”€â”€ Public state-management API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def set_standing_order_attempts(self, attempts: dict[str, Any] | None) -> None:
         """Restore standing-order attempts from persisted session state."""
-        restored: dict[str, int] = {}
-        for key, value in (attempts or {}).items():
-            try:
-                parsed = int(value)
-            except (TypeError, ValueError):
-                continue
-            if parsed >= 0:
-                restored[str(key)] = parsed
-        self._standing_order_attempts = restored
+        self._resolver.set_attempts(attempts)
 
     def get_standing_order_attempts(self) -> dict[str, int]:
         """Expose standing-order attempts for session-state persistence."""
-        return dict(self._standing_order_attempts)
+        return self._resolver.get_attempts()
 
-    # ── System Log record writers ────────────────────────────────────
+    # â”€â”€ Backward-compat delegate methods (called by existing tests) â”€â”€â”€â”€â”€â”€â”€
 
-    def _append_log_record(self, record: dict[str, Any]) -> None:
-        """Append a record to the JSONL ledger and advance the hash chain."""
-        if self._log_append_callback is not None:
-            self._log_append_callback(self.session_id, record)
-        else:
-            self.ledger_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.ledger_path, "a", encoding="utf-8") as fh:
-                fh.write(
-                    json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-                )
-                fh.write("\n")
-        self._prev_hash = hash_record(record)
-        self._records.append(record)
+    def _evaluate_invariants(self, evidence: dict[str, Any]) -> list[dict[str, Any]]:
+        return self._resolver.check_invariants(evidence)
+
+    def _resolve_action(
+        self,
+        invariant_results: list[dict[str, Any]],
+        domain_lib_decision: dict[str, Any],
+    ) -> tuple[str | None, bool, str | None]:
+        return self._resolver.resolve(invariant_results, domain_lib_decision)
+
+    def _build_prompt_contract(
+        self,
+        task_spec: dict[str, Any],
+        action: str | None,
+        domain_lib_decision: dict[str, Any],
+        standing_order_trigger: str | None,
+    ) -> dict[str, Any]:
+        return self._drafter.build(task_spec, action, domain_lib_decision, standing_order_trigger)
 
     def _write_commitment_record(self) -> None:
-        """Write the session-open CommitmentRecord to the System Logs."""
-        domain_id = self._policy_commitment.get("subject_id", self.domain.get("id", "unknown"))
-        domain_version = self._policy_commitment.get("subject_version", self.domain.get("version", "unknown"))
-        domain_hash = self._policy_commitment.get("subject_hash", "unknown")
-        domain_authority = self.domain.get("domain_authority") or {}
-        actor_id = domain_authority.get("pseudonymous_id", "unknown")
-        record: dict[str, Any] = {
-            "record_type": "CommitmentRecord",
-            "record_id": str(uuid.uuid4()),
-            "prev_record_hash": self._prev_hash,
-            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-            "actor_id": actor_id,
-            "actor_role": "domain_authority",
-            "commitment_type": "domain_pack_activation",
-            "subject_id": domain_id,
-            "subject_version": domain_version,
-            "subject_hash": domain_hash,
-            "summary": (
-                f"Session {self.session_id} opened — domain pack "
-                f"{domain_id} v{domain_version} hash={str(domain_hash)[:12]}..."
-            ),
-            "references": [],
-            "metadata": {"session_id": self.session_id},
-        }
-        self._append_log_record(record)
+        self._writer.write_commitment_record(self.domain, self._policy_commitment)
 
     def _write_trace_event(
         self,
@@ -295,39 +280,16 @@ class PPAOrchestrator:
         prompt_contract: dict[str, Any],
         provenance_metadata: dict[str, Any] | None = None,
     ) -> None:
-        """Append a TraceEvent record to the System Logs for this turn."""
-        record: dict[str, Any] = {
-            "record_type": "TraceEvent",
-            "record_id": str(uuid.uuid4()),
-            "prev_record_hash": self._prev_hash,
-            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-            "session_id": self.session_id,
-            "event_type": "turn_processed",
-            "actor_id": self.profile.get("subject_id", self.profile.get("student_id", "unknown")),
-            "actor_role": "subject",
-            "decision": action,
-            "decision_rationale": {
-                "domain_lib_tier": domain_lib_decision.get("tier"),
-                "domain_metric_pct": domain_lib_decision.get("drift_pct"),
-                "domain_alert_flag": domain_lib_decision.get("frustration"),
-                "standing_order_id": self.last_standing_order_id,
-                "standing_order_attempt": self.last_standing_order_attempt,
-                "invariant_failures": [
-                    r["id"] for r in invariant_results if not r["passed"]
-                ],
-            },
-            "task_id": task_spec.get("task_id", ""),
-            "prompt_type": prompt_contract.get("prompt_type"),
-            "metadata": dict(provenance_metadata or {}),
-        }
-        if self._system_physics_hash is not None:
-            record["metadata"]["system_physics_hash"] = self._system_physics_hash
-        # Propagate signal_type from any failing invariant into metadata
-        for inv_result in invariant_results:
-            if not inv_result["passed"] and inv_result.get("signal_type"):
-                record["metadata"]["novel_synthesis_signal"] = inv_result["signal_type"]
-                break
-        self._append_log_record(record)
+        self._writer.write_trace_event(
+            task_spec,
+            invariant_results,
+            domain_lib_decision,
+            action,
+            prompt_contract,
+            provenance_metadata,
+            self._resolver.last_standing_order_id,
+            self._resolver.last_standing_order_attempt,
+        )
 
     def _write_escalation_record(
         self,
@@ -336,218 +298,29 @@ class PPAOrchestrator:
         trigger: str,
         provenance_metadata: dict[str, Any] | None = None,
     ) -> None:
-        """Append an EscalationRecord to the System Logs."""
-        record: dict[str, Any] = {
-            "record_type": "EscalationRecord",
-            "record_id": str(uuid.uuid4()),
-            "prev_record_hash": self._prev_hash,
-            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-            "session_id": self.session_id,
-            "actor_id": self.profile.get("subject_id", self.profile.get("student_id", "unknown")),
-            "actor_role": "subject",
-            "status": "open",
-            "trigger": trigger,
-            "task_id": task_spec.get("task_id", ""),
-            "domain_lib_decision": {
-                "tier": domain_lib_decision.get("tier"),
-                "domain_alert_flag": domain_lib_decision.get("frustration"),
-                "domain_metric_pct": domain_lib_decision.get("drift_pct"),
-            },
-            "target_role": "domain_authority",
-            "escalation_target_id": self.profile.get("assigned_teacher_id") or None,
-            "assigned_room_id": self.profile.get("assigned_room_id") or None,
-            "sla_minutes": 30,
-            "metadata": dict(provenance_metadata or {}),
-        }
-        if self._system_physics_hash is not None:
-            record["metadata"]["system_physics_hash"] = self._system_physics_hash
-        self._append_log_record(record)
-
-    # ── Core decision logic ───────────────────────────────────
-
-    def _evaluate_invariants(
-        self, evidence: dict[str, Any]
-    ) -> list[dict[str, Any]]:
-        """
-        Evaluate all domain-pack invariants against the structured evidence dict.
-
-        Invariants marked with ``"handled_by": "<subsystem>"`` are skipped here
-        and delegated entirely to the registered domain lib (or ignored when
-        no domain lib is registered).
-
-        Each remaining invariant is evaluated by parsing its ``check`` field —
-        a simple predicate expression whose operand is a flat key in the evidence
-        dict (see ``_evaluate_check_expr`` for supported syntax).
-
-        Returns a list of result dicts:
-            {id, severity, passed, standing_order_on_violation, signal_type}
-
-        Invariants whose ``check`` field is absent or whose evidence field is
-        missing from the supplied dict are skipped with a log message (no false
-        negatives from missing data).
-        """
-        return _mw_evaluate_invariants(
-            self.domain.get("invariants", []), evidence
+        self._writer.write_escalation_record(
+            task_spec, domain_lib_decision, trigger, provenance_metadata
         )
 
-    def _resolve_action(
-        self,
-        invariant_results: list[dict[str, Any]],
-        domain_lib_decision: dict[str, Any],
-    ) -> tuple[str | None, bool, str | None]:
-        """
-        Determine the final action for this turn.
+    def _append_log_record(self, record: dict[str, Any]) -> None:
+        self._writer._append_log_record(record)
 
-        Priority order:
-          1. Critical invariant failure → its standing_order_on_violation.
-          2. Warning invariant failure  → its standing_order_on_violation.
-          3. No invariant failure       → domain lib's decision["action"].
+    # â”€â”€ Private helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-        Additionally, if the domain-lib decision marks escalation conditions,
-        the second return value is True (escalate).
-
-        Returns:
-            (action, should_escalate, escalation_trigger)
-        """
-        self.last_standing_order_id = None
-        self.last_standing_order_attempt = None
-
-        # Per-invariant reset: clear the standing-order counter for each
-        # invariant that passes this turn.  Counters for still-failing
-        # invariants are preserved.  This is domain-agnostic — it uses the
-        # standing_order_on_violation field from domain physics.
-        for result in invariant_results:
-            if result["passed"]:
-                so_key = result.get("standing_order_on_violation")
-                if so_key and so_key in self._standing_order_attempts:
-                    del self._standing_order_attempts[so_key]
-
-        # Critical failures first
-        escalation_from_exhaustion: tuple[str | None, bool, str | None] | None = None
-        for result in invariant_results:
-            if not result["passed"] and result["severity"] == "critical":
-                action_result = self._resolve_standing_order_action(result["standing_order_on_violation"])
-                if action_result[0] is not None:
-                    return action_result
-                # Standing order exhausted — remember escalation if any,
-                # but continue to next critical invariant.
-                if action_result[1] and escalation_from_exhaustion is None:
-                    escalation_from_exhaustion = action_result
-
-        # Warning failures next
-        for result in invariant_results:
-            if not result["passed"] and result["severity"] == "warning":
-                action_result = self._resolve_standing_order_action(result["standing_order_on_violation"])
-                if action_result[0] is not None:
-                    return action_result
-                if action_result[1] and escalation_from_exhaustion is None:
-                    escalation_from_exhaustion = action_result
-
-        # If all standing orders are exhausted but one triggered escalation,
-        # return the escalation signal (no action, but should_escalate=True).
-        if escalation_from_exhaustion is not None:
-            return escalation_from_exhaustion
-
-        # Fall through to domain-lib decision
-        action = domain_lib_decision.get("action")
-        # The engine checks an explicit boolean field set by the domain lib.
-        # This keeps the core engine domain-agnostic — each domain pack's lib
-        # is responsible for setting "should_escalate": True when escalation is
-        # warranted (e.g., the education ZPD monitor sets this on major drift).
-        should_escalate = bool(domain_lib_decision.get("should_escalate", False))
-        escalation_trigger = "domain_lib_escalation_event" if should_escalate else None
-        return action, should_escalate, escalation_trigger
-
-    def _resolve_standing_order_action(
-        self, action: str | None
-    ) -> tuple[str | None, bool, str | None]:
-        """
-        Track standing-order attempts and enforce max-attempt escalation policy.
-
-        Returns:
-            (action, should_escalate, escalation_trigger)
-        """
-        if not action:
-            return action, False, None
-
-        standing_orders = self.domain.get("standing_orders", [])
-        if not isinstance(standing_orders, list):
-            return action, False, None
-
-        standing_order: dict[str, Any] | None = None
-        for item in standing_orders:
-            if not isinstance(item, dict):
-                continue
-            if item.get("action") == action or item.get("id") == action:
-                standing_order = item
-                break
-
-        if standing_order is None:
-            return action, False, None
-
-        standing_order_id = str(standing_order.get("id", action))
-        max_attempts_raw = standing_order.get("max_attempts", 1)
-        try:
-            max_attempts = int(max_attempts_raw)
-        except (TypeError, ValueError):
-            max_attempts = 1
-        escalate_on_exhaust = bool(standing_order.get("escalation_on_exhaust", False))
-
-        attempt = self._standing_order_attempts.get(standing_order_id, 0) + 1
-        self._standing_order_attempts[standing_order_id] = attempt
-        self.last_standing_order_id = standing_order_id
-        self.last_standing_order_attempt = attempt
-
-        if max_attempts >= 0 and attempt > max_attempts:
-            trigger = f"standing_order_exhausted:{standing_order_id}"
-            # Exhausted: stop firing the corrective action.
-            # Escalate if configured, otherwise silently suppress.
-            return None, escalate_on_exhaust, trigger if escalate_on_exhaust else None
-
-        return action, False, None
-
-    def _build_prompt_contract(
+    def _step_domain_lib(
         self,
         task_spec: dict[str, Any],
-        action: str | None,
-        domain_lib_decision: dict[str, Any],
-        standing_order_trigger: str | None,
+        evidence: dict[str, Any],
     ) -> dict[str, Any]:
-        """
-        Build a prompt_contract dict conforming to prompt-contract-schema.json.
+        """Step the domain lib (if registered) and return its decision dict."""
+        if self._domain_lib_step_fn is not None:
+            self.state, decision = self._domain_lib_step_fn(
+                self.state, task_spec, evidence
+            )
+            return decision
+        return {}
 
-        The schema requires: prompt_type, domain_pack_id, domain_pack_version,
-        task_id.  Additional optional fields are populated where available.
-        """
-        # Unknown domain-specific actions pass through as their own prompt_type string
-        # so domain packs can extend the vocabulary without modifying this engine.
-        prompt_type = self._action_prompt_type_map.get(action, action or "task_presentation")
-
-        preferences = self.profile.get("preferences", {})
-        interests: list[str] = preferences.get("interests") or []
-        theme: str | None = interests[0] if interests else None
-
-        contract: dict[str, Any] = {
-            "prompt_type": prompt_type,
-            "domain_pack_id": self.domain.get("id", ""),
-            "domain_pack_version": self.domain.get("version", ""),
-            "task_id": task_spec.get("task_id", ""),
-            "task_nominal_difficulty": float(
-                task_spec.get("nominal_difficulty", domain_lib_decision.get("challenge", 0.5))
-            ),
-            "skills_targeted": list(task_spec.get("skills_required", [])),
-            "theme": theme,
-            "standing_order_trigger": standing_order_trigger,
-            "references": [],
-            "grounded": True,
-        }
-
-        if prompt_type == "hint":
-            contract["hint_level"] = 1
-
-        return contract
-
-    # ── Public API ────────────────────────────────────────────
+    # â”€â”€ Public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def process_turn(
         self,
@@ -556,52 +329,33 @@ class PPAOrchestrator:
         provenance_metadata: dict[str, Any] | None = None,
     ) -> tuple[dict[str, Any], str]:
         """
-        Process one session turn through the full D.S.A. loop.
+        Process one session turn through the full D.S.A. pipeline.
 
         Args:
             task_spec: Current task specification.
-                       Required keys:
-                           task_id            — unique identifier string
-                           nominal_difficulty — float 0..1
-                           skills_required    — list of skill ID strings
+                       Required keys: task_id, nominal_difficulty, skills_required.
             evidence:  Structured evidence summary for this turn.
-                       Domain-invariant evidence keys are defined by the ``check``
-                       expressions in the loaded domain-pack.  Missing fields are
-                       silently skipped (no false negatives).
-                       Domain-lib-specific evidence keys are passed through unchanged to
-                       ``domain_lib_step_fn`` when one is registered.
-                       Evidence schema ownership is domain-specific; the core engine
-                       does not require any fixed evidence field vocabulary.
+            provenance_metadata: Optional extra metadata attached to TraceEvent.
 
         Returns:
             (prompt_contract, resolved_action)
-            prompt_contract conforms to prompt-contract-schema.json.
-            resolved_action is the string action taken (e.g. domain-defined standing-order action)
-            or "task_presentation" when no corrective action is needed.
         """
-        # 1. Evaluate non-delegated invariants
-        invariant_results = self._evaluate_invariants(evidence)
+        # 1. The Judge evaluates the evidence
+        invariant_results = self._resolver.check_invariants(evidence)
 
-        # 2. Step any registered domain lib.
-        #    If no domain lib is registered the decision dict is empty and the
-        #    orchestrator falls back to invariant-only logic.
-        if self._domain_lib_step_fn is not None:
-            self.state, domain_lib_decision = self._domain_lib_step_fn(
-                self.state, task_spec, evidence
-            )
-        else:
-            domain_lib_decision: dict[str, Any] = {}
+        # 2. Domain Lib steps (if applicable)
+        domain_lib_decision = self._step_domain_lib(task_spec, evidence)
 
         # Store diagnostics for the caller
         self.last_invariant_results = invariant_results
         self.last_domain_lib_decision = domain_lib_decision
 
-        # 3. Resolve action
-        action, should_escalate, escalation_trigger = self._resolve_action(
+        # 3. The Judge decides the action
+        action, should_escalate, escalation_trigger = self._resolver.resolve(
             invariant_results, domain_lib_decision
         )
 
-        # Determine the standing order trigger label for the contract
+        # Determine standing-order trigger label for the contract
         standing_order_trigger: str | None = None
         for result in invariant_results:
             if not result["passed"]:
@@ -610,27 +364,28 @@ class PPAOrchestrator:
         if standing_order_trigger is None and action is not None:
             standing_order_trigger = action
 
-        # 4. Build prompt contract
-        prompt_contract = self._build_prompt_contract(
+        # 4. The Clerk drafts the contract
+        prompt_contract = self._drafter.build(
             task_spec, action, domain_lib_decision, standing_order_trigger
         )
 
         trace_metadata = dict(provenance_metadata or {})
         trace_metadata["prompt_contract_hash"] = hash_payload(prompt_contract)
 
-        # 5. Append TraceEvent to System Log
-        self._write_trace_event(
+        # 5. The Scribe logs it
+        self._writer.write_trace_event(
             task_spec,
             invariant_results,
             domain_lib_decision,
             action,
             prompt_contract,
             trace_metadata,
+            self._resolver.last_standing_order_id,
+            self._resolver.last_standing_order_attempt,
         )
 
-        # 6. Append EscalationRecord if warranted
         if should_escalate:
-            self._write_escalation_record(
+            self._writer.write_escalation_record(
                 task_spec,
                 domain_lib_decision,
                 escalation_trigger or "domain_lib_escalation_event",
@@ -648,18 +403,7 @@ class PPAOrchestrator:
         metadata: dict[str, Any],
     ) -> None:
         """Append an auxiliary TraceEvent carrying post-payload provenance hashes."""
-        record: dict[str, Any] = {
-            "record_type": "TraceEvent",
-            "record_id": str(uuid.uuid4()),
-            "prev_record_hash": self._prev_hash,
-            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-            "session_id": self.session_id,
-            "event_type": "other",
-            "actor_id": self.profile.get("subject_id", self.profile.get("student_id", "unknown")),
-            "actor_role": "subject",
-            "decision": action,
-            "task_id": task_id,
-            "prompt_type": prompt_type,
-            "metadata": dict(metadata),
-        }
-        self._append_log_record(record)
+        self._writer.append_provenance_trace(task_id, action, prompt_type, metadata)
+
+
+    # â”€â”€ Kept for _append_log_record callers â”€â”€ (nothing to add here; method is above)
