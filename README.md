@@ -2,6 +2,9 @@
 
 **A zero-trust, deterministic orchestration layer that secures AI reasoning behind immutable Domain Physics — giving the LLM exactly one job: high-weight reasoning.**
 
+THIS README IS OUT OF DATE, please refer to the docs folder for all current information
+
+> **Full reference documentation** — UNIX man-page style, sections 1–8: [`docs/`](docs/README.md)
 ---
 
 ## What Is Lumina OS?
