@@ -1,4 +1,4 @@
-"""System Log query endpoints: records, sessions, single record lookup."""
+"""System Log query endpoints: records, sessions, single record lookup, warnings, alerts."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from starlette.concurrency import run_in_threadpool
 
 from lumina.api import config as _cfg
 from lumina.api.middleware import _bearer_scheme, get_current_user, require_auth, require_role
+from lumina.system_log.alert_store import warning_store, alert_store
 
 log = logging.getLogger("lumina-api")
 
@@ -85,3 +86,38 @@ async def get_log_record(
             return r
 
     raise HTTPException(status_code=404, detail="Record not found")
+
+
+@router.get("/api/system-log/warnings")
+async def query_warnings(
+    limit: int = 50,
+    offset: int = 0,
+    category: str | None = None,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+) -> list[dict[str, Any]]:
+    """Return recent WARNING-level events from the micro-router dashboard queue."""
+    current = await get_current_user(credentials)
+    user_data = require_auth(current)
+
+    allowed_roles = ("root", "it_support", "domain_authority", "qa", "auditor")
+    if user_data["role"] not in allowed_roles:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+    return warning_store.query(limit=limit, offset=offset, category_filter=category)
+
+
+@router.get("/api/system-log/alerts")
+async def query_alerts(
+    limit: int = 20,
+    offset: int = 0,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+) -> list[dict[str, Any]]:
+    """Return recent ERROR / CRITICAL events from the micro-router alert stream."""
+    current = await get_current_user(credentials)
+    user_data = require_auth(current)
+
+    allowed_roles = ("root", "it_support", "domain_authority", "qa", "auditor")
+    if user_data["role"] not in allowed_roles:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+    return alert_store.query(limit=limit, offset=offset)

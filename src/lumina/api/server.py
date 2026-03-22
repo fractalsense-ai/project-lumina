@@ -125,7 +125,7 @@ from lumina.api.routes.admin import (  # noqa: E402
 )
 from lumina.api.routes.auth import router as auth_router  # noqa: E402
 from lumina.api.routes.chat import router as chat_router  # noqa: E402
-from lumina.api.routes.system_log import router as ctl_router  # noqa: E402
+from lumina.api.routes.system_log import router as system_log_router  # noqa: E402
 from lumina.api.routes.dashboard import router as dashboard_router  # noqa: E402
 from lumina.api.routes.domain import router as domain_router  # noqa: E402
 from lumina.api.routes.domain_roles import router as domain_roles_router  # noqa: E402
@@ -163,7 +163,7 @@ app.include_router(system_router)
 app.include_router(domain_router)
 app.include_router(domain_roles_router)
 app.include_router(ingestion_router)
-app.include_router(ctl_router)
+app.include_router(system_log_router)
 app.include_router(dashboard_router)
 app.include_router(nightcycle_router)
 app.include_router(staging_router)
@@ -203,6 +203,12 @@ async def _start_idle_cleanup() -> None:
         asyncio.create_task(_session_idle_cleanup())
         log.info("Session idle timeout enabled: %d minutes", SESSION_IDLE_TIMEOUT_MINUTES)
 
+    # Start the log bus and micro-router before anything else emits events.
+    from lumina.system_log import log_bus as _log_bus
+    from lumina.system_log import log_router as _log_router
+    _log_router.start()
+    await _log_bus.start()
+
     # Start the async SLM PPA enrichment worker ("same bus, different lane").
     from lumina.core.slm_ppa_worker import start as _start_slm_ppa_worker
     await _start_slm_ppa_worker()
@@ -212,6 +218,13 @@ async def _start_idle_cleanup() -> None:
 async def _stop_background_tasks() -> None:
     from lumina.core.slm_ppa_worker import stop as _stop_slm_ppa_worker
     await _stop_slm_ppa_worker()
+
+    # Stop the log bus after workers so in-flight events are still delivered.
+    from lumina.system_log import log_bus as _log_bus
+    from lumina.system_log import log_router as _log_router
+    await _log_bus.stop()
+    _log_router.stop()
+
     log.info("Background tasks stopped")
 
 

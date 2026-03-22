@@ -10,7 +10,7 @@
 # The value "pending" is reserved for the initial bootstrap only.
 
 schema_version: 1.0.0
-last_updated: 2026-03-21
+last_updated: 2026-03-22
 
 artifacts:
 
@@ -328,7 +328,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-13
-    sha256: c6af33ab41f58c76e842ccf75ade482600c43ab0e49405aefc32b9e2d72bf13b
+    sha256: 375475da6d919ab00eddaa6f14fe3a8f64e6ab88a30222cceaddc1a77f43d0c6
 
   - path: docs/7-concepts/slm-compute-distribution.md
     type: doc
@@ -336,7 +336,15 @@ artifacts:
     doc_version: 1.2.0
     status: active
     last_updated: 2026-03-18
-    sha256: 88d5ebb4139df483da96b7ab14023f6af2b23a274114622f132aec53d53187c1
+    sha256: 54316fd3f956b3e38fc162b7ada5ab3f2eef37c6c09ed12c699d3ff4411117c5
+
+  - path: docs/7-concepts/system-log-micro-router.md
+    type: doc
+    section: 7
+    doc_version: 1.0.0
+    status: active
+    last_updated: 2026-03-22
+    sha256: 33f440ff79ace74314d11311d9407b140a7da41dd90eb52475a797c80bb45b26
 
   - path: docs/7-concepts/world-sim-persona-pattern.md
     type: doc
@@ -528,7 +536,7 @@ artifacts:
     doc_version: 1.1.0
     status: active
     last_updated: 2026-03-15
-    sha256: 3afe8a30eee3aab47b1c8b37e6f0183d3f0a475f9fe1e9c18fc8d7a2d2bfe80b
+    sha256: f66523bc1bc28b6918782e3039387b606370175984b1efa6e41b7e5c809cc5c9
 
   - path: standards/domain-evidence-extension-v1.md
     type: standard

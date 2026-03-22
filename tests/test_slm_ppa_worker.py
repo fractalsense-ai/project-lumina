@@ -150,3 +150,85 @@ class TestEnrichmentRequest:
     def test_enrichment_kind_values(self) -> None:
         assert EnrichmentKind.PHYSICS_CONTEXT.value == "physics_context"
         assert EnrichmentKind.COMMAND_PARSE.value == "command_parse"
+
+
+# ── Log Bus Event Emission ────────────────────────────────────────────────────
+
+
+class TestWorkerEventEmission:
+    """Verify that the SLM PPA worker emits events to the log bus."""
+
+    @pytest.mark.unit
+    def test_emits_info_on_success(self) -> None:
+        from lumina.system_log.event_payload import LogLevel
+        import lumina.system_log.log_bus as bus
+
+        received = []
+
+        async def _test():
+            _reset_worker()
+            bus._running = False
+            bus._task = None
+            bus._queue = asyncio.Queue()
+            bus._subscriptions.clear()
+
+            bus.subscribe(lambda e: received.append(e), level_filter=[LogLevel.INFO])
+            await bus.start()
+
+            with patch(
+                "lumina.core.slm_ppa_worker._enrich_physics",
+                new_callable=AsyncMock,
+                return_value={"matched_invariants": []},
+            ):
+                await start()
+                await enqueue(
+                    EnrichmentKind.PHYSICS_CONTEXT,
+                    {"incoming_signals": {}, "domain_physics": {}},
+                )
+                await asyncio.sleep(0.05)
+                await stop()
+
+            await bus.stop()
+
+        _run(_test())
+        info_events = [e for e in received if e.source == "slm_ppa_worker"]
+        assert len(info_events) >= 1
+        assert info_events[0].category == "inference_parsing"
+
+    @pytest.mark.unit
+    def test_emits_warning_on_failure(self) -> None:
+        from lumina.system_log.event_payload import LogLevel
+        import lumina.system_log.log_bus as bus
+
+        received = []
+
+        async def _test():
+            _reset_worker()
+            bus._running = False
+            bus._task = None
+            bus._queue = asyncio.Queue()
+            bus._subscriptions.clear()
+
+            bus.subscribe(lambda e: received.append(e), level_filter=[LogLevel.WARNING])
+            await bus.start()
+
+            with patch(
+                "lumina.core.slm_ppa_worker._enrich_physics",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("SLM down"),
+            ):
+                await start()
+                with pytest.raises(RuntimeError):
+                    await enqueue(
+                        EnrichmentKind.PHYSICS_CONTEXT,
+                        {"incoming_signals": {}, "domain_physics": {}},
+                    )
+                await asyncio.sleep(0.05)
+                await stop()
+
+            await bus.stop()
+
+        _run(_test())
+        warn_events = [e for e in received if e.source == "slm_ppa_worker"]
+        assert len(warn_events) >= 1
+        assert "SLM down" in warn_events[0].message

@@ -70,7 +70,7 @@ Each layer in the assembly pipeline has a distinct role, a distinct owner, and a
 | 6 | **LLM** | External LLM provider | — | Probabilistic response — never trusted as sole authority |
 | 7 | **Tool-Adapter Verification** | Domain pack (policy-driven) | Per-turn | Deterministic override of specific LLM-produced fields (e.g., algebra parser replaces `correctness`) |
 | 8 | **Domain Adapter B — Signal Synthesis** | Domain pack | Per-turn | Engine contract fields (`problem_solved`, `problem_status`); final `evidence` dict |
-| 9 | **System Log** | Core engine | Append-only | Hash-chained trace event logging the decision, provenance hashes, and outcome |
+| 9 | **System Log** | Core engine | Append-only | Hash-chained trace event logging the decision, provenance hashes, and outcome. Events are emitted to the [System Log Micro-Router](system-log-micro-router.md) which routes them by level (AUDIT → immutable ledger, WARNING → dashboard, etc.). |
 
 ### What "immutable per session" means
 

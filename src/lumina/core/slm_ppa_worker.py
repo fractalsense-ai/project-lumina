@@ -28,6 +28,9 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+from lumina.system_log.event_payload import LogLevel, create_event
+from lumina.system_log import log_bus
+
 log = logging.getLogger("lumina.slm-ppa-worker")
 
 
@@ -132,10 +135,24 @@ async def _worker_loop() -> None:
             result = await _dispatch(req)
             if not req.future.done():
                 req.future.set_result(result)
+            await log_bus.emit_async(create_event(
+                source="slm_ppa_worker",
+                level=LogLevel.INFO,
+                category="inference_parsing",
+                message=f"Enrichment succeeded ({req.kind.value})",
+                data={"kind": req.kind.value},
+            ))
         except Exception as exc:
             log.warning("SLM PPA enrichment failed (%s): %s", req.kind.value, exc)
             if not req.future.done():
                 req.future.set_exception(exc)
+            await log_bus.emit_async(create_event(
+                source="slm_ppa_worker",
+                level=LogLevel.WARNING,
+                category="inference_parsing",
+                message=f"Enrichment failed ({req.kind.value}): {exc}",
+                data={"kind": req.kind.value, "error": str(exc)},
+            ))
         finally:
             _queue.task_done()
 

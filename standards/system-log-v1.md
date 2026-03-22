@@ -255,3 +255,32 @@ System Log records are retained for the duration of the institution's data reten
 - [`../ledger/escalation-record-schema.json`](../ledger/escalation-record-schema.json)
 - [`domain-evidence-extension-v1.md`](domain-evidence-extension-v1.md) — Domain Evidence Extension standard
 - [`domain-evidence-schema-v1.json`](domain-evidence-schema-v1.json) — Meta-schema for domain evidence declarations
+
+---
+
+## Universal Event Payload & Micro-Routing
+
+As of v1.1.0 all System Log writes are also emitted as **Universal Event Payloads** through the System Log Micro-Router.  The payload is a `LogEvent` envelope that wraps any operational or audit-level event:
+
+| Field       | Type              | Description                                                     |
+|-------------|-------------------|-----------------------------------------------------------------|
+| `timestamp` | `str`             | ISO-8601 UTC timestamp.                                         |
+| `source`    | `str`             | Emitting module (e.g. `system_log_writer`, `ppa_orchestrator`). |
+| `level`     | `LogLevel`        | Routing tier: DEBUG, INFO, WARNING, ERROR, CRITICAL, AUDIT.     |
+| `category`  | `str`             | Free-form tag for subscriber filtering.                         |
+| `message`   | `str`             | Human-readable summary.                                         |
+| `data`      | `dict`            | Arbitrary structured payload.                                   |
+| `record`    | `dict` or `None`  | Hash-chained System Log record when `level` is AUDIT.           |
+
+### Routing Levels
+
+| Level            | Destination                                     |
+|------------------|-------------------------------------------------|
+| DEBUG, INFO      | Rolling archive log files                       |
+| WARNING          | Admin dashboard queue (bounded in-memory store) |
+| ERROR, CRITICAL  | Persistent error log + Chat UI alert queue      |
+| AUDIT            | Observation only — the hash-chained ledger write is performed by `SystemLogWriter` before the event reaches the bus |
+
+The AUDIT level is the bridge between operational logging and the immutable audit ledger.  `SystemLogWriter` remains the hash authority: it chains and persists the record, then emits an AUDIT event so secondary consumers can observe the write without touching the ledger files.
+
+See [`docs/7-concepts/system-log-micro-router.md`](../docs/7-concepts/system-log-micro-router.md) for the full architecture and API reference.

@@ -70,6 +70,9 @@ from lumina.orchestrator.system_log_writer import (
     hash_payload as _hash_payload,
 )
 
+from lumina.system_log.event_payload import LogLevel, create_event
+from lumina.system_log import log_bus
+
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Logging
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -355,6 +358,21 @@ class PPAOrchestrator:
             invariant_results, domain_lib_decision
         )
 
+        # Operational logging — invariant failures become WARNING events.
+        failed_invariants = [r for r in invariant_results if not r["passed"]]
+        if failed_invariants:
+            log_bus.emit(create_event(
+                source="ppa_orchestrator",
+                level=LogLevel.WARNING,
+                category="invariant_check",
+                message=f"{len(failed_invariants)} invariant(s) failed",
+                data={
+                    "session_id": self.session_id,
+                    "task_id": task_spec.get("task_id", ""),
+                    "failed_ids": [r["id"] for r in failed_invariants],
+                },
+            ))
+
         # Determine standing-order trigger label for the contract
         standing_order_trigger: str | None = None
         for result in invariant_results:
@@ -393,6 +411,20 @@ class PPAOrchestrator:
             )
 
         resolved_action = action if action is not None else "task_presentation"
+
+        # Operational logging — successful turn processing.
+        log_bus.emit(create_event(
+            source="ppa_orchestrator",
+            level=LogLevel.INFO,
+            category="session_lifecycle",
+            message=f"Turn processed — action={resolved_action}",
+            data={
+                "session_id": self.session_id,
+                "task_id": task_spec.get("task_id", ""),
+                "action": resolved_action,
+            },
+        ))
+
         return prompt_contract, resolved_action
 
     def append_provenance_trace(

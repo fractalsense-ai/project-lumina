@@ -248,9 +248,23 @@ The SLM operates under the same zero-trust guarantees as the rest of the system:
 
 ---
 
-## J. Related Documents
+## J. Event Emission
+
+The SLM PPA worker emits operational events to the [System Log Micro-Router](system-log-micro-router.md) via the async log bus:
+
+| Outcome            | Level   | Category            | Description                                     |
+|--------------------|---------|---------------------|-------------------------------------------------|
+| Enrichment success | INFO    | `inference_parsing` | Confirms the SLM call completed and result type |
+| Enrichment failure | WARNING | `inference_parsing` | Records the error; the deterministic fallback still fires |
+
+These are **operational** events — they go to the archive / dashboard, not the immutable audit ledger.  Provenance traces for audit purposes are still written by the `SystemLogWriter` as before.
+
+---
+
+## K. Related Documents
 
 - [Prompt Packet Assembly](prompt-packet-assembly.md) — How the assembled prompt contract is built from layered components
 - [Domain Adapter Pattern](domain-adapter-pattern.md) — How domain packs extend the core engine
 - [NLP Semantic Router](nlp-semantic-router.md) — Classification pipeline that runs alongside the SLM
 - [Zero-Trust Architecture](zero-trust-architecture.md) — Trust boundary model for all system components
+- [System Log Micro-Router](system-log-micro-router.md) — Event routing for all Lumina subsystems

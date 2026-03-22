@@ -20,6 +20,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+from lumina.system_log.event_payload import LogLevel, create_event
+from lumina.system_log import log_bus
+
 
 # ─────────────────────────────────────────────────────────────
 # Module-level hash utilities (mirrors ppa_orchestrator re-exports)
@@ -84,7 +87,13 @@ class SystemLogWriter:
     # ── Low-level append (hash-chained) ──────────────────────
 
     def _append_log_record(self, record: dict[str, Any]) -> None:
-        """Append one record to the JSONL ledger and advance the hash chain."""
+        """Append one record to the JSONL ledger and advance the hash chain.
+
+        When the log bus is running the record is also emitted as an
+        AUDIT-level event so that the micro-router (and any other
+        subscribers) can observe it.  The actual persistence still
+        happens here — the bus is purely for fan-out notification.
+        """
         if self._log_append_callback is not None:
             self._log_append_callback(self.session_id, record)
         else:
@@ -101,6 +110,15 @@ class SystemLogWriter:
                 fh.write("\n")
         self._prev_hash = hash_record(record)
         self._records.append(record)
+
+        # Emit AUDIT event to the log bus (no-op when bus is not running).
+        log_bus.emit(create_event(
+            source="system_log_writer",
+            level=LogLevel.AUDIT,
+            category="hash_chain",
+            message=f"{record.get('record_type', 'record')} appended",
+            record=record,
+        ))
 
     # ── Record writers ────────────────────────────────────────
 

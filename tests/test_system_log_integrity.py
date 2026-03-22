@@ -343,3 +343,60 @@ class TestRecordBuilders:
         assert "record_id" in rec
         assert "timestamp_utc" in rec
         assert rec["actor_role"] == "root"
+
+
+# ═════════════════════════════════════════════════════════════
+# 7. System Log Writer — Bus Integration
+# ═════════════════════════════════════════════════════════════
+
+
+class TestSystemLogWriterBusIntegration:
+    """Verify that SystemLogWriter emits AUDIT events to the log bus."""
+
+    def test_writer_emits_audit_event_when_bus_running(self, tmp_path):
+        """When the bus is running, _append_log_record emits an AUDIT event."""
+        import asyncio
+        import lumina.system_log.log_bus as bus
+        from lumina.system_log.event_payload import LogLevel
+        from lumina.orchestrator.system_log_writer import SystemLogWriter
+
+        received = []
+
+        def _capture(evt):
+            received.append(evt)
+
+        async def _test():
+            bus._running = False
+            bus._task = None
+            bus._queue = asyncio.Queue()
+            bus._subscriptions.clear()
+
+            bus.subscribe(_capture, level_filter=[LogLevel.AUDIT])
+            await bus.start()
+
+            writer = SystemLogWriter(
+                tmp_path / "test.jsonl", "sess-1", {"student_id": "s1"}
+            )
+            rec = _make_trace_event()
+            writer._append_log_record(rec)
+
+            await asyncio.sleep(0.05)
+            await bus.stop()
+
+        asyncio.run(_test())
+        assert len(received) == 1
+        assert received[0].level is LogLevel.AUDIT
+        assert received[0].record is not None
+
+    def test_writer_direct_write_when_bus_not_running(self, tmp_path):
+        """When the bus is NOT running, records are still persisted to JSONL."""
+        from lumina.orchestrator.system_log_writer import SystemLogWriter
+
+        ledger = tmp_path / "test.jsonl"
+        writer = SystemLogWriter(ledger, "sess-2", {"student_id": "s1"})
+        rec = _make_trace_event()
+        writer._append_log_record(rec)
+
+        assert ledger.exists()
+        lines = ledger.read_text().strip().splitlines()
+        assert len(lines) == 1
