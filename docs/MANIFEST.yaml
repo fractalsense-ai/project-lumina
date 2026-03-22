@@ -304,7 +304,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-20
-    sha256: f09e73e483407cd1a94319ebe9f264b1fbe375aab80612115aa0ae51c3292298
+    sha256: e9ad8d935d463c1455136937aea18dd0293d1654ce3e8197a2f192a6e09bda2c
 
   - path: docs/7-concepts/nlp-semantic-router.md
     type: doc
@@ -330,6 +330,14 @@ artifacts:
     last_updated: 2026-03-13
     sha256: 375475da6d919ab00eddaa6f14fe3a8f64e6ab88a30222cceaddc1a77f43d0c6
 
+  - path: docs/7-concepts/resource-monitor-daemon.md
+    type: doc
+    section: 7
+    doc_version: 1.0.0
+    status: active
+    last_updated: 2026-06-15
+    sha256: 9a8d49135d4f5977bb2a2a9822214fe6cbb1c046e0021a735f2b5d26bc5d79fe
+
   - path: docs/7-concepts/slm-compute-distribution.md
     type: doc
     section: 7
@@ -344,7 +352,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-22
-    sha256: 33f440ff79ace74314d11311d9407b140a7da41dd90eb52475a797c80bb45b26
+    sha256: 2d2292c2f64ee6699590bdbaba80f097b093c8a99cdc1199e673e4497d8553e0
 
   - path: docs/7-concepts/world-sim-persona-pattern.md
     type: doc
@@ -536,7 +544,7 @@ artifacts:
     doc_version: 1.1.0
     status: active
     last_updated: 2026-03-15
-    sha256: f66523bc1bc28b6918782e3039387b606370175984b1efa6e41b7e5c809cc5c9
+    sha256: 8c967129b71d180bcedc61edebf1dad4c4de80212d1655834ab5220dc233a75f
 
   - path: standards/domain-evidence-extension-v1.md
     type: standard
@@ -835,7 +843,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-20
-    sha256: a99333ded3bdea43a4a20159dca3815e05c89268748604404b0f26fc3b6dbdcd
+    sha256: fe66e67971dea36f30d8f884dcd130519227d7056345454854b7fa078f154c83
 
 
   # ── Retrieval ─────────────────────────────────────────────────────────────

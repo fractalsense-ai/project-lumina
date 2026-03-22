@@ -275,3 +275,26 @@ class NightCycleScheduler:
         if domain_ids:
             domains = [d for d in domains if d.get("domain_id") in domain_ids]
         return domains or [{"domain_id": "default", "physics": {}}]
+
+    # ── Opportunistic (daemon-driven) ─────────────────────────
+
+    def trigger_opportunistic(
+        self,
+        task_name: str,
+        domain_ids: list[str] | None = None,
+    ) -> NightCycleReport:
+        """Execute a single task for all (or selected) domains.
+
+        Called by the Resource Monitor Daemon when the system is idle.
+        Unlike ``trigger_manual`` this runs exactly one task, not the
+        full night-cycle suite, making it suitable for interleaved
+        opportunistic scheduling.
+
+        Returns a ``NightCycleReport`` containing results for the
+        single task across the targeted domains.
+        """
+        return self._execute(
+            triggered_by="daemon",
+            task_names=[task_name],
+            domain_ids=domain_ids,
+        )

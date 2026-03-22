@@ -55,6 +55,9 @@ The `category` tag allows fine-grained filtering by subscribers:
 - `inference_parsing` — SLM enrichment results
 - `rbac_change` — role or permission mutations
 - `admin_command` — admin command execution
+- `daemon_lifecycle` — resource monitor daemon start/stop/state transitions
+- `daemon_dispatch` — opportunistic task dispatch and completion
+- `daemon_preemption` — cooperative preemption events
 
 ### C. Log Bus
 
@@ -108,6 +111,7 @@ Both return events most-recent-first and support pagination (`limit`, `offset`).
 | `SystemLogWriter`     | AUDIT                       | `hash_chain`            |
 | `PPAOrchestrator`     | INFO, WARNING               | `session_lifecycle`, `invariant_check` |
 | `slm_ppa_worker`      | INFO, WARNING               | `inference_parsing`     |
+| `ResourceMonitorDaemon` | INFO, WARNING             | `daemon_lifecycle`, `daemon_dispatch`, `daemon_preemption` |
 
 ### G. Lifecycle
 

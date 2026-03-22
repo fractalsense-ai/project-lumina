@@ -19,6 +19,7 @@ import time
 
 import sys
 import types
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -156,6 +157,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# ── In-flight request counting middleware ──────────────────────
+
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
+
+
+class _InFlightCounterMiddleware(BaseHTTPMiddleware):
+    """Middleware that tracks in-flight HTTP requests for the daemon."""
+
+    async def dispatch(self, request: Request, call_next: Any) -> Response:  # type: ignore[override]
+        from lumina.systools.hw_http_queue import increment, decrement
+        increment()
+        try:
+            response = await call_next(request)
+        finally:
+            decrement()
+        return response
+
+
+app.add_middleware(_InFlightCounterMiddleware)
+
 # Register route groups
 app.include_router(chat_router)
 app.include_router(auth_router)
@@ -213,9 +237,46 @@ async def _start_idle_cleanup() -> None:
     from lumina.core.slm_ppa_worker import start as _start_slm_ppa_worker
     await _start_slm_ppa_worker()
 
+    # Start the Resource Monitor Daemon (load-based task scheduling).
+    from lumina.daemon import resource_monitor as _resource_monitor
+    from lumina.daemon.load_estimator import LoadEstimator
+    from lumina.daemon.task_adapter import run_task_preemptible
+    from lumina.core.yaml_loader import load_yaml as _load_yaml
+    import functools
+
+    daemon_cfg: dict = {}
+    try:
+        _cfg_path = _REPO_ROOT / "cfg" / "system-runtime-config.yaml"
+        if _cfg_path.exists():
+            _raw = _load_yaml(_cfg_path)
+            daemon_cfg = _raw.get("daemon", {})
+    except Exception:
+        log.warning("Could not load daemon config from system-runtime-config.yaml")
+
+    if daemon_cfg.get("enabled", False):
+        estimator = LoadEstimator(
+            weights=daemon_cfg.get("probe_weights"),
+            idle_threshold=daemon_cfg.get("idle_threshold", 0.20),
+        )
+        runner = functools.partial(
+            run_task_preemptible,
+            domain_loader=getattr(DOMAIN_REGISTRY, "load_all_domain_contexts", None),
+            persistence=PERSISTENCE,
+        )
+        _resource_monitor.init(
+            estimator=estimator,
+            task_runner=runner,
+            config=daemon_cfg,
+        )
+        await _resource_monitor.start()
+
 
 @app.on_event("shutdown")
 async def _stop_background_tasks() -> None:
+    # Stop the daemon before the SLM worker so in-flight tasks drain.
+    from lumina.daemon import resource_monitor as _resource_monitor
+    await _resource_monitor.stop()
+
     from lumina.core.slm_ppa_worker import stop as _stop_slm_ppa_worker
     await _stop_slm_ppa_worker()
 

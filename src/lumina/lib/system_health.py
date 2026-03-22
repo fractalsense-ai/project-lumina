@@ -5,15 +5,18 @@ domain packs (e.g., ZPD monitor, fluency tracker).  Called by the
 system runtime adapter each cycle; never called directly by the core
 orchestrator.
 
-``SystemHealthMonitor.sample()`` invokes the three passive hardware
-probes in ``lumina.systools`` and aggregates their raw values into a
-single ``SystemHealthState`` that can be injected as evidence for
+``SystemHealthMonitor.sample()`` invokes the passive hardware probes
+in ``lumina.systools`` and aggregates their raw values into a single
+``SystemHealthState`` that can be injected as evidence for
 system-layer orchestration turns.
 
 Platform implementation of the hw_* probes is pending — see:
   src/lumina/systools/hw_disk.py
   src/lumina/systools/hw_temp.py
   src/lumina/systools/hw_memory.py
+  src/lumina/systools/hw_loop_latency.py
+  src/lumina/systools/hw_http_queue.py
+  src/lumina/systools/hw_gpu.py
 """
 from __future__ import annotations
 
@@ -42,6 +45,10 @@ class SystemHealthState:
 
     temp_ok: bool = True
     temp_c: float | None = None   # None when platform probe unavailable
+
+    loop_latency_ms: float | None = None  # None when probe unavailable
+    inflight_requests: int | None = None  # None when probe unavailable
+    gpu_vram_pct: float | None = None     # None when no GPU / probe unavailable
 
     errors: list[str] = field(default_factory=list)  # non-fatal probe errors
 
@@ -115,5 +122,32 @@ class SystemHealthMonitor:
                     state.temp_ok = state.temp_c < self._temp_warn
         except Exception as exc:  # noqa: BLE001
             state.errors.append(f"temp probe: {exc}")
+
+        # ── Loop latency ─────────────────────────────────────────────────
+        try:
+            from lumina.systools.hw_loop_latency import measure_loop_latency
+            lat = measure_loop_latency()
+            if lat is not None:
+                state.loop_latency_ms = lat.get("latency_ms")
+        except Exception as exc:  # noqa: BLE001
+            state.errors.append(f"loop latency probe: {exc}")
+
+        # ── HTTP queue ───────────────────────────────────────────────────
+        try:
+            from lumina.systools.hw_http_queue import get_inflight_requests
+            hq = get_inflight_requests()
+            if hq is not None:
+                state.inflight_requests = hq.get("inflight")
+        except Exception as exc:  # noqa: BLE001
+            state.errors.append(f"http queue probe: {exc}")
+
+        # ── GPU ──────────────────────────────────────────────────────────
+        try:
+            from lumina.systools.hw_gpu import get_gpu_usage
+            gpu = get_gpu_usage()
+            if gpu is not None:
+                state.gpu_vram_pct = gpu.get("vram_pct_used")
+        except Exception as exc:  # noqa: BLE001
+            state.errors.append(f"gpu probe: {exc}")
 
         return state

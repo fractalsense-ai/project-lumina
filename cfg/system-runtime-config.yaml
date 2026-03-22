@@ -34,3 +34,29 @@ night_cycle:
     - gated_staging
   max_duration_minutes: 240
   notify_on_completion: true
+
+# ── Resource Monitor Daemon ──────────────────────────────────
+# Load-based opportunistic task scheduling.  The daemon samples system
+# load every poll_interval_seconds and dispatches maintenance tasks from
+# the night cycle queue when the system has been idle long enough.
+# Tasks are preempted cooperatively if user activity spikes.
+daemon:
+  enabled: true
+  poll_interval_seconds: 15
+  idle_threshold: 0.20              # load_score below this = idle
+  idle_sustain_seconds: 300         # idle must persist before dispatch
+  busy_threshold: 0.40              # preempt running task above this
+  grace_period_seconds: 60          # no dispatch during startup
+  probe_weights:
+    loop_latency: 0.5
+    http_queue: 0.3
+    gpu: 0.2
+  task_priority:
+    - knowledge_graph_rebuild
+    - glossary_expansion
+    - glossary_pruning
+    - telemetry_summary_refresh
+    - rejection_corpus_alignment
+    - pacing_heuristic_recompute
+    - slm_hint_generation
+    - context_crawler

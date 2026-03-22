@@ -283,4 +283,20 @@ As of v1.1.0 all System Log writes are also emitted as **Universal Event Payload
 
 The AUDIT level is the bridge between operational logging and the immutable audit ledger.  `SystemLogWriter` remains the hash authority: it chains and persists the record, then emits an AUDIT event so secondary consumers can observe the write without touching the ledger files.
 
+### Event Categories
+
+The `category` tag enables fine-grained subscriber filtering.  Registered categories:
+
+| Category | Source Module | Description |
+|----------|---------------|-------------|
+| `invariant_check` | PPAOrchestrator | Invariant evaluation results |
+| `session_lifecycle` | PPAOrchestrator | Session open/close/turn events |
+| `hash_chain` | SystemLogWriter | Audit ledger writes |
+| `inference_parsing` | slm_ppa_worker | SLM enrichment results |
+| `rbac_change` | RBAC layer | Role or permission mutations |
+| `admin_command` | Admin handler | Admin command execution |
+| `daemon_lifecycle` | ResourceMonitorDaemon | Daemon start/stop/state transitions |
+| `daemon_dispatch` | ResourceMonitorDaemon | Opportunistic task dispatch and completion |
+| `daemon_preemption` | ResourceMonitorDaemon | Cooperative preemption events |
+
 See [`docs/7-concepts/system-log-micro-router.md`](../docs/7-concepts/system-log-micro-router.md) for the full architecture and API reference.

@@ -107,11 +107,39 @@ The Night Cycle tab in the Governance Dashboard displays:
 - Last run summary (status, trigger source, proposal count, timestamp)
 - Pending proposals list with approve/reject actions per proposal
 
+## Load-Based Scheduling (Resource Monitor Daemon)
+
+In addition to cron-scheduled and manual triggers, night-cycle tasks can be
+dispatched **opportunistically** by the Resource Monitor Daemon when the system
+is idle.
+
+The daemon calls `NightCycleScheduler.trigger_opportunistic(task_name,
+domain_ids)` to execute a single task at a time.  The method reuses the same
+`_execute()` pipeline as manual and scheduled runs — the only difference is
+`triggered_by="daemon"` in the report.
+
+Key differences from scheduled/manual runs:
+
+| Concern | Scheduled / Manual | Daemon |
+|---------|--------------------|--------|
+| Task selection | Full task list | Single task per dispatch |
+| Trigger | Cron clock or API call | Load score below idle threshold |
+| Preemption | Runs to completion | Cooperative preemption if load spikes |
+| Frequency | Once per schedule | As often as idle windows allow |
+| Configuration | `night_cycle:` section | `daemon:` section in same YAML |
+
+The daemon maintains its own priority-ordered task list (`daemon.task_priority`)
+which is a subset of the full night-cycle catalog.  See
+[`docs/7-concepts/resource-monitor-daemon.md`](resource-monitor-daemon.md)
+for the complete daemon architecture.
+
 ## Source Files
 
-- `src/lumina/nightcycle/scheduler.py` — Run lifecycle and proposal management
+- `src/lumina/nightcycle/scheduler.py` — Run lifecycle, proposal management, `trigger_opportunistic()`
 - `src/lumina/nightcycle/tasks.py` — Individual task implementations
 - `src/lumina/nightcycle/report.py` — Report and proposal dataclasses
 - `src/lumina/staging/staging_service.py` — File staging service (used by context_crawler and gated_staging)
+- `src/lumina/daemon/resource_monitor.py` — Resource Monitor Daemon (load-based dispatch)
+- `src/lumina/daemon/task_adapter.py` — Preemptible task execution bridge
 - `src/web/components/dashboard/NightCyclePanel.tsx` — Dashboard UI component
-- `cfg/system-runtime-config.yaml` — Night cycle configuration
+- `cfg/system-runtime-config.yaml` — Night cycle and daemon configuration

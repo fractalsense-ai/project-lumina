@@ -28,6 +28,9 @@ def test_system_health_state_defaults() -> None:
     assert state.memory_free_mb == 0.0
     assert state.temp_ok is True
     assert state.temp_c is None
+    assert state.loop_latency_ms is None
+    assert state.inflight_requests is None
+    assert state.gpu_vram_pct is None
     assert state.errors == []
 
 
@@ -231,3 +234,92 @@ def test_hw_temp_stub_returns_none() -> None:
     from lumina.systools.hw_temp import get_cpu_temp
 
     assert get_cpu_temp() is None
+
+
+# ── New load probes (loop latency, http queue, gpu) ────────────────────────────
+
+
+@pytest.mark.unit
+def test_hw_loop_latency_sync_stub_returns_none() -> None:
+    from lumina.systools.hw_loop_latency import measure_loop_latency
+
+    assert measure_loop_latency() is None
+
+
+@pytest.mark.unit
+def test_hw_gpu_stub_returns_none() -> None:
+    from lumina.systools.hw_gpu import get_gpu_usage
+
+    assert get_gpu_usage() is None
+
+
+@pytest.mark.unit
+def test_sample_loop_latency_with_value() -> None:
+    monitor = SystemHealthMonitor()
+    with patch("lumina.systools.hw_loop_latency.measure_loop_latency", return_value={"latency_ms": 3.5}):
+        state = monitor.sample()
+    assert state.loop_latency_ms == 3.5
+
+
+@pytest.mark.unit
+def test_sample_loop_latency_returns_none() -> None:
+    monitor = SystemHealthMonitor()
+    with patch("lumina.systools.hw_loop_latency.measure_loop_latency", return_value=None):
+        state = monitor.sample()
+    assert state.loop_latency_ms is None
+
+
+@pytest.mark.unit
+def test_sample_loop_latency_probe_raises() -> None:
+    monitor = SystemHealthMonitor()
+    with patch("lumina.systools.hw_loop_latency.measure_loop_latency", side_effect=RuntimeError("fail")):
+        state = monitor.sample()
+    assert any("loop latency probe" in e for e in state.errors)
+
+
+@pytest.mark.unit
+def test_sample_http_queue_with_value() -> None:
+    monitor = SystemHealthMonitor()
+    with patch("lumina.systools.hw_http_queue.get_inflight_requests", return_value={"inflight": 7}):
+        state = monitor.sample()
+    assert state.inflight_requests == 7
+
+
+@pytest.mark.unit
+def test_sample_http_queue_returns_none() -> None:
+    monitor = SystemHealthMonitor()
+    with patch("lumina.systools.hw_http_queue.get_inflight_requests", return_value=None):
+        state = monitor.sample()
+    assert state.inflight_requests is None
+
+
+@pytest.mark.unit
+def test_sample_http_queue_probe_raises() -> None:
+    monitor = SystemHealthMonitor()
+    with patch("lumina.systools.hw_http_queue.get_inflight_requests", side_effect=OSError("fail")):
+        state = monitor.sample()
+    assert any("http queue probe" in e for e in state.errors)
+
+
+@pytest.mark.unit
+def test_sample_gpu_with_value() -> None:
+    monitor = SystemHealthMonitor()
+    with patch("lumina.systools.hw_gpu.get_gpu_usage", return_value={"vram_pct_used": 42.5}):
+        state = monitor.sample()
+    assert state.gpu_vram_pct == 42.5
+
+
+@pytest.mark.unit
+def test_sample_gpu_returns_none() -> None:
+    monitor = SystemHealthMonitor()
+    with patch("lumina.systools.hw_gpu.get_gpu_usage", return_value=None):
+        state = monitor.sample()
+    assert state.gpu_vram_pct is None
+
+
+@pytest.mark.unit
+def test_sample_gpu_probe_raises() -> None:
+    monitor = SystemHealthMonitor()
+    with patch("lumina.systools.hw_gpu.get_gpu_usage", side_effect=Exception("no gpu")):
+        state = monitor.sample()
+    assert any("gpu probe" in e for e in state.errors)
