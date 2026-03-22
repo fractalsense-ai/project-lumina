@@ -207,8 +207,20 @@ class SystemLogWriter:
         domain_lib_decision: dict[str, Any],
         trigger: str,
         provenance_metadata: dict[str, Any] | None,
+        domain_physics: dict[str, Any] | None = None,
     ) -> None:
         """Append an EscalationRecord to the System Logs."""
+        # Resolve target_role and sla_minutes from domain physics
+        # escalation_triggers when available, instead of hardcoding.
+        target_role = "domain_authority"
+        sla_minutes = 30
+        if domain_physics:
+            for et in domain_physics.get("escalation_triggers") or []:
+                if et.get("id") == trigger:
+                    target_role = et.get("target_role", target_role)
+                    sla_minutes = et.get("sla_minutes", sla_minutes)
+                    break
+
         record: dict[str, Any] = {
             "record_type": "EscalationRecord",
             "record_id": str(uuid.uuid4()),
@@ -227,10 +239,10 @@ class SystemLogWriter:
                 "domain_alert_flag": domain_lib_decision.get("frustration"),
                 "domain_metric_pct": domain_lib_decision.get("drift_pct"),
             },
-            "target_role": "domain_authority",
+            "target_role": target_role,
             "escalation_target_id": self._profile.get("assigned_teacher_id") or None,
             "assigned_room_id": self._profile.get("assigned_room_id") or None,
-            "sla_minutes": 30,
+            "sla_minutes": sla_minutes,
             "metadata": dict(provenance_metadata or {}),
         }
         if self._system_physics_hash is not None:

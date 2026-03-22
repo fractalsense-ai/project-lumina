@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "action-card-schema-v1.json",
+  "schema_version": "1.0.0",
+  "last_updated": "2026-06-15",
+  "title": "Action Card Schema v1",
+  "description": "Schema for structured action cards returned in ChatResponse.structured_content. Supports escalation alerts and command proposals rendered as interactive cards in the governance dashboard.",
+  "type": "object",
+  "required": ["type", "card_type", "id", "title", "body", "actions", "resolve_endpoint"],
+  "properties": {
+    "type": {
+      "const": "action_card",
+      "description": "Discriminator — always 'action_card' for this schema."
+    },
+    "card_type": {
+      "type": "string",
+      "enum": ["escalation", "command_proposal"],
+      "description": "The category of action card."
+    },
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the card (record_id for escalations, staged_id for commands)."
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable card title."
+    },
+    "body": {
+      "type": "string",
+      "description": "Descriptive body text summarising the event or proposal."
+    },
+    "context": {
+      "type": "object",
+      "description": "Card-type-specific context data.",
+      "additionalProperties": true
+    },
+    "actions": {
+      "type": "array",
+      "description": "Available actions the user can take on this card.",
+      "items": {
+        "$ref": "#/$defs/action"
+      },
+      "minItems": 1
+    },
+    "resolve_endpoint": {
+      "type": "string",
+      "description": "API endpoint to POST for resolving this card (relative path).",
+      "pattern": "^/api/"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Optional metadata (timestamps, record IDs, etc.).",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "action": {
+      "type": "object",
+      "required": ["id", "label", "style"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Machine-readable action identifier (e.g. 'approve', 'reject')."
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable button label."
+        },
+        "style": {
+          "type": "string",
+          "enum": ["primary", "destructive", "ghost", "outline"],
+          "description": "Visual style hint for the action button."
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
-import { Shield, PaperPlaneRight, User, Robot, SignOut, Gauge } from '@phosphor-icons/react'
+import { Shield, PaperPlaneRight, User, Robot, SignOut, Gauge, Bell } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DashboardPage } from '@/components/dashboard/DashboardPage'
+import { ActionCard, type ActionCardData } from '@/components/ActionCard'
+import { useEventStream } from '@/hooks/useEventStream'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -16,6 +18,7 @@ interface Message {
     promptType?: string
     escalated?: boolean
   }
+  structured_content?: ActionCardData
 }
 
 type ApiChatResponse = {
@@ -24,10 +27,7 @@ type ApiChatResponse = {
   action: string
   prompt_type: string
   escalated: boolean
-  structured_content?: {
-    type: string
-    data: unknown
-  }
+  structured_content?: ActionCardData
 }
 
 interface UiManifest {
@@ -282,31 +282,38 @@ function ConsentScreen({
   )
 }
 
-function ChatMessage({ message }: { message: Message }) {
+function ChatMessage({ message, token }: { message: Message; token?: string }) {
   const isUser = message.role === 'user'
   
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, ease: 'easeOut' }}
-      className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
-    >
-      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-        isUser ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-      }`}>
-        {isUser ? <User size={18} weight="bold" /> : <Robot size={18} weight="bold" />}
-      </div>
-      <div className={`max-w-[75%] md:max-w-[65%] rounded-2xl px-4 py-3 ${
-        isUser 
-          ? 'bg-primary text-primary-foreground rounded-tr-sm' 
-          : 'bg-card border border-border text-card-foreground rounded-tl-sm'
-      }`}>
-        <p className="text-base leading-relaxed whitespace-pre-wrap break-words">
-          {message.content}
-        </p>
-      </div>
-    </motion.div>
+    <div className="flex flex-col gap-2">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+        className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+      >
+        <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+          isUser ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+        }`}>
+          {isUser ? <User size={18} weight="bold" /> : <Robot size={18} weight="bold" />}
+        </div>
+        <div className={`max-w-[75%] md:max-w-[65%] rounded-2xl px-4 py-3 ${
+          isUser 
+            ? 'bg-primary text-primary-foreground rounded-tr-sm' 
+            : 'bg-card border border-border text-card-foreground rounded-tl-sm'
+        }`}>
+          <p className="text-base leading-relaxed whitespace-pre-wrap break-words">
+            {message.content}
+          </p>
+        </div>
+      </motion.div>
+      {message.structured_content?.type === 'action_card' && token && (
+        <div className="ml-11 max-w-[75%] md:max-w-[65%]">
+          <ActionCard card={message.structured_content} token={token} />
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -348,6 +355,8 @@ function AppHeader({
   showDashboard,
   view,
   onViewChange,
+  unreadCount,
+  onClearUnread,
 }: {
   manifest: UiManifest
   auth: AuthState
@@ -355,6 +364,8 @@ function AppHeader({
   showDashboard: boolean
   view: 'chat' | 'dashboard'
   onViewChange: (v: 'chat' | 'dashboard') => void
+  unreadCount?: number
+  onClearUnread?: () => void
 }) {
   return (
     <header className="border-b border-border bg-card px-6 py-4">
@@ -372,14 +383,23 @@ function AppHeader({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onViewChange(view === 'chat' ? 'dashboard' : 'chat')}
+              onClick={() => {
+                const next = view === 'chat' ? 'dashboard' : 'chat'
+                if (next === 'dashboard') onClearUnread?.()
+                onViewChange(next)
+              }}
               title={view === 'chat' ? 'Dashboard' : 'Back to Chat'}
-              className="text-muted-foreground hover:text-foreground flex items-center gap-1.5"
+              className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 relative"
             >
               <Gauge size={18} />
               <span className="hidden sm:inline text-sm">
                 {view === 'chat' ? 'Dashboard' : 'Chat'}
               </span>
+              {(unreadCount ?? 0) > 0 && view === 'chat' && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1">
+                  {unreadCount! > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </Button>
           )}
           <span className="text-sm text-muted-foreground hidden sm:block">
@@ -407,6 +427,8 @@ function ChatInterface({
   showDashboard,
   view,
   onViewChange,
+  unreadCount,
+  onClearUnread,
 }: {
   manifest: UiManifest
   auth: AuthState
@@ -414,6 +436,8 @@ function ChatInterface({
   showDashboard: boolean
   view: 'chat' | 'dashboard'
   onViewChange: (v: 'chat' | 'dashboard') => void
+  unreadCount?: number
+  onClearUnread?: () => void
 }) {
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState('')
@@ -456,6 +480,7 @@ function ChatInterface({
           promptType: apiResponse.prompt_type,
           escalated: apiResponse.escalated,
         },
+        structured_content: apiResponse.structured_content as ActionCardData | undefined,
       }
       setMessages((prev) => [...prev, assistantMessage])
     } catch (error) {
@@ -486,6 +511,8 @@ function ChatInterface({
         showDashboard={showDashboard}
         view={view}
         onViewChange={onViewChange}
+        unreadCount={unreadCount}
+        onClearUnread={onClearUnread}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -493,7 +520,7 @@ function ChatInterface({
           <div className="max-w-3xl mx-auto py-6 flex flex-col gap-4">
             {messages.map((message) => (
               <div key={message.id} className="flex flex-col gap-1">
-                <ChatMessage message={message} />
+                <ChatMessage message={message} token={auth.token} />
                 {message.role === 'assistant' && message.meta && (
                   <div className="text-xs text-muted-foreground px-11">
                     action: {message.meta.action ?? 'n/a'} | prompt: {message.meta.promptType ?? 'n/a'}
@@ -553,6 +580,12 @@ function App() {
   const [view, setView] = useState<'chat' | 'dashboard'>('chat')
   const showDashboard = auth !== null && (auth.role === 'root' || auth.role === 'domain_authority')
 
+  // SSE event stream for governance-role users
+  const { unreadCount, clearUnread } = useEventStream({
+    token: auth?.token ?? '',
+    enabled: showDashboard && consentGiven,
+  })
+
   // Validate stored token against /api/auth/me on mount; clear if stale
   useEffect(() => {
     if (auth === null) return
@@ -610,6 +643,8 @@ function App() {
           showDashboard={showDashboard}
           view={view}
           onViewChange={setView}
+          unreadCount={unreadCount}
+          onClearUnread={clearUnread}
         />
         <DashboardPage auth={auth} />
       </div>
@@ -624,6 +659,8 @@ function App() {
       showDashboard={showDashboard}
       view={view}
       onViewChange={setView}
+      unreadCount={unreadCount}
+      onClearUnread={clearUnread}
     />
   )
 }

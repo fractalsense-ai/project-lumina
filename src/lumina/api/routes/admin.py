@@ -88,6 +88,37 @@ async def list_escalations(
     return records
 
 
+@router.get("/api/escalations/{escalation_id}")
+async def get_escalation_detail(
+    escalation_id: str,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+) -> dict[str, Any]:
+    """Return a single escalation record by ID."""
+    current = await get_current_user(credentials)
+    user_data = require_auth(current)
+
+    allowed_roles = ("root", "it_support", "qa", "auditor", "domain_authority")
+    if user_data["role"] not in allowed_roles:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+    all_escalations = await run_in_threadpool(_cfg.PERSISTENCE.query_escalations)
+    target = None
+    for esc in all_escalations:
+        if esc.get("record_id") == escalation_id:
+            target = esc
+            break
+
+    if target is None:
+        raise HTTPException(status_code=404, detail="Escalation not found")
+
+    if user_data["role"] == "domain_authority":
+        domain = target.get("domain_pack_id", "")
+        if not can_govern_domain(user_data, domain):
+            raise HTTPException(status_code=403, detail="Not authorized for this domain")
+
+    return target
+
+
 @router.post("/api/escalations/{escalation_id}/resolve")
 @requires_log_commit
 async def resolve_escalation(
@@ -848,12 +879,15 @@ async def admin_command(
     with _STAGED_COMMANDS_LOCK:
         _STAGED_COMMANDS[staged_id] = entry
 
+    from lumina.api.structured_content import build_command_proposal_card
+
     return {
         "staged_id": staged_id,
         "staged_command": parsed,
         "original_instruction": req.instruction,
         "expires_at": expires_at,
         "log_stage_record_id": stage_record["record_id"],
+        "structured_content": build_command_proposal_card(entry),
     }
 
 

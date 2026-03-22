@@ -348,6 +348,29 @@ def process_message(
         for r in orch.log_records[-2:]
     )
 
+    # Build structured escalation card when an escalation was raised this turn.
+    structured_content: dict[str, Any] | None = None
+    if escalated:
+        from lumina.api.structured_content import build_escalation_card
+
+        esc_records = [
+            r for r in orch.log_records[-2:]
+            if r.get("record_type") == "EscalationRecord"
+            and r.get("session_id") == session_id
+        ]
+        if esc_records:
+            session_ctx = {
+                "domain_id": resolved_domain_id,
+                "turn_count": session.get("turn_count"),
+                "student_pseudonym": orch._writer._profile.get(
+                    "subject_id",
+                    orch._writer._profile.get("student_id", ""),
+                ) if hasattr(orch, "_writer") else "",
+            }
+            structured_content = build_escalation_card(
+                esc_records[-1], session_context=session_ctx,
+            )
+
     tool_results = apply_tool_call_policy(
         resolved_action=resolved_action,
         prompt_contract=prompt_contract,
@@ -423,7 +446,7 @@ def process_message(
         metadata=post_payload_provenance,
     )
 
-    return {
+    result: dict[str, Any] = {
         "response": llm_response,
         "action": resolved_action,
         "prompt_type": prompt_contract.get("prompt_type", "task_presentation"),
@@ -431,3 +454,6 @@ def process_message(
         "tool_results": tool_results,
         "domain_id": resolved_domain_id,
     }
+    if structured_content is not None:
+        result["structured_content"] = structured_content
+    return result

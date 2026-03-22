@@ -302,7 +302,8 @@ class PPAOrchestrator:
         provenance_metadata: dict[str, Any] | None = None,
     ) -> None:
         self._writer.write_escalation_record(
-            task_spec, domain_lib_decision, trigger, provenance_metadata
+            task_spec, domain_lib_decision, trigger, provenance_metadata,
+            domain_physics=self.domain,
         )
 
     def _append_log_record(self, record: dict[str, Any]) -> None:
@@ -408,6 +409,7 @@ class PPAOrchestrator:
                 domain_lib_decision,
                 escalation_trigger or "domain_lib_escalation_event",
                 trace_metadata,
+                domain_physics=self.domain,
             )
 
         resolved_action = action if action is not None else "task_presentation"

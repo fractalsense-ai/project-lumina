@@ -1,13 +1,13 @@
 ---
-version: 1.0.0
-last_updated: 2026-03-20
+version: 1.4.0
+last_updated: 2026-06-15
 ---
 
 # lumina-api-server(2)
 
-**Version:** 1.3.0  
+**Version:** 1.4.0  
 **Status:** Active  
-**Last updated:** 2026-03-22  
+**Last updated:** 2026-06-15  
 
 ---
 
@@ -54,8 +54,10 @@ Generic runtime host for D.S.A. orchestration with built-in JWT authentication. 
 | `routes/domain.py` | Domain-pack lifecycle and session-close endpoints |
 | `routes/ingestion.py` | Document ingestion pipeline endpoints |
 | `routes/system.py` | Health, domain listing, tool adapter, System Log validate |
+| `routes/events.py` | SSE real-time event stream (token-auth + RBAC-filtered) |
 | `routes/dashboard.py` | Governance dashboard data endpoints |
 | `routes/nightcycle.py` | Night-cycle trigger, status, and proposal endpoints |
+| `structured_content.py` | Action-card builders for ChatResponse structured content |
 
 ## ENVIRONMENT
 
@@ -209,6 +211,16 @@ Retrieve a single System Log commitment record by ID.
 List escalation records. Query parameters: `status`, `domain_id`, `limit`, `offset`.
 
 **Auth:** Bearer token required. Roles: `root`, `it_support`, `qa`, `auditor`, `domain_authority` (scoped to governed modules).
+
+---
+
+### GET /api/escalations/{escalation_id}
+
+Retrieve a single escalation record by ID.
+
+**Response:** Full `EscalationRecord` dict.
+
+**Auth:** Bearer token required. Roles: `root`, `it_support`, `qa`, `auditor`, `domain_authority` (scoped to governed domains).
 
 ---
 
@@ -567,6 +579,35 @@ Accept or reject a night-cycle proposal.
 **Request:** `ProposalResolveRequest` — `decision` (`accept` | `reject`), `notes`
 
 **Auth:** Bearer token required. Roles: `root`, `domain_authority`.
+
+---
+
+### GET /api/events/token
+
+Issue a short-lived (5 min) single-use SSE token. The token is SHA-256 hashed server-side and stored in memory.
+
+**Response:** `{"token": "<urlsafe_string>", "expires_in": 300}`
+
+**Auth:** Bearer token required. Roles: `root`, `domain_authority`, `auditor`, `it_support`, `qa`.
+
+**Notes:** `EventSource` cannot set HTTP headers, so a separate token exchange is required. Tokens are consumed on first use by the stream endpoint.
+
+---
+
+### GET /api/events/stream
+
+Server-Sent Events stream of real-time log-bus events. Query parameter: `token` (required).
+
+**Response:** `text/event-stream` — each message is a JSON-encoded SSE `data:` frame with fields `type`, `level`, `category`, `domain_id`, `summary`, `timestamp`.
+
+**Auth:** SSE token (query parameter). No Bearer header.
+
+**RBAC filtering:**
+- `root` — receives all events
+- `domain_authority` — receives events for governed domains only
+- `auditor`, `it_support`, `qa` — receives warning-level and above events
+
+**Heartbeat:** An empty SSE comment line (`:heartbeat`) is sent every 30 seconds to keep the TCP connection alive through proxies.
 
 ---
 

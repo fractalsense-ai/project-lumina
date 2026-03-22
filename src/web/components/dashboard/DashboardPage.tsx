@@ -4,6 +4,9 @@ import { Button } from '@/components/ui/button'
 import { EscalationQueue } from './EscalationQueue'
 import { IngestionReview } from './IngestionReview'
 import { NightCyclePanel } from './NightCyclePanel'
+import { DaemonMonitorPanel } from './DaemonMonitorPanel'
+import { SystemLogPanel } from './SystemLogPanel'
+import { StagedCommandsPanel } from './StagedCommandsPanel'
 
 interface AuthState {
   token: string
@@ -32,16 +35,33 @@ interface TelemetrySummary {
   domain_filter: string | null
 }
 
-type DashboardTab = 'overview' | 'escalations' | 'ingestions' | 'nightcycle'
+// ── Dynamic tab manifest ─────────────────────────────────────
+
+interface TabDef {
+  id: string
+  label: string
+  roles: string[]
+}
+
+const TAB_MANIFEST: TabDef[] = [
+  { id: 'overview',   label: 'Overview',     roles: ['root', 'domain_authority'] },
+  { id: 'escalations', label: 'Escalations', roles: ['root', 'domain_authority', 'it_support', 'qa', 'auditor'] },
+  { id: 'commands',   label: 'Commands',      roles: ['root', 'domain_authority', 'it_support'] },
+  { id: 'ingestions', label: 'Ingestions',    roles: ['root', 'domain_authority'] },
+  { id: 'logs',       label: 'System Log',   roles: ['root', 'domain_authority', 'qa', 'auditor'] },
+  { id: 'daemon',     label: 'Daemon',       roles: ['root', 'auditor'] },
+  { id: 'nightcycle', label: 'Night Cycle',  roles: ['root', 'domain_authority'] },
+]
 
 function getApiBase(): string {
   return (import.meta as any).env?.VITE_LUMINA_API_BASE_URL ?? 'http://localhost:8000'
 }
 
 export function DashboardPage({ auth }: { auth: AuthState }) {
+  const visibleTabs = TAB_MANIFEST.filter((t) => t.roles.includes(auth.role))
   const [domains, setDomains] = useState<DomainSummary[]>([])
   const [telemetry, setTelemetry] = useState<TelemetrySummary | null>(null)
-  const [tab, setTab] = useState<DashboardTab>('overview')
+  const [tab, setTab] = useState(visibleTabs[0]?.id ?? 'overview')
   const [error, setError] = useState<string | null>(null)
 
   const headers = { Authorization: `Bearer ${auth.token}` }
@@ -73,19 +93,19 @@ export function DashboardPage({ auth }: { auth: AuthState }) {
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      {/* Tab navigation */}
-      <div className="flex gap-2 border-b border-border pb-2">
-        {(['overview', 'escalations', 'ingestions', 'nightcycle'] as DashboardTab[]).map((t) => (
+      {/* Dynamic tab navigation */}
+      <div className="flex gap-2 border-b border-border pb-2 overflow-x-auto">
+        {visibleTabs.map((t) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-3 py-1.5 text-sm font-medium rounded-t transition-colors ${
-              tab === t
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`px-3 py-1.5 text-sm font-medium rounded-t transition-colors whitespace-nowrap ${
+              tab === t.id
                 ? 'bg-card border border-b-0 border-border text-foreground'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            {t === 'overview' ? 'Overview' : t === 'escalations' ? 'Escalations' : t === 'ingestions' ? 'Ingestions' : 'Night Cycle'}
+            {t.label}
           </button>
         ))}
       </div>
@@ -96,8 +116,17 @@ export function DashboardPage({ auth }: { auth: AuthState }) {
       {tab === 'escalations' && (
         <EscalationQueue auth={auth} />
       )}
+      {tab === 'commands' && (
+        <StagedCommandsPanel auth={auth} />
+      )}
       {tab === 'ingestions' && (
         <IngestionReview auth={auth} onRefresh={refreshDashboard} />
+      )}
+      {tab === 'logs' && (
+        <SystemLogPanel auth={auth} />
+      )}
+      {tab === 'daemon' && (
+        <DaemonMonitorPanel auth={auth} />
       )}
       {tab === 'nightcycle' && (
         <NightCyclePanel auth={auth} />

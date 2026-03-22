@@ -180,4 +180,5 @@ async def chat(
         escalated=result["escalated"],
         tool_results=result.get("tool_results") or None,
         domain_id=result.get("domain_id"),
+        structured_content=result.get("structured_content"),
     )

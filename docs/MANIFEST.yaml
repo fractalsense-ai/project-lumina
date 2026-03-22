@@ -10,7 +10,7 @@
 # The value "pending" is reserved for the initial bootstrap only.
 
 schema_version: 1.0.0
-last_updated: 2026-03-22
+last_updated: 2026-06-15
 
 artifacts:
 
@@ -94,10 +94,10 @@ artifacts:
   - path: docs/2-syscalls/lumina-api-server.md
     type: doc
     section: 2
-    doc_version: 1.3.0
+    doc_version: 1.4.0
     status: active
-    last_updated: 2026-03-22
-    sha256: 2108505f418a71c7d134477b04a7d940729dc45c099537e0f4e838f23536fae4
+    last_updated: 2026-06-15
+    sha256: c4e5cb11fe9dbca1df695557458cdd9d6cad4397c2a6f8a394bc38178297dce9
 
 
   # ── Section 3: Functions ──────────────────────────────────────────────────
@@ -269,10 +269,10 @@ artifacts:
   - path: docs/7-concepts/governance-dashboard.md
     type: doc
     section: 7
-    doc_version: 1.0.0
+    doc_version: 1.1.0
     status: active
-    last_updated: 2026-03-20
-    sha256: ae5e060bde98701995692021570359d1b74cce89b0762cc9bda55dab133a8923
+    last_updated: 2026-06-15
+    sha256: eaa23d227ce717df05ae2c7a50469c140b283c3288cc5442636738570a281427
 
   - path: docs/7-concepts/ingestion-pipeline.md
     type: doc
@@ -646,6 +646,13 @@ artifacts:
     status: active
     last_updated: 2026-03-08
     sha256: 14e60e342e6f90a196501ede06cb221e128c876648cbd861e5e818423f2efde8
+
+  - path: standards/action-card-schema-v1.json
+    type: schema
+    doc_version: 1.0.0
+    status: active
+    last_updated: 2026-06-15
+    sha256: d11df995c9b4b4e3276b047738a6d0d18901f86d6b0e425cc9992668eb257ad3
 
 
   # ── Admin Command Schemas ─────────────────────────────────────────────────
