@@ -392,7 +392,7 @@ def process_message(
                 )
                 structured_content = _staged.get("structured_content")
             except (ValueError, Exception):
-                log.debug("Auto-stage failed for command_dispatch", exc_info=True)
+                log.warning("Auto-stage failed for command_dispatch", exc_info=True)
 
     tool_results = apply_tool_call_policy(
         resolved_action=resolved_action,

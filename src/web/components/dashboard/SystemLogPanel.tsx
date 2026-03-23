@@ -32,6 +32,26 @@ const TYPE_COLORS: Record<string, string> = {
   CriticalEvent: 'bg-red-500/10 text-red-600',
   TurnRecord: 'bg-blue-500/10 text-blue-600',
   AdminCommandLog: 'bg-purple-500/10 text-purple-600',
+  CommitmentRecord: 'bg-indigo-500/10 text-indigo-600',
+  TraceEvent: 'bg-cyan-500/10 text-cyan-600',
+}
+
+/** Extract a human-readable summary line from a log record's payload. */
+function getRecordSummary(rec: LogRecord): string {
+  // CommitmentRecord — show the summary field
+  if (rec.summary && typeof rec.summary === 'string') return rec.summary
+  // EscalationRecord — show the trigger
+  if (rec.trigger && typeof rec.trigger === 'string') return rec.trigger
+  // TraceEvent — show the decision
+  if (rec.decision && typeof rec.decision === 'string') return rec.decision
+  // AdminCommandLog — show the operation
+  if (rec.operation && typeof rec.operation === 'string') return `Operation: ${rec.operation}`
+  // Generic — look for a message or description field
+  if (rec.message && typeof rec.message === 'string') return rec.message
+  if (rec.description && typeof rec.description === 'string') return rec.description
+  // Fallback to actor_id if available
+  if (rec.actor_id && typeof rec.actor_id === 'string') return `Actor: ${rec.actor_id}`
+  return ''
 }
 
 export function SystemLogPanel({ auth }: { auth: AuthState }) {
@@ -112,8 +132,12 @@ export function SystemLogPanel({ auth }: { auth: AuthState }) {
                 )}
               </div>
               <p className="text-xs text-muted-foreground mt-1 truncate">
-                {rec.session_id && `Session: ${rec.session_id}`}
-                {rec.domain_pack_id && ` · Domain: ${rec.domain_pack_id}`}
+                {getRecordSummary(rec) || (
+                  <>
+                    {rec.session_id && `Session: ${rec.session_id}`}
+                    {rec.domain_pack_id && ` · Domain: ${rec.domain_pack_id}`}
+                  </>
+                )}
               </p>
             </div>
             <span className="text-[10px] text-muted-foreground whitespace-nowrap flex-shrink-0">

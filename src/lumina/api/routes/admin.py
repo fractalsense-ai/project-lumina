@@ -400,6 +400,50 @@ def _compute_schema_delta(original: dict[str, Any], modified: dict[str, Any]) ->
     return delta
 
 
+def _normalize_slm_command(parsed_command: dict[str, Any]) -> dict[str, Any]:
+    """Normalise SLM-produced command dicts so they match admin-command-schemas.
+
+    The SLM is probabilistic --- it may return ``"Domain Authority"`` instead of
+    ``"domain_authority"``, put the user name in ``target`` instead of
+    ``params.user_id``, or include extra keys like ``governed_modules`` at the
+    top level rather than inside ``params``.  This function applies best-effort
+    mapping **before** schema validation so the pipeline doesn't silently fail.
+    """
+    import re
+
+    cmd = {k: v for k, v in parsed_command.items()}  # shallow copy
+    params: dict[str, Any] = dict(cmd.get("params") or {})
+    target = cmd.get("target", "")
+    operation = cmd.get("operation", "")
+
+    if operation == "update_user_role":
+        # ── user_id fallback: SLM often puts the username in 'target' ──
+        if not params.get("user_id") and target:
+            params["user_id"] = target
+
+        # ── new_role normalisation: "Domain Authority" → "domain_authority" ──
+        raw_role = params.get("new_role", "")
+        if raw_role and not re.fullmatch(r"[a-z_]+", raw_role):
+            params["new_role"] = re.sub(r"[\s-]+", "_", raw_role.strip()).lower()
+
+        # ── governed_modules: may appear at top level or inside params ──
+        if "governed_modules" not in params and cmd.get("governed_modules"):
+            params["governed_modules"] = cmd.pop("governed_modules")
+
+        # Normalise governed_modules to a list when a single string is provided
+        gm = params.get("governed_modules")
+        if isinstance(gm, str):
+            params["governed_modules"] = [gm]
+
+    elif operation in ("assign_domain_role", "revoke_domain_role"):
+        # Similar user_id fallback for role assignment operations
+        if not params.get("user_id") and target:
+            params["user_id"] = target
+
+    cmd["params"] = params
+    return cmd
+
+
 def _stage_command(
     parsed_command: dict[str, Any],
     original_instruction: str,
@@ -416,6 +460,9 @@ def _stage_command(
     operation = parsed_command.get("operation", "")
     if operation not in _KNOWN_OPERATIONS:
         raise ValueError(f"Unknown operation: {operation}")
+
+    # Normalise SLM output before schema validation.
+    parsed_command = _normalize_slm_command(parsed_command)
 
     cmd_approved, cmd_violations = validate_command(
         operation, parsed_command.get("params", {}), parsed_command.get("target", ""),
@@ -444,6 +491,39 @@ def _stage_command(
         "admin", stage_record,
         ledger_path=_cfg.PERSISTENCE.get_log_ledger_path("admin"),
     )
+
+    # Also write an EscalationRecord so the dashboard escalation queue shows
+    # the pending HITL command awaiting human resolution.
+    esc_record: dict[str, Any] = {
+        "record_type": "EscalationRecord",
+        "record_id": str(uuid.uuid4()),
+        "prev_record_hash": stage_record.get("prev_record_hash", "genesis"),
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "session_id": staged_id,
+        "escalating_actor_id": actor_id,
+        "target_meta_authority_id": "root",
+        "trigger": f"hitl_command_pending: {operation}",
+        "trigger_type": "other",
+        "domain_pack_id": (parsed_command.get("params") or {}).get("governed_modules", [None])[0]
+            if isinstance((parsed_command.get("params") or {}).get("governed_modules"), list)
+            else (parsed_command.get("params") or {}).get("governed_modules"),
+        "evidence_summary": {
+            "staged_id": staged_id,
+            "operation": operation,
+            "original_instruction": original_instruction[:200],
+        },
+        "status": "pending",
+        "metadata": {
+            "commitment_record_id": stage_record["record_id"],
+        },
+    }
+    try:
+        _cfg.PERSISTENCE.append_log_record(
+            "admin", esc_record,
+            ledger_path=_cfg.PERSISTENCE.get_log_ledger_path("admin"),
+        )
+    except Exception:
+        log.warning("Failed to write EscalationRecord for staged command %s", staged_id)
 
     entry: dict[str, Any] = {
         "staged_id": staged_id,

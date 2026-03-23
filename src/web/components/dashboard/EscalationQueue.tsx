@@ -36,7 +36,7 @@ export function EscalationQueue({ auth }: { auth: AuthState }) {
   const load = async () => {
     setError(null)
     try {
-      const res = await fetch(`${getApiBase()}/api/escalations`, {
+      const res = await fetch(`${getApiBase()}/api/escalations?status=pending`, {
         headers: { Authorization: `Bearer ${auth.token}` },
       })
       if (res.ok) setEscalations(await res.json())

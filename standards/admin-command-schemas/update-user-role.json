@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "lumina://standards/admin-command-schemas/update-user-role.json",
   "schema_version": "1.0.0",
-  "last_updated": "2026-03-20",
+  "last_updated": "2026-03-23",
   "title": "update_user_role",
   "description": "Change a user's platform role. Only root may perform this operation.",
   "type": "object",
@@ -41,6 +41,14 @@
             "user",
             "guest"
           ]
+        },
+        "governed_modules": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Domain packs the user is authorised to govern (relevant for domain_authority role)."
         }
       }
     }

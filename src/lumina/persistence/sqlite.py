@@ -600,7 +600,7 @@ class SQLitePersistenceAdapter(PersistenceAdapter):
     ) -> list[dict[str, Any]]:
         from sqlalchemy import select
 
-        stmt = select(self._SystemLogRecord.payload_json).order_by(self._SystemLogRecord.id.asc())
+        stmt = select(self._SystemLogRecord.payload_json).order_by(self._SystemLogRecord.id.desc())
         if session_id:
             stmt = stmt.where(self._SystemLogRecord.session_id == session_id)
         if record_type:
