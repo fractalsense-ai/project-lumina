@@ -325,3 +325,66 @@ class TestCommandDispatchTypes:
             prompt_text="",
         )
         assert evidence["command_dispatch"] is None
+
+
+# ── invite_user operation ─────────────────────────────────────────────────────
+
+
+@pytest.mark.integration
+def test_invite_user_stages_successfully(client: TestClient, api_module) -> None:
+    """invite_user must be accepted by the staging endpoint (it was missing before)."""
+    token = _register_root(client)
+    parsed = {
+        "operation": "invite_user",
+        "target": "matt",
+        "params": {"username": "matt", "role": "user"},
+    }
+    with (
+        patch.object(api_module, "slm_available", return_value=True),
+        patch.object(api_module, "slm_parse_admin_command", return_value=parsed),
+    ):
+        resp = client.post(
+            "/api/admin/command",
+            json={"instruction": "invite user Matt"},
+            headers=_auth_header(token),
+        )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["staged_command"]["operation"] == "invite_user"
+    assert body["staged_id"]
+    assert body["structured_content"]["card_type"] == "command_proposal"
+
+
+# ── _stage_command helper ─────────────────────────────────────────────────────
+
+
+@pytest.mark.unit
+def test_stage_command_helper_creates_entry() -> None:
+    """_stage_command should create, store, and return a staged entry."""
+    from lumina.api.routes.admin import _stage_command, _STAGED_COMMANDS
+
+    entry = _stage_command(
+        parsed_command={"operation": "deactivate_user", "target": "user99", "params": {"user_id": "user99"}},
+        original_instruction="deactivate user user99",
+        actor_id="test-actor",
+        actor_role="root",
+    )
+    assert entry["staged_id"] in _STAGED_COMMANDS
+    assert entry["parsed_command"]["operation"] == "deactivate_user"
+    assert entry["structured_content"]["type"] == "action_card"
+    assert entry["structured_content"]["card_type"] == "command_proposal"
+    assert not entry["resolved"]
+
+
+@pytest.mark.unit
+def test_stage_command_helper_rejects_unknown_operation() -> None:
+    """_stage_command should raise ValueError for unknown operations."""
+    from lumina.api.routes.admin import _stage_command
+
+    with pytest.raises(ValueError, match="Unknown operation"):
+        _stage_command(
+            parsed_command={"operation": "nuke_everything", "target": "", "params": {}},
+            original_instruction="nuke everything",
+            actor_id="test-actor",
+            actor_role="root",
+        )

@@ -371,6 +371,29 @@ def process_message(
                 esc_records[-1], session_context=session_ctx,
             )
 
+    # Build structured command-proposal card when a system_command was dispatched.
+    if (
+        structured_content is None
+        and resolved_action == "system_command"
+        and isinstance(turn_data.get("command_dispatch"), dict)
+    ):
+        cmd_dispatch = turn_data["command_dispatch"]
+        if cmd_dispatch.get("operation"):
+            _actor_id = (user or {}).get("sub", "")
+            _actor_role = (user or {}).get("role", "user")
+            try:
+                from lumina.api.routes.admin import _stage_command
+
+                _staged = _stage_command(
+                    parsed_command=cmd_dispatch,
+                    original_instruction=input_text,
+                    actor_id=_actor_id,
+                    actor_role=_actor_role,
+                )
+                structured_content = _staged.get("structured_content")
+            except (ValueError, Exception):
+                log.debug("Auto-stage failed for command_dispatch", exc_info=True)
+
     tool_results = apply_tool_call_policy(
         resolved_action=resolved_action,
         prompt_contract=prompt_contract,

@@ -370,6 +370,7 @@ _KNOWN_OPERATIONS: frozenset[str] = frozenset({
     "trigger_night_cycle",
     "night_cycle_status",
     "review_proposals",
+    "invite_user",
 })
 
 # Staged commands awaiting human resolution (keyed by staged_id).
@@ -397,6 +398,69 @@ def _compute_schema_delta(original: dict[str, Any], modified: dict[str, Any]) ->
         if orig_val != mod_val:
             delta[key] = {"from": orig_val, "to": mod_val}
     return delta
+
+
+def _stage_command(
+    parsed_command: dict[str, Any],
+    original_instruction: str,
+    actor_id: str,
+    actor_role: str,
+) -> dict[str, Any]:
+    """Create a staged HITL command entry and return it (with structured_content).
+
+    Raises ``ValueError`` when the operation is unknown or fails schema
+    validation so callers can decide how to surface the error.
+    """
+    from lumina.api.structured_content import build_command_proposal_card
+
+    operation = parsed_command.get("operation", "")
+    if operation not in _KNOWN_OPERATIONS:
+        raise ValueError(f"Unknown operation: {operation}")
+
+    cmd_approved, cmd_violations = validate_command(
+        operation, parsed_command.get("params", {}), parsed_command.get("target", ""),
+    )
+    if not cmd_approved:
+        raise ValueError(f"Command schema validation failed: {'; '.join(cmd_violations)}")
+
+    staged_id = str(uuid.uuid4())
+    expires_at = time.time() + _STAGED_CMD_TTL_SECONDS
+
+    stage_record = build_commitment_record(
+        actor_id=actor_id,
+        actor_role=map_role_to_actor_role(actor_role),
+        commitment_type="hitl_command_staged",
+        subject_id=staged_id,
+        summary=f"HITL staged: {original_instruction[:200]}",
+        subject_version=None,
+        subject_hash=None,
+        metadata={
+            "staged_id": staged_id,
+            "parsed_command": parsed_command,
+            "original_instruction": original_instruction,
+        },
+    )
+    _cfg.PERSISTENCE.append_log_record(
+        "admin", stage_record,
+        ledger_path=_cfg.PERSISTENCE.get_log_ledger_path("admin"),
+    )
+
+    entry: dict[str, Any] = {
+        "staged_id": staged_id,
+        "actor_id": actor_id,
+        "actor_role": actor_role,
+        "parsed_command": parsed_command,
+        "original_instruction": original_instruction,
+        "staged_at": time.time(),
+        "expires_at": expires_at,
+        "log_stage_record_id": stage_record["record_id"],
+        "resolved": False,
+    }
+    with _STAGED_COMMANDS_LOCK:
+        _STAGED_COMMANDS[staged_id] = entry
+
+    entry["structured_content"] = build_command_proposal_card(entry)
+    return entry
 
 
 async def _execute_admin_operation(
@@ -833,61 +897,23 @@ async def admin_command(
     if operation not in _KNOWN_OPERATIONS:
         raise HTTPException(status_code=422, detail=f"Unknown operation: {operation}")
 
-    # Default Deny: validate parsed params against registered command schema
-    cmd_approved, cmd_violations = validate_command(
-        operation, parsed.get("params", {}), parsed.get("target", ""),
-    )
-    if not cmd_approved:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Command schema validation failed: {'; '.join(cmd_violations)}",
+    try:
+        entry = _stage_command(
+            parsed_command=parsed,
+            original_instruction=req.instruction,
+            actor_id=user_data["sub"],
+            actor_role=user_data["role"],
         )
-
-    staged_id = str(uuid.uuid4())
-    expires_at = time.time() + _STAGED_CMD_TTL_SECONDS
-
-    stage_record = build_commitment_record(
-        actor_id=user_data["sub"],
-        actor_role=map_role_to_actor_role(user_data["role"]),
-        commitment_type="hitl_command_staged",
-        subject_id=staged_id,
-        summary=f"HITL staged: {req.instruction[:200]}",
-        subject_version=None,
-        subject_hash=None,
-        metadata={
-            "staged_id": staged_id,
-            "parsed_command": parsed,
-            "original_instruction": req.instruction,
-        },
-    )
-    _cfg.PERSISTENCE.append_log_record(
-        "admin", stage_record,
-        ledger_path=_cfg.PERSISTENCE.get_log_ledger_path("admin"),
-    )
-
-    entry: dict[str, Any] = {
-        "staged_id": staged_id,
-        "actor_id": user_data["sub"],
-        "actor_role": user_data["role"],
-        "parsed_command": parsed,
-        "original_instruction": req.instruction,
-        "staged_at": time.time(),
-        "expires_at": expires_at,
-        "log_stage_record_id": stage_record["record_id"],
-        "resolved": False,
-    }
-    with _STAGED_COMMANDS_LOCK:
-        _STAGED_COMMANDS[staged_id] = entry
-
-    from lumina.api.structured_content import build_command_proposal_card
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
     return {
-        "staged_id": staged_id,
+        "staged_id": entry["staged_id"],
         "staged_command": parsed,
         "original_instruction": req.instruction,
-        "expires_at": expires_at,
-        "log_stage_record_id": stage_record["record_id"],
-        "structured_content": build_command_proposal_card(entry),
+        "expires_at": entry["expires_at"],
+        "log_stage_record_id": entry["log_stage_record_id"],
+        "structured_content": entry["structured_content"],
     }
 
 

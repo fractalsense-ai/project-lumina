@@ -25,7 +25,7 @@ interface DomainSummary {
 }
 
 interface TelemetrySummary {
-  total_ctl_records: number
+  total_log_records: number
   record_type_counts: Record<string, number>
   escalation_summary: {
     total: number
@@ -147,7 +147,7 @@ function OverviewTab({
       {/* Telemetry summary cards */}
       {telemetry && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <StatCard label="CTL Records" value={telemetry.total_ctl_records} />
+          <StatCard label="System Log Records" value={telemetry.total_log_records} />
           <StatCard label="Pending Escalations" value={telemetry.escalation_summary.pending} />
           <StatCard label="Resolved Escalations" value={telemetry.escalation_summary.resolved} />
         </div>
