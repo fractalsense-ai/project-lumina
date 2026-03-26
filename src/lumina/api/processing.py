@@ -97,6 +97,7 @@ def process_message(
     user: dict[str, Any] | None = None,
     model_id: str | None = None,
     model_version: str | None = None,
+    holodeck: bool = False,
 ) -> dict[str, Any]:
     session = get_or_create_session(session_id, domain_id=domain_id, user=user)
 
@@ -148,6 +149,30 @@ def process_message(
     runtime = _cfg.DOMAIN_REGISTRY.get_runtime_context(resolved_domain_id)
     runtime_provenance = dict(runtime.get("runtime_provenance") or {})
     system_prompt = runtime["system_prompt"]
+
+    # ── Magic-circle consent gate ─────────────────────────────
+    # Only "user" role needs consent; governance roles and unauthenticated
+    # sessions bypass entirely.
+    # Domain must declare consent_boundary in pre_turn_checks with enabled: true.
+    _GOVERNANCE_ROLES = frozenset({"root", "domain_authority", "it_support", "qa", "auditor"})
+    _user_role = (user or {}).get("role", "")
+    if user is not None and _user_role not in _GOVERNANCE_ROLES:
+        pre_turn_checks = runtime.get("pre_turn_checks") or []
+        consent_check = next(
+            (c for c in pre_turn_checks if c.get("id") == "consent_boundary" and c.get("enabled")),
+            None,
+        )
+        if consent_check is not None:
+            container = _session_containers.get(session_id)
+            if container is not None and not container.consent_accepted:
+                return {
+                    "response": "Please accept the magic-circle consent agreement before continuing.",
+                    "action": "consent_required",
+                    "prompt_type": "consent_required",
+                    "escalated": False,
+                    "tool_results": None,
+                    "domain_id": domain_id or session.get("domain_id", ""),
+                }
 
     # ── Glossary interception (neutral turn — no mastery/affect change) ──
     domain_physics = runtime.get("domain") or {}
@@ -201,6 +226,11 @@ def process_message(
 
     task_context = dict(task_spec)
     task_context["current_problem"] = current_problem
+
+    # ── Extract world-sim state for ALL code paths ────────────
+    world_sim_theme = getattr(orch.state, "world_sim_theme", {}) or {}
+    mud_world_state = getattr(orch.state, "mud_world_state", {}) or {}
+
     if turn_data_override is not None:
         turn_data = turn_data_override
     elif deterministic_response:
@@ -226,8 +256,6 @@ def process_message(
         else:
             turn_data = dict(runtime.get("turn_input_defaults") or {})
     else:
-        world_sim_theme = getattr(orch.state, "world_sim_theme", {})
-        mud_world_state = getattr(orch.state, "mud_world_state", {})
         turn_data = interpret_turn_input(input_text, task_context, runtime, world_sim_theme=world_sim_theme, mud_world_state=mud_world_state)
     turn_data = normalize_turn_data(turn_data, runtime.get("turn_input_schema") or {})
 
@@ -268,7 +296,7 @@ def process_message(
     _inspection_result = _inspection.run(
         turn_data, input_text=input_text, task_context=task_context,
     )
-    if not _inspection_result.approved:
+    if not _inspection_result.approved and not holodeck:
         log.warning(
             "[%s] Inspection denied: %s",
             session_id,
@@ -506,7 +534,11 @@ def process_message(
         llm_payload["tool_results"] = tool_results
 
     if deterministic_response:
-        llm_response = render_contract_response(prompt_contract, runtime)
+        llm_response = render_contract_response(
+            prompt_contract, runtime,
+            mud_world_state=mud_world_state,
+            world_sim_theme=world_sim_theme,
+        )
     else:
         prompt_type = str(prompt_contract.get("prompt_type", "task_presentation"))
         weight = classify_task_weight(prompt_type, overrides=slm_weight_overrides)
@@ -570,4 +602,29 @@ def process_message(
     }
     if structured_content is not None:
         result["structured_content"] = structured_content
+
+    # ── Holodeck: attach raw structured evidence for builders ─
+    if holodeck:
+        import dataclasses as _dc
+
+        _state_obj = orch.state
+        if _dc.is_dataclass(_state_obj) and not isinstance(_state_obj, type):
+            _state_snap = _dc.asdict(_state_obj)
+        elif isinstance(_state_obj, dict):
+            _state_snap = dict(_state_obj)
+        else:
+            _state_snap = {}
+
+        holodeck_data: dict[str, Any] = {
+            "state_snapshot": _state_snap,
+            "inspection_result": _inspection_result.to_dict(),
+            "invariant_checks": _inspection_result.invariant_results,
+            "evidence": turn_data,
+            "world_sim_active": bool(mud_world_state.get("zone")),
+            "mud_world_state": mud_world_state or None,
+        }
+        if result.get("structured_content") is None:
+            result["structured_content"] = {}
+        result["structured_content"]["holodeck"] = holodeck_data
+
     return result

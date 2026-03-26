@@ -640,8 +640,24 @@ function App() {
     return <LoginScreen manifest={manifest} onAuth={handleAuth} />
   }
 
-  if (!consentGiven) {
-    return <ConsentScreen manifest={manifest} onConsent={() => setConsentGiven(true)} />
+  const isGovernanceRole = ['root', 'domain_authority', 'it_support', 'qa', 'auditor'].includes(auth.role)
+  if (!consentGiven && !isGovernanceRole) {
+    return (
+      <ConsentScreen
+        manifest={manifest}
+        onConsent={async () => {
+          try {
+            await fetch(`${getApiBase()}/api/consent/accept`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${auth.token}` },
+            })
+          } catch {
+            // Backend consent recording is best-effort; proceed regardless
+          }
+          setConsentGiven(true)
+        }}
+      />
+    )
   }
 
   if (view === 'dashboard' && showDashboard) {

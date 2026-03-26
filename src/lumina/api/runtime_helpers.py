@@ -10,10 +10,35 @@ from lumina.api.utils.templates import render_template_value
 from lumina.core.slm import call_slm
 
 
-def render_contract_response(prompt_contract: dict[str, Any], runtime: dict[str, Any]) -> str:
-    """Deterministic fallback driven by domain runtime config templates."""
+def render_contract_response(
+    prompt_contract: dict[str, Any],
+    runtime: dict[str, Any],
+    mud_world_state: dict[str, Any] | None = None,
+    world_sim_theme: dict[str, Any] | None = None,
+) -> str:
+    """Deterministic fallback driven by domain runtime config templates.
+
+    When MUD world state is present, uses narrative-aware templates from
+    ``deterministic_templates_mud`` that inject guide_npc, zone, protagonist,
+    and other world-sim narrative constants into the response.
+    """
     prompt_type = str(prompt_contract.get("prompt_type", "default"))
     task_id = str(prompt_contract.get("task_id", "task"))
+
+    # Try MUD-aware templates first when world-sim is active
+    if mud_world_state and mud_world_state.get("zone"):
+        mud_templates = runtime.get("deterministic_templates_mud") or {}
+        mud_template = mud_templates.get(prompt_type) or mud_templates.get("default")
+        if mud_template:
+            fmt_vars = {"task_id": task_id, "prompt_type": prompt_type}
+            fmt_vars.update(mud_world_state)
+            if world_sim_theme:
+                fmt_vars["theme_label"] = world_sim_theme.get("label", "")
+            try:
+                return mud_template.format(**fmt_vars)
+            except KeyError:
+                pass  # Fall through to plain templates
+
     templates = runtime["deterministic_templates"]
     template = templates.get(prompt_type) or templates.get("default") or "Continue with {task_id}."
     try:

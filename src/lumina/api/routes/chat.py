@@ -146,6 +146,15 @@ async def chat(
             if not has_access:
                 raise HTTPException(status_code=403, detail="Module access denied")
 
+    # ── Holodeck role gate ──
+    if req.holodeck:
+        _holodeck_roles = {"root", "domain_authority"}
+        if user is None or user.get("role") not in _holodeck_roles:
+            raise HTTPException(
+                status_code=403,
+                detail="Holodeck mode is restricted to root and domain_authority roles.",
+            )
+
     # ── Log routing decision to meta-ledger ──
     try:
         _cfg.PERSISTENCE.append_log_record(
@@ -167,6 +176,7 @@ async def chat(
             user,
             req.model_id,
             req.model_version,
+            req.holodeck,
         )
     except DomainNotFoundError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

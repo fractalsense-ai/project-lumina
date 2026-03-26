@@ -220,6 +220,7 @@ def load_runtime_context(repo_root: Path, runtime_config_path: str | None = None
         )
 
     deterministic_templates = runtime_cfg.get("deterministic_templates") or {}
+    deterministic_templates_mud = runtime_cfg.get("deterministic_templates_mud") or {}
     tool_call_policies = runtime_cfg.get("tool_call_policies") or {}
     if tool_call_policies is not None and not isinstance(tool_call_policies, dict):
         raise RuntimeError("'runtime.tool_call_policies' must be a mapping/dict when provided")
@@ -259,6 +260,7 @@ def load_runtime_context(repo_root: Path, runtime_config_path: str | None = None
         "turn_input_schema": runtime_cfg.get("turn_input_schema") or {},
         "action_prompt_type_map": runtime_cfg.get("action_prompt_type_map") or {},
         "deterministic_templates": deterministic_templates,
+        "deterministic_templates_mud": deterministic_templates_mud,
         "tool_call_policies": tool_call_policies,
         "slm_weight_overrides": slm_weight_overrides,
         "ui_manifest": ui_manifest,
@@ -273,6 +275,7 @@ def load_runtime_context(repo_root: Path, runtime_config_path: str | None = None
         "tool_fns": tool_fns,
         "world_sim": _world_sim_cfg,
         "local_only": bool(runtime_cfg.get("local_only", False)),
+        "pre_turn_checks": runtime_cfg.get("pre_turn_checks") or [],
     }
 
     # --- Optional: merge auto-discovered tool adapter metadata --------

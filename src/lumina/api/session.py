@@ -144,7 +144,7 @@ class DomainContext:
 class SessionContainer:
     """Holds isolated domain contexts for a single session."""
 
-    __slots__ = ("active_domain_id", "contexts", "user", "last_activity", "frozen", "ttl_manager")
+    __slots__ = ("active_domain_id", "contexts", "user", "last_activity", "frozen", "ttl_manager", "consent_accepted", "consent_timestamp")
 
     def __init__(self, active_domain_id: str, user: dict[str, Any] | None = None) -> None:
         self.active_domain_id = active_domain_id
@@ -153,6 +153,8 @@ class SessionContainer:
         self.last_activity: float = time.time()
         self.frozen: bool = False  # True when an escalation lock is active
         self.ttl_manager: TTLManager = TTLManager()
+        self.consent_accepted: bool = False
+        self.consent_timestamp: float | None = None
 
     @property
     def active_context(self) -> DomainContext:

@@ -17,6 +17,7 @@ class ChatRequest(BaseModel):
     domain_id: str | None = None
     model_id: str | None = None
     model_version: str | None = None
+    holodeck: bool = False
 
 
 class ChatResponse(BaseModel):
