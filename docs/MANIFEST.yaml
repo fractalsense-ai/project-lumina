@@ -360,7 +360,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-13
-    sha256: 375475da6d919ab00eddaa6f14fe3a8f64e6ab88a30222cceaddc1a77f43d0c6
+    sha256: 61c5bcf54b5012a74580fe91cd9777d4d7ddf22e9012eb2f0db722317c21cfc6
 
   - path: docs/7-concepts/resource-monitor-daemon.md
     type: doc

@@ -519,7 +519,7 @@
     "group": "educators",
     "acl": [
       { "role": "qa", "access": "rx", "scope": "evaluation_only" },
-      { "role": "auditor", "access": "r", "scope": "log_records_only" },
+      { "role": "auditor", "access": "rx", "scope": "log_records_only" },
       { "domain_role": "student", "access": "x" }
     ]
   },

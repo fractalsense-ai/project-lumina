@@ -56,7 +56,7 @@
       },
       {
         "role": "auditor",
-        "access": "r",
+        "access": "rx",
         "scope": "log_records_only"
       },
       {

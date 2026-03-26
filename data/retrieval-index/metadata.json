@@ -2165,8 +2165,8 @@
   {
     "source_path": "docs/7-concepts/prompt-packet-assembly.md",
     "heading": "## A. The Packet Model",
-    "text": "TCP/IP assembles network packets from layered protocols — each layer adds its header, the payload travels through, and checksums verify integrity at the destination. Project Lumina applies the same principle to LLM interactions.\n\nThe **assembled prompt contract** is the \"packet.\" It is built by stacking headers from layers that each know only their own concern. The LLM is the processing unit at the end of the assembly line. It receives a fully-formed, context-complete packet and produces a response. The packet assembly process is deterministic and auditable. The LLM response is probabilistic and always verified.\n\n```\n┌─────────────────────────────────────────────┐\n│  Input Interface                            │  ← raw signal enters here\n├─────────────────────────────────────────────┤\n│  Domain Adapter — Input Normalization (A)   │  ← NLP classification + anchor extraction\n├─────────────────────────────────────────────┤\n│  SLM Context Compression (optional)         │  ← physics interpretation + signal digest\n├─────────────────────────────────────────────┤\n│  Global Base Prompt                         │  ← universal rules  (the \"IP header\")\n├─────────────────────────────────────────────┤\n│  Domain Physics                             │  ← domain policy layer header\n├─────────────────────────────────────────────┤\n│  Module State + Turn Data / NLP Anchors     │  ← session-specific context header\n├══════════════════════════════════════════════╡\n│  Assembled Prompt Contract                  │  ← the \"packet\" sent to the LLM\n├─────────────────────────────────────────────┤\n│  LLM (Processing Unit)                      │  ← probabilistic; never trusted alone\n├─────────────────────────────────────────────┤\n│  Tool-Adapter Verification                  │  ← deterministic output checking\n├─────────────────────────────────────────────┤\n│  Domain Adapter — Signal Synthesis (B)      │  ← computes engine contract fields\n├─────────────────────────────────────────────┤\n│  System Log (System Logs)                  │  ← structured event + decision logging\n└─────────────────────────────────────────────┘\n```\n\n> Both Domain Adapter rows are owned entirely by the domain pack. Zero domain-specific names appear in the core engine.\n> See [`domain-adapter-pattern(7)`](domain-adapter-pattern.md) for the authoring contract.\n\nThe key design property is this: **the LLM does not have to guess about context.** Everything the LLM needs to reason correctly is assembled into the packet before the LLM sees any of it. The LLM is constrained to the packet. It cannot expand scope beyond what Domain Physics authorizes, because the packet itself is the boundary.\n\n---",
-    "content_hash": "08d9d9841b917086181305af10c2c3f2430f2345dbfd6b5c614950e65ee84608",
+    "text": "TCP/IP assembles network packets from layered protocols — each layer adds its header, the payload travels through, and checksums verify integrity at the destination. Project Lumina applies the same principle to LLM interactions.\n\nThe **assembled prompt contract** is the \"packet.\" It is built by stacking headers from layers that each know only their own concern. The LLM is the processing unit at the end of the assembly line. It receives a fully-formed, context-complete packet and produces a response. The packet assembly process is deterministic and auditable. The LLM response is probabilistic and always verified.\n\n```\n┌─────────────────────────────────────────────┐\n│  Input Interface                            │  ← raw signal enters here\n├─────────────────────────────────────────────┤\n│  Domain Adapter — Input Normalization (A)   │  ← NLP classification + anchor extraction\n├─────────────────────────────────────────────┤\n│  SLM Context Compression (optional)         │  ← physics interpretation + signal digest\n├─────────────────────────────────────────────┤\n│  Global Base Prompt                         │  ← universal rules  (the \"IP header\")\n├─────────────────────────────────────────────┤\n│  Domain Physics                             │  ← domain policy layer header\n├─────────────────────────────────────────────┤\n│  Module State + Turn Data / NLP Anchors     │  ← session-specific context header\n├═════════════════════════════════════════════╡\n│  Assembled Prompt Contract                  │  ← the \"packet\" sent to the LLM\n├─────────────────────────────────────────────┤\n│  LLM (Processing Unit)                      │  ← probabilistic; never trusted alone\n├─────────────────────────────────────────────┤\n│  Tool-Adapter Verification                  │  ← deterministic output checking\n├─────────────────────────────────────────────┤\n│  Domain Adapter — Signal Synthesis (B)      │  ← computes engine contract fields\n├─────────────────────────────────────────────┤\n│  System Log (System Logs)                   │  ← structured event + decision logging\n└─────────────────────────────────────────────┘\n```\n\n> Both Domain Adapter rows are owned entirely by the domain pack. Zero domain-specific names appear in the core engine.\n> See [`domain-adapter-pattern(7)`](domain-adapter-pattern.md) for the authoring contract.\n\nThe key design property is this: **the LLM does not have to guess about context.** Everything the LLM needs to reason correctly is assembled into the packet before the LLM sees any of it. The LLM is constrained to the packet. It cannot expand scope beyond what Domain Physics authorizes, because the packet itself is the boundary.\n\n---",
+    "content_hash": "2f91c671ae4422065a3a2f2cdb3c3767766ea407d667423465cd1483bf3cb68c",
     "content_type": "doc"
   },
   {
@@ -8148,6 +8148,62 @@
     "content_type": "schema"
   },
   {
+    "source_path": "cfg/profiles/1425e45e-d190-4d86-85ca-94365db7e8d5/_default.yaml",
+    "heading": "student_id",
+    "text": "<PSEUDONYMOUS_ID>",
+    "content_hash": "68c51c7f93e87be7b5457f8612f9126abd42d0f591bba1eb3b0e0ae4ed781fb8",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/1425e45e-d190-4d86-85ca-94365db7e8d5/_default.yaml",
+    "heading": "domain_id",
+    "text": "domain/edu/algebra-level-1/v1",
+    "content_hash": "e6af0d93e0238a73caff627009a55f7dcde8f49d885156dbe4e6da5acc36d1a4",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/1425e45e-d190-4d86-85ca-94365db7e8d5/_default.yaml",
+    "heading": "display_name",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/1425e45e-d190-4d86-85ca-94365db7e8d5/_default.yaml",
+    "heading": "preferences",
+    "text": "{\n \"interests\": [],\n \"dislikes\": [],\n \"preferred_explanation_style\": \"step_by_step\",\n \"language\": \"en\"\n}",
+    "content_hash": "2c0bfd997e7cfa6cbc496ce85046e9fad003bd09a66b24316e329d22fc87d457",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/1425e45e-d190-4d86-85ca-94365db7e8d5/_default.yaml",
+    "heading": "learning_state",
+    "text": "{\n \"affect\": {\n  \"salience\": 0.5,\n  \"valence\": 0.0,\n  \"arousal\": 0.5\n },\n \"mastery\": {\n  \"equivalence_preserved\": 0.0,\n  \"no_illegal_operations\": 0.0,\n  \"solution_verifies\": 0.0,\n  \"show_work_minimum\": 0.0\n },\n \"challenge_band\": {\n  \"min_challenge\": 0.3,\n  \"max_challenge\": 0.7\n },\n \"recent_window\": {\n  \"window_turns\": 10,\n  \"attempts\": 0,\n  \"consecutive_incorrect\": 0,\n  \"hint_count\": 0,\n  \"outside_pct\": 0.0,\n  \"consecutive_outside\": 0,\n  \"outside_flags\": []\n },\n \"challenge\": 0.3,\n \"uncertainty\": 0.8,\n \"fluency\": {\n  \"current_tier\": \"tier_1\",\n  \"consecutive_correct\": 0\n },\n \"updated_utc\": null\n}",
+    "content_hash": "8844080e06c85e01b0707a54a6800c725b17a445bef778219d7ec846cbc30227",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/1425e45e-d190-4d86-85ca-94365db7e8d5/_default.yaml",
+    "heading": "session_history",
+    "text": "{\n \"total_sessions\": 0,\n \"last_session_utc\": null,\n \"total_turns\": 0\n}",
+    "content_hash": "70d8eef93a2e9c380929ff8929a9e79d8626078bba4bcc159e0ee1d3cee451ea",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/1425e45e-d190-4d86-85ca-94365db7e8d5/_default.yaml",
+    "heading": "consent",
+    "text": "{\n \"magic_circle_accepted\": false,\n \"consent_timestamp_utc\": null,\n \"consent_version\": null,\n \"guardian_consent\": null\n}",
+    "content_hash": "10b7b918a7c4aebca289e05ec94f98246d0d3fd650b52eccb9db52f739ee1db0",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/1425e45e-d190-4d86-85ca-94365db7e8d5/_default.yaml",
+    "heading": "updated_utc",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
     "source_path": "cfg/profiles/1484a7e8-bd9f-4636-95d7-e7a5264cac5e/_default.yaml",
     "heading": "student_id",
     "text": "<PSEUDONYMOUS_ID>",
@@ -8201,6 +8257,41 @@
     "heading": "updated_utc",
     "text": "None",
     "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/177089fd-3897-4472-bc6b-52f9381faf98/system.yaml",
+    "heading": "operator_id",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/177089fd-3897-4472-bc6b-52f9381faf98/system.yaml",
+    "heading": "domain_id",
+    "text": "domain/sys/system-core/v1",
+    "content_hash": "4bc8de06ea7fd9e16fdcf2fbfd2dc322efaae57ec8cb5f5cb58d5a3f352061db",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/177089fd-3897-4472-bc6b-52f9381faf98/system.yaml",
+    "heading": "display_name",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/177089fd-3897-4472-bc6b-52f9381faf98/system.yaml",
+    "heading": "preferences",
+    "text": "{\n \"explanation_style\": \"technical\",\n \"language\": \"en\"\n}",
+    "content_hash": "b511c1f6321b85eb7e4519c745546fe8e55dbeb3690d0b4992957245482e02f7",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/177089fd-3897-4472-bc6b-52f9381faf98/system.yaml",
+    "heading": "state",
+    "text": "{}",
+    "content_hash": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
     "content_type": "schema"
   },
   {
@@ -9212,6 +9303,62 @@
     "content_type": "schema"
   },
   {
+    "source_path": "cfg/profiles/343f15d1-8ab3-4325-9be6-89a6857aa876/_default.yaml",
+    "heading": "student_id",
+    "text": "<PSEUDONYMOUS_ID>",
+    "content_hash": "68c51c7f93e87be7b5457f8612f9126abd42d0f591bba1eb3b0e0ae4ed781fb8",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/343f15d1-8ab3-4325-9be6-89a6857aa876/_default.yaml",
+    "heading": "domain_id",
+    "text": "domain/edu/algebra-level-1/v1",
+    "content_hash": "e6af0d93e0238a73caff627009a55f7dcde8f49d885156dbe4e6da5acc36d1a4",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/343f15d1-8ab3-4325-9be6-89a6857aa876/_default.yaml",
+    "heading": "display_name",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/343f15d1-8ab3-4325-9be6-89a6857aa876/_default.yaml",
+    "heading": "preferences",
+    "text": "{\n \"interests\": [],\n \"dislikes\": [],\n \"preferred_explanation_style\": \"step_by_step\",\n \"language\": \"en\"\n}",
+    "content_hash": "2c0bfd997e7cfa6cbc496ce85046e9fad003bd09a66b24316e329d22fc87d457",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/343f15d1-8ab3-4325-9be6-89a6857aa876/_default.yaml",
+    "heading": "learning_state",
+    "text": "{\n \"affect\": {\n  \"salience\": 0.5,\n  \"valence\": 0.0,\n  \"arousal\": 0.5\n },\n \"mastery\": {\n  \"equivalence_preserved\": 0.0,\n  \"no_illegal_operations\": 0.0,\n  \"solution_verifies\": 0.0,\n  \"show_work_minimum\": 0.0\n },\n \"challenge_band\": {\n  \"min_challenge\": 0.3,\n  \"max_challenge\": 0.7\n },\n \"recent_window\": {\n  \"window_turns\": 10,\n  \"attempts\": 0,\n  \"consecutive_incorrect\": 0,\n  \"hint_count\": 0,\n  \"outside_pct\": 0.0,\n  \"consecutive_outside\": 0,\n  \"outside_flags\": []\n },\n \"challenge\": 0.3,\n \"uncertainty\": 0.8,\n \"fluency\": {\n  \"current_tier\": \"tier_1\",\n  \"consecutive_correct\": 0\n },\n \"updated_utc\": null\n}",
+    "content_hash": "8844080e06c85e01b0707a54a6800c725b17a445bef778219d7ec846cbc30227",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/343f15d1-8ab3-4325-9be6-89a6857aa876/_default.yaml",
+    "heading": "session_history",
+    "text": "{\n \"total_sessions\": 0,\n \"last_session_utc\": null,\n \"total_turns\": 0\n}",
+    "content_hash": "70d8eef93a2e9c380929ff8929a9e79d8626078bba4bcc159e0ee1d3cee451ea",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/343f15d1-8ab3-4325-9be6-89a6857aa876/_default.yaml",
+    "heading": "consent",
+    "text": "{\n \"magic_circle_accepted\": false,\n \"consent_timestamp_utc\": null,\n \"consent_version\": null,\n \"guardian_consent\": null\n}",
+    "content_hash": "10b7b918a7c4aebca289e05ec94f98246d0d3fd650b52eccb9db52f739ee1db0",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/343f15d1-8ab3-4325-9be6-89a6857aa876/_default.yaml",
+    "heading": "updated_utc",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
     "source_path": "cfg/profiles/34b3121d-6893-43d9-92c3-fd02143fbf48/_default.yaml",
     "heading": "student_id",
     "text": "<PSEUDONYMOUS_ID>",
@@ -9598,6 +9745,62 @@
   },
   {
     "source_path": "cfg/profiles/4b544d21-93b8-444d-9138-7120348f9a71/_default.yaml",
+    "heading": "updated_utc",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/4d405e35-1b36-4deb-b4ac-e5fd63e6cb34/_default.yaml",
+    "heading": "student_id",
+    "text": "<PSEUDONYMOUS_ID>",
+    "content_hash": "68c51c7f93e87be7b5457f8612f9126abd42d0f591bba1eb3b0e0ae4ed781fb8",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/4d405e35-1b36-4deb-b4ac-e5fd63e6cb34/_default.yaml",
+    "heading": "domain_id",
+    "text": "domain/edu/algebra-level-1/v1",
+    "content_hash": "e6af0d93e0238a73caff627009a55f7dcde8f49d885156dbe4e6da5acc36d1a4",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/4d405e35-1b36-4deb-b4ac-e5fd63e6cb34/_default.yaml",
+    "heading": "display_name",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/4d405e35-1b36-4deb-b4ac-e5fd63e6cb34/_default.yaml",
+    "heading": "preferences",
+    "text": "{\n \"interests\": [],\n \"dislikes\": [],\n \"preferred_explanation_style\": \"step_by_step\",\n \"language\": \"en\"\n}",
+    "content_hash": "2c0bfd997e7cfa6cbc496ce85046e9fad003bd09a66b24316e329d22fc87d457",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/4d405e35-1b36-4deb-b4ac-e5fd63e6cb34/_default.yaml",
+    "heading": "learning_state",
+    "text": "{\n \"affect\": {\n  \"salience\": 0.5,\n  \"valence\": 0.0,\n  \"arousal\": 0.5\n },\n \"mastery\": {\n  \"equivalence_preserved\": 0.0,\n  \"no_illegal_operations\": 0.0,\n  \"solution_verifies\": 0.0,\n  \"show_work_minimum\": 0.0\n },\n \"challenge_band\": {\n  \"min_challenge\": 0.3,\n  \"max_challenge\": 0.7\n },\n \"recent_window\": {\n  \"window_turns\": 10,\n  \"attempts\": 0,\n  \"consecutive_incorrect\": 0,\n  \"hint_count\": 0,\n  \"outside_pct\": 0.0,\n  \"consecutive_outside\": 0,\n  \"outside_flags\": []\n },\n \"challenge\": 0.3,\n \"uncertainty\": 0.8,\n \"fluency\": {\n  \"current_tier\": \"tier_1\",\n  \"consecutive_correct\": 0\n },\n \"updated_utc\": null\n}",
+    "content_hash": "8844080e06c85e01b0707a54a6800c725b17a445bef778219d7ec846cbc30227",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/4d405e35-1b36-4deb-b4ac-e5fd63e6cb34/_default.yaml",
+    "heading": "session_history",
+    "text": "{\n \"total_sessions\": 0,\n \"last_session_utc\": null,\n \"total_turns\": 0\n}",
+    "content_hash": "70d8eef93a2e9c380929ff8929a9e79d8626078bba4bcc159e0ee1d3cee451ea",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/4d405e35-1b36-4deb-b4ac-e5fd63e6cb34/_default.yaml",
+    "heading": "consent",
+    "text": "{\n \"magic_circle_accepted\": false,\n \"consent_timestamp_utc\": null,\n \"consent_version\": null,\n \"guardian_consent\": null\n}",
+    "content_hash": "10b7b918a7c4aebca289e05ec94f98246d0d3fd650b52eccb9db52f739ee1db0",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/4d405e35-1b36-4deb-b4ac-e5fd63e6cb34/_default.yaml",
     "heading": "updated_utc",
     "text": "None",
     "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
@@ -11844,6 +12047,62 @@
     "content_type": "schema"
   },
   {
+    "source_path": "cfg/profiles/7fbe9e6e-45d7-47b3-bdd7-57e3974810da/_default.yaml",
+    "heading": "student_id",
+    "text": "<PSEUDONYMOUS_ID>",
+    "content_hash": "68c51c7f93e87be7b5457f8612f9126abd42d0f591bba1eb3b0e0ae4ed781fb8",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/7fbe9e6e-45d7-47b3-bdd7-57e3974810da/_default.yaml",
+    "heading": "domain_id",
+    "text": "domain/edu/algebra-level-1/v1",
+    "content_hash": "e6af0d93e0238a73caff627009a55f7dcde8f49d885156dbe4e6da5acc36d1a4",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/7fbe9e6e-45d7-47b3-bdd7-57e3974810da/_default.yaml",
+    "heading": "display_name",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/7fbe9e6e-45d7-47b3-bdd7-57e3974810da/_default.yaml",
+    "heading": "preferences",
+    "text": "{\n \"interests\": [],\n \"dislikes\": [],\n \"preferred_explanation_style\": \"step_by_step\",\n \"language\": \"en\"\n}",
+    "content_hash": "2c0bfd997e7cfa6cbc496ce85046e9fad003bd09a66b24316e329d22fc87d457",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/7fbe9e6e-45d7-47b3-bdd7-57e3974810da/_default.yaml",
+    "heading": "learning_state",
+    "text": "{\n \"affect\": {\n  \"salience\": 0.5,\n  \"valence\": 0.0,\n  \"arousal\": 0.5\n },\n \"mastery\": {\n  \"equivalence_preserved\": 0.0,\n  \"no_illegal_operations\": 0.0,\n  \"solution_verifies\": 0.0,\n  \"show_work_minimum\": 0.0\n },\n \"challenge_band\": {\n  \"min_challenge\": 0.3,\n  \"max_challenge\": 0.7\n },\n \"recent_window\": {\n  \"window_turns\": 10,\n  \"attempts\": 0,\n  \"consecutive_incorrect\": 0,\n  \"hint_count\": 0,\n  \"outside_pct\": 0.0,\n  \"consecutive_outside\": 0,\n  \"outside_flags\": []\n },\n \"challenge\": 0.3,\n \"uncertainty\": 0.8,\n \"fluency\": {\n  \"current_tier\": \"tier_1\",\n  \"consecutive_correct\": 0\n },\n \"updated_utc\": null\n}",
+    "content_hash": "8844080e06c85e01b0707a54a6800c725b17a445bef778219d7ec846cbc30227",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/7fbe9e6e-45d7-47b3-bdd7-57e3974810da/_default.yaml",
+    "heading": "session_history",
+    "text": "{\n \"total_sessions\": 0,\n \"last_session_utc\": null,\n \"total_turns\": 0\n}",
+    "content_hash": "70d8eef93a2e9c380929ff8929a9e79d8626078bba4bcc159e0ee1d3cee451ea",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/7fbe9e6e-45d7-47b3-bdd7-57e3974810da/_default.yaml",
+    "heading": "consent",
+    "text": "{\n \"magic_circle_accepted\": false,\n \"consent_timestamp_utc\": null,\n \"consent_version\": null,\n \"guardian_consent\": null\n}",
+    "content_hash": "10b7b918a7c4aebca289e05ec94f98246d0d3fd650b52eccb9db52f739ee1db0",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/7fbe9e6e-45d7-47b3-bdd7-57e3974810da/_default.yaml",
+    "heading": "updated_utc",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
     "source_path": "cfg/profiles/7fd6515c-6357-4154-af6e-c9e4b888666b/_default.yaml",
     "heading": "student_id",
     "text": "<PSEUDONYMOUS_ID>",
@@ -12230,6 +12489,62 @@
   },
   {
     "source_path": "cfg/profiles/89319b38-68b9-4d8b-915d-8cc6247236d9/_default.yaml",
+    "heading": "updated_utc",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/8aee1701-61f7-4544-bf85-6ba8568804d0/_default.yaml",
+    "heading": "student_id",
+    "text": "<PSEUDONYMOUS_ID>",
+    "content_hash": "68c51c7f93e87be7b5457f8612f9126abd42d0f591bba1eb3b0e0ae4ed781fb8",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/8aee1701-61f7-4544-bf85-6ba8568804d0/_default.yaml",
+    "heading": "domain_id",
+    "text": "domain/edu/algebra-level-1/v1",
+    "content_hash": "e6af0d93e0238a73caff627009a55f7dcde8f49d885156dbe4e6da5acc36d1a4",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/8aee1701-61f7-4544-bf85-6ba8568804d0/_default.yaml",
+    "heading": "display_name",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/8aee1701-61f7-4544-bf85-6ba8568804d0/_default.yaml",
+    "heading": "preferences",
+    "text": "{\n \"interests\": [],\n \"dislikes\": [],\n \"preferred_explanation_style\": \"step_by_step\",\n \"language\": \"en\"\n}",
+    "content_hash": "2c0bfd997e7cfa6cbc496ce85046e9fad003bd09a66b24316e329d22fc87d457",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/8aee1701-61f7-4544-bf85-6ba8568804d0/_default.yaml",
+    "heading": "learning_state",
+    "text": "{\n \"affect\": {\n  \"salience\": 0.5,\n  \"valence\": 0.0,\n  \"arousal\": 0.5\n },\n \"mastery\": {\n  \"equivalence_preserved\": 0.0,\n  \"no_illegal_operations\": 0.0,\n  \"solution_verifies\": 0.0,\n  \"show_work_minimum\": 0.0\n },\n \"challenge_band\": {\n  \"min_challenge\": 0.3,\n  \"max_challenge\": 0.7\n },\n \"recent_window\": {\n  \"window_turns\": 10,\n  \"attempts\": 0,\n  \"consecutive_incorrect\": 0,\n  \"hint_count\": 0,\n  \"outside_pct\": 0.0,\n  \"consecutive_outside\": 0,\n  \"outside_flags\": []\n },\n \"challenge\": 0.3,\n \"uncertainty\": 0.8,\n \"fluency\": {\n  \"current_tier\": \"tier_1\",\n  \"consecutive_correct\": 0\n },\n \"updated_utc\": null\n}",
+    "content_hash": "8844080e06c85e01b0707a54a6800c725b17a445bef778219d7ec846cbc30227",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/8aee1701-61f7-4544-bf85-6ba8568804d0/_default.yaml",
+    "heading": "session_history",
+    "text": "{\n \"total_sessions\": 0,\n \"last_session_utc\": null,\n \"total_turns\": 0\n}",
+    "content_hash": "70d8eef93a2e9c380929ff8929a9e79d8626078bba4bcc159e0ee1d3cee451ea",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/8aee1701-61f7-4544-bf85-6ba8568804d0/_default.yaml",
+    "heading": "consent",
+    "text": "{\n \"magic_circle_accepted\": false,\n \"consent_timestamp_utc\": null,\n \"consent_version\": null,\n \"guardian_consent\": null\n}",
+    "content_hash": "10b7b918a7c4aebca289e05ec94f98246d0d3fd650b52eccb9db52f739ee1db0",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/8aee1701-61f7-4544-bf85-6ba8568804d0/_default.yaml",
     "heading": "updated_utc",
     "text": "None",
     "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
@@ -12684,6 +12999,62 @@
     "content_type": "schema"
   },
   {
+    "source_path": "cfg/profiles/9b32c212-60f0-489c-82cc-8b0ba1e41027/_default.yaml",
+    "heading": "student_id",
+    "text": "<PSEUDONYMOUS_ID>",
+    "content_hash": "68c51c7f93e87be7b5457f8612f9126abd42d0f591bba1eb3b0e0ae4ed781fb8",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/9b32c212-60f0-489c-82cc-8b0ba1e41027/_default.yaml",
+    "heading": "domain_id",
+    "text": "domain/edu/algebra-level-1/v1",
+    "content_hash": "e6af0d93e0238a73caff627009a55f7dcde8f49d885156dbe4e6da5acc36d1a4",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/9b32c212-60f0-489c-82cc-8b0ba1e41027/_default.yaml",
+    "heading": "display_name",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/9b32c212-60f0-489c-82cc-8b0ba1e41027/_default.yaml",
+    "heading": "preferences",
+    "text": "{\n \"interests\": [],\n \"dislikes\": [],\n \"preferred_explanation_style\": \"step_by_step\",\n \"language\": \"en\"\n}",
+    "content_hash": "2c0bfd997e7cfa6cbc496ce85046e9fad003bd09a66b24316e329d22fc87d457",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/9b32c212-60f0-489c-82cc-8b0ba1e41027/_default.yaml",
+    "heading": "learning_state",
+    "text": "{\n \"affect\": {\n  \"salience\": 0.5,\n  \"valence\": 0.0,\n  \"arousal\": 0.5\n },\n \"mastery\": {\n  \"equivalence_preserved\": 0.0,\n  \"no_illegal_operations\": 0.0,\n  \"solution_verifies\": 0.0,\n  \"show_work_minimum\": 0.0\n },\n \"challenge_band\": {\n  \"min_challenge\": 0.3,\n  \"max_challenge\": 0.7\n },\n \"recent_window\": {\n  \"window_turns\": 10,\n  \"attempts\": 0,\n  \"consecutive_incorrect\": 0,\n  \"hint_count\": 0,\n  \"outside_pct\": 0.0,\n  \"consecutive_outside\": 0,\n  \"outside_flags\": []\n },\n \"challenge\": 0.3,\n \"uncertainty\": 0.8,\n \"fluency\": {\n  \"current_tier\": \"tier_1\",\n  \"consecutive_correct\": 0\n },\n \"updated_utc\": null\n}",
+    "content_hash": "8844080e06c85e01b0707a54a6800c725b17a445bef778219d7ec846cbc30227",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/9b32c212-60f0-489c-82cc-8b0ba1e41027/_default.yaml",
+    "heading": "session_history",
+    "text": "{\n \"total_sessions\": 0,\n \"last_session_utc\": null,\n \"total_turns\": 0\n}",
+    "content_hash": "70d8eef93a2e9c380929ff8929a9e79d8626078bba4bcc159e0ee1d3cee451ea",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/9b32c212-60f0-489c-82cc-8b0ba1e41027/_default.yaml",
+    "heading": "consent",
+    "text": "{\n \"magic_circle_accepted\": false,\n \"consent_timestamp_utc\": null,\n \"consent_version\": null,\n \"guardian_consent\": null\n}",
+    "content_hash": "10b7b918a7c4aebca289e05ec94f98246d0d3fd650b52eccb9db52f739ee1db0",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/9b32c212-60f0-489c-82cc-8b0ba1e41027/_default.yaml",
+    "heading": "updated_utc",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
     "source_path": "cfg/profiles/9fa82f5f-ba0f-4595-ae66-73d9d32c7a28/_default.yaml",
     "heading": "student_id",
     "text": "<PSEUDONYMOUS_ID>",
@@ -12734,6 +13105,62 @@
   },
   {
     "source_path": "cfg/profiles/9fa82f5f-ba0f-4595-ae66-73d9d32c7a28/_default.yaml",
+    "heading": "updated_utc",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/a076ad21-4083-4eca-ac98-443ef8c83a33/_default.yaml",
+    "heading": "student_id",
+    "text": "<PSEUDONYMOUS_ID>",
+    "content_hash": "68c51c7f93e87be7b5457f8612f9126abd42d0f591bba1eb3b0e0ae4ed781fb8",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/a076ad21-4083-4eca-ac98-443ef8c83a33/_default.yaml",
+    "heading": "domain_id",
+    "text": "domain/edu/algebra-level-1/v1",
+    "content_hash": "e6af0d93e0238a73caff627009a55f7dcde8f49d885156dbe4e6da5acc36d1a4",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/a076ad21-4083-4eca-ac98-443ef8c83a33/_default.yaml",
+    "heading": "display_name",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/a076ad21-4083-4eca-ac98-443ef8c83a33/_default.yaml",
+    "heading": "preferences",
+    "text": "{\n \"interests\": [],\n \"dislikes\": [],\n \"preferred_explanation_style\": \"step_by_step\",\n \"language\": \"en\"\n}",
+    "content_hash": "2c0bfd997e7cfa6cbc496ce85046e9fad003bd09a66b24316e329d22fc87d457",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/a076ad21-4083-4eca-ac98-443ef8c83a33/_default.yaml",
+    "heading": "learning_state",
+    "text": "{\n \"affect\": {\n  \"salience\": 0.5,\n  \"valence\": 0.0,\n  \"arousal\": 0.5\n },\n \"mastery\": {\n  \"equivalence_preserved\": 0.0,\n  \"no_illegal_operations\": 0.0,\n  \"solution_verifies\": 0.0,\n  \"show_work_minimum\": 0.0\n },\n \"challenge_band\": {\n  \"min_challenge\": 0.3,\n  \"max_challenge\": 0.7\n },\n \"recent_window\": {\n  \"window_turns\": 10,\n  \"attempts\": 0,\n  \"consecutive_incorrect\": 0,\n  \"hint_count\": 0,\n  \"outside_pct\": 0.0,\n  \"consecutive_outside\": 0,\n  \"outside_flags\": []\n },\n \"challenge\": 0.3,\n \"uncertainty\": 0.8,\n \"fluency\": {\n  \"current_tier\": \"tier_1\",\n  \"consecutive_correct\": 0\n },\n \"updated_utc\": null\n}",
+    "content_hash": "8844080e06c85e01b0707a54a6800c725b17a445bef778219d7ec846cbc30227",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/a076ad21-4083-4eca-ac98-443ef8c83a33/_default.yaml",
+    "heading": "session_history",
+    "text": "{\n \"total_sessions\": 0,\n \"last_session_utc\": null,\n \"total_turns\": 0\n}",
+    "content_hash": "70d8eef93a2e9c380929ff8929a9e79d8626078bba4bcc159e0ee1d3cee451ea",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/a076ad21-4083-4eca-ac98-443ef8c83a33/_default.yaml",
+    "heading": "consent",
+    "text": "{\n \"magic_circle_accepted\": false,\n \"consent_timestamp_utc\": null,\n \"consent_version\": null,\n \"guardian_consent\": null\n}",
+    "content_hash": "10b7b918a7c4aebca289e05ec94f98246d0d3fd650b52eccb9db52f739ee1db0",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/a076ad21-4083-4eca-ac98-443ef8c83a33/_default.yaml",
     "heading": "updated_utc",
     "text": "None",
     "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
@@ -13132,6 +13559,62 @@
     "content_type": "schema"
   },
   {
+    "source_path": "cfg/profiles/b0f71554-ee2e-44c9-891e-3062600e5709/_default.yaml",
+    "heading": "student_id",
+    "text": "<PSEUDONYMOUS_ID>",
+    "content_hash": "68c51c7f93e87be7b5457f8612f9126abd42d0f591bba1eb3b0e0ae4ed781fb8",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/b0f71554-ee2e-44c9-891e-3062600e5709/_default.yaml",
+    "heading": "domain_id",
+    "text": "domain/edu/algebra-level-1/v1",
+    "content_hash": "e6af0d93e0238a73caff627009a55f7dcde8f49d885156dbe4e6da5acc36d1a4",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/b0f71554-ee2e-44c9-891e-3062600e5709/_default.yaml",
+    "heading": "display_name",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/b0f71554-ee2e-44c9-891e-3062600e5709/_default.yaml",
+    "heading": "preferences",
+    "text": "{\n \"interests\": [],\n \"dislikes\": [],\n \"preferred_explanation_style\": \"step_by_step\",\n \"language\": \"en\"\n}",
+    "content_hash": "2c0bfd997e7cfa6cbc496ce85046e9fad003bd09a66b24316e329d22fc87d457",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/b0f71554-ee2e-44c9-891e-3062600e5709/_default.yaml",
+    "heading": "learning_state",
+    "text": "{\n \"affect\": {\n  \"salience\": 0.5,\n  \"valence\": 0.0,\n  \"arousal\": 0.5\n },\n \"mastery\": {\n  \"equivalence_preserved\": 0.0,\n  \"no_illegal_operations\": 0.0,\n  \"solution_verifies\": 0.0,\n  \"show_work_minimum\": 0.0\n },\n \"challenge_band\": {\n  \"min_challenge\": 0.3,\n  \"max_challenge\": 0.7\n },\n \"recent_window\": {\n  \"window_turns\": 10,\n  \"attempts\": 0,\n  \"consecutive_incorrect\": 0,\n  \"hint_count\": 0,\n  \"outside_pct\": 0.0,\n  \"consecutive_outside\": 0,\n  \"outside_flags\": []\n },\n \"challenge\": 0.3,\n \"uncertainty\": 0.8,\n \"fluency\": {\n  \"current_tier\": \"tier_1\",\n  \"consecutive_correct\": 0\n },\n \"updated_utc\": null\n}",
+    "content_hash": "8844080e06c85e01b0707a54a6800c725b17a445bef778219d7ec846cbc30227",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/b0f71554-ee2e-44c9-891e-3062600e5709/_default.yaml",
+    "heading": "session_history",
+    "text": "{\n \"total_sessions\": 0,\n \"last_session_utc\": null,\n \"total_turns\": 0\n}",
+    "content_hash": "70d8eef93a2e9c380929ff8929a9e79d8626078bba4bcc159e0ee1d3cee451ea",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/b0f71554-ee2e-44c9-891e-3062600e5709/_default.yaml",
+    "heading": "consent",
+    "text": "{\n \"magic_circle_accepted\": false,\n \"consent_timestamp_utc\": null,\n \"consent_version\": null,\n \"guardian_consent\": null\n}",
+    "content_hash": "10b7b918a7c4aebca289e05ec94f98246d0d3fd650b52eccb9db52f739ee1db0",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/b0f71554-ee2e-44c9-891e-3062600e5709/_default.yaml",
+    "heading": "updated_utc",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
     "source_path": "cfg/profiles/b1cb89b6-7c37-47a4-93c0-eb12195afc36/_default.yaml",
     "heading": "student_id",
     "text": "<PSEUDONYMOUS_ID>",
@@ -13468,6 +13951,62 @@
     "content_type": "schema"
   },
   {
+    "source_path": "cfg/profiles/bb96ccb8-2850-433a-989e-ebbb42b0a795/_default.yaml",
+    "heading": "student_id",
+    "text": "<PSEUDONYMOUS_ID>",
+    "content_hash": "68c51c7f93e87be7b5457f8612f9126abd42d0f591bba1eb3b0e0ae4ed781fb8",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/bb96ccb8-2850-433a-989e-ebbb42b0a795/_default.yaml",
+    "heading": "domain_id",
+    "text": "domain/edu/algebra-level-1/v1",
+    "content_hash": "e6af0d93e0238a73caff627009a55f7dcde8f49d885156dbe4e6da5acc36d1a4",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/bb96ccb8-2850-433a-989e-ebbb42b0a795/_default.yaml",
+    "heading": "display_name",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/bb96ccb8-2850-433a-989e-ebbb42b0a795/_default.yaml",
+    "heading": "preferences",
+    "text": "{\n \"interests\": [],\n \"dislikes\": [],\n \"preferred_explanation_style\": \"step_by_step\",\n \"language\": \"en\"\n}",
+    "content_hash": "2c0bfd997e7cfa6cbc496ce85046e9fad003bd09a66b24316e329d22fc87d457",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/bb96ccb8-2850-433a-989e-ebbb42b0a795/_default.yaml",
+    "heading": "learning_state",
+    "text": "{\n \"affect\": {\n  \"salience\": 0.5,\n  \"valence\": 0.0,\n  \"arousal\": 0.5\n },\n \"mastery\": {\n  \"equivalence_preserved\": 0.0,\n  \"no_illegal_operations\": 0.0,\n  \"solution_verifies\": 0.0,\n  \"show_work_minimum\": 0.0\n },\n \"challenge_band\": {\n  \"min_challenge\": 0.3,\n  \"max_challenge\": 0.7\n },\n \"recent_window\": {\n  \"window_turns\": 10,\n  \"attempts\": 0,\n  \"consecutive_incorrect\": 0,\n  \"hint_count\": 0,\n  \"outside_pct\": 0.0,\n  \"consecutive_outside\": 0,\n  \"outside_flags\": []\n },\n \"challenge\": 0.3,\n \"uncertainty\": 0.8,\n \"fluency\": {\n  \"current_tier\": \"tier_1\",\n  \"consecutive_correct\": 0\n },\n \"updated_utc\": null\n}",
+    "content_hash": "8844080e06c85e01b0707a54a6800c725b17a445bef778219d7ec846cbc30227",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/bb96ccb8-2850-433a-989e-ebbb42b0a795/_default.yaml",
+    "heading": "session_history",
+    "text": "{\n \"total_sessions\": 0,\n \"last_session_utc\": null,\n \"total_turns\": 0\n}",
+    "content_hash": "70d8eef93a2e9c380929ff8929a9e79d8626078bba4bcc159e0ee1d3cee451ea",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/bb96ccb8-2850-433a-989e-ebbb42b0a795/_default.yaml",
+    "heading": "consent",
+    "text": "{\n \"magic_circle_accepted\": false,\n \"consent_timestamp_utc\": null,\n \"consent_version\": null,\n \"guardian_consent\": null\n}",
+    "content_hash": "10b7b918a7c4aebca289e05ec94f98246d0d3fd650b52eccb9db52f739ee1db0",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/bb96ccb8-2850-433a-989e-ebbb42b0a795/_default.yaml",
+    "heading": "updated_utc",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
     "source_path": "cfg/profiles/bc08c3b9-dc61-4011-afe1-03e6edcdb1fd/_default.yaml",
     "heading": "student_id",
     "text": "<PSEUDONYMOUS_ID>",
@@ -13798,6 +14337,62 @@
   },
   {
     "source_path": "cfg/profiles/c64d6eed-1d03-4e7d-8cee-197861aa9de0/_default.yaml",
+    "heading": "updated_utc",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/c7b8ee18-e092-42f5-a29e-94d485868d56/_default.yaml",
+    "heading": "student_id",
+    "text": "<PSEUDONYMOUS_ID>",
+    "content_hash": "68c51c7f93e87be7b5457f8612f9126abd42d0f591bba1eb3b0e0ae4ed781fb8",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/c7b8ee18-e092-42f5-a29e-94d485868d56/_default.yaml",
+    "heading": "domain_id",
+    "text": "domain/edu/algebra-level-1/v1",
+    "content_hash": "e6af0d93e0238a73caff627009a55f7dcde8f49d885156dbe4e6da5acc36d1a4",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/c7b8ee18-e092-42f5-a29e-94d485868d56/_default.yaml",
+    "heading": "display_name",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/c7b8ee18-e092-42f5-a29e-94d485868d56/_default.yaml",
+    "heading": "preferences",
+    "text": "{\n \"interests\": [],\n \"dislikes\": [],\n \"preferred_explanation_style\": \"step_by_step\",\n \"language\": \"en\"\n}",
+    "content_hash": "2c0bfd997e7cfa6cbc496ce85046e9fad003bd09a66b24316e329d22fc87d457",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/c7b8ee18-e092-42f5-a29e-94d485868d56/_default.yaml",
+    "heading": "learning_state",
+    "text": "{\n \"affect\": {\n  \"salience\": 0.5,\n  \"valence\": 0.0,\n  \"arousal\": 0.5\n },\n \"mastery\": {\n  \"equivalence_preserved\": 0.0,\n  \"no_illegal_operations\": 0.0,\n  \"solution_verifies\": 0.0,\n  \"show_work_minimum\": 0.0\n },\n \"challenge_band\": {\n  \"min_challenge\": 0.3,\n  \"max_challenge\": 0.7\n },\n \"recent_window\": {\n  \"window_turns\": 10,\n  \"attempts\": 0,\n  \"consecutive_incorrect\": 0,\n  \"hint_count\": 0,\n  \"outside_pct\": 0.0,\n  \"consecutive_outside\": 0,\n  \"outside_flags\": []\n },\n \"challenge\": 0.3,\n \"uncertainty\": 0.8,\n \"fluency\": {\n  \"current_tier\": \"tier_1\",\n  \"consecutive_correct\": 0\n },\n \"updated_utc\": null\n}",
+    "content_hash": "8844080e06c85e01b0707a54a6800c725b17a445bef778219d7ec846cbc30227",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/c7b8ee18-e092-42f5-a29e-94d485868d56/_default.yaml",
+    "heading": "session_history",
+    "text": "{\n \"total_sessions\": 0,\n \"last_session_utc\": null,\n \"total_turns\": 0\n}",
+    "content_hash": "70d8eef93a2e9c380929ff8929a9e79d8626078bba4bcc159e0ee1d3cee451ea",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/c7b8ee18-e092-42f5-a29e-94d485868d56/_default.yaml",
+    "heading": "consent",
+    "text": "{\n \"magic_circle_accepted\": false,\n \"consent_timestamp_utc\": null,\n \"consent_version\": null,\n \"guardian_consent\": null\n}",
+    "content_hash": "10b7b918a7c4aebca289e05ec94f98246d0d3fd650b52eccb9db52f739ee1db0",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/c7b8ee18-e092-42f5-a29e-94d485868d56/_default.yaml",
     "heading": "updated_utc",
     "text": "None",
     "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
@@ -15226,6 +15821,62 @@
   },
   {
     "source_path": "cfg/profiles/f19cfe5f-8f34-4205-92f1-337a13d64e3d/_default.yaml",
+    "heading": "updated_utc",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/f24a8a45-cc4a-467d-8124-dc278600ac37/_default.yaml",
+    "heading": "student_id",
+    "text": "<PSEUDONYMOUS_ID>",
+    "content_hash": "68c51c7f93e87be7b5457f8612f9126abd42d0f591bba1eb3b0e0ae4ed781fb8",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/f24a8a45-cc4a-467d-8124-dc278600ac37/_default.yaml",
+    "heading": "domain_id",
+    "text": "domain/edu/algebra-level-1/v1",
+    "content_hash": "e6af0d93e0238a73caff627009a55f7dcde8f49d885156dbe4e6da5acc36d1a4",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/f24a8a45-cc4a-467d-8124-dc278600ac37/_default.yaml",
+    "heading": "display_name",
+    "text": "None",
+    "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/f24a8a45-cc4a-467d-8124-dc278600ac37/_default.yaml",
+    "heading": "preferences",
+    "text": "{\n \"interests\": [],\n \"dislikes\": [],\n \"preferred_explanation_style\": \"step_by_step\",\n \"language\": \"en\"\n}",
+    "content_hash": "2c0bfd997e7cfa6cbc496ce85046e9fad003bd09a66b24316e329d22fc87d457",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/f24a8a45-cc4a-467d-8124-dc278600ac37/_default.yaml",
+    "heading": "learning_state",
+    "text": "{\n \"affect\": {\n  \"salience\": 0.5,\n  \"valence\": 0.0,\n  \"arousal\": 0.5\n },\n \"mastery\": {\n  \"equivalence_preserved\": 0.0,\n  \"no_illegal_operations\": 0.0,\n  \"solution_verifies\": 0.0,\n  \"show_work_minimum\": 0.0\n },\n \"challenge_band\": {\n  \"min_challenge\": 0.3,\n  \"max_challenge\": 0.7\n },\n \"recent_window\": {\n  \"window_turns\": 10,\n  \"attempts\": 0,\n  \"consecutive_incorrect\": 0,\n  \"hint_count\": 0,\n  \"outside_pct\": 0.0,\n  \"consecutive_outside\": 0,\n  \"outside_flags\": []\n },\n \"challenge\": 0.3,\n \"uncertainty\": 0.8,\n \"fluency\": {\n  \"current_tier\": \"tier_1\",\n  \"consecutive_correct\": 0\n },\n \"updated_utc\": null\n}",
+    "content_hash": "8844080e06c85e01b0707a54a6800c725b17a445bef778219d7ec846cbc30227",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/f24a8a45-cc4a-467d-8124-dc278600ac37/_default.yaml",
+    "heading": "session_history",
+    "text": "{\n \"total_sessions\": 0,\n \"last_session_utc\": null,\n \"total_turns\": 0\n}",
+    "content_hash": "70d8eef93a2e9c380929ff8929a9e79d8626078bba4bcc159e0ee1d3cee451ea",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/f24a8a45-cc4a-467d-8124-dc278600ac37/_default.yaml",
+    "heading": "consent",
+    "text": "{\n \"magic_circle_accepted\": false,\n \"consent_timestamp_utc\": null,\n \"consent_version\": null,\n \"guardian_consent\": null\n}",
+    "content_hash": "10b7b918a7c4aebca289e05ec94f98246d0d3fd650b52eccb9db52f739ee1db0",
+    "content_type": "schema"
+  },
+  {
+    "source_path": "cfg/profiles/f24a8a45-cc4a-467d-8124-dc278600ac37/_default.yaml",
     "heading": "updated_utc",
     "text": "None",
     "content_hash": "dc937b59892604f5a86ac96936cd7ff09e25f18ae6b758e8014a24c7fa039e91",
@@ -16823,8 +17474,8 @@
   {
     "source_path": "domain-packs/agriculture/modules/operations-level-1/domain-physics.json",
     "heading": "permissions",
-    "text": "{\n \"mode\": \"750\",\n \"owner\": \"da_agri_ops_001\",\n \"group\": \"staff\",\n \"acl\": [\n  {\n   \"role\": \"qa\",\n   \"access\": \"rx\",\n   \"scope\": \"evaluation_only\"\n  },\n  {\n   \"role\": \"auditor\",\n   \"access\": \"r\",\n   \"scope\": \"log_records_only\"\n  },\n  {\n   \"role\": \"user\",\n   \"access\": \"x\"\n  }\n ]\n}",
-    "content_hash": "965e693dd1774f351a480b6413a71beea4b537fc9d752cab6964e4870ed43891",
+    "text": "{\n \"mode\": \"750\",\n \"owner\": \"da_agri_ops_001\",\n \"group\": \"staff\",\n \"acl\": [\n  {\n   \"role\": \"qa\",\n   \"access\": \"rx\",\n   \"scope\": \"evaluation_only\"\n  },\n  {\n   \"role\": \"auditor\",\n   \"access\": \"rx\",\n   \"scope\": \"log_records_only\"\n  },\n  {\n   \"role\": \"user\",\n   \"access\": \"x\"\n  }\n ]\n}",
+    "content_hash": "52595ecdf29fe59a73d3dfa07d6e4eb8a34e2684fe03dd20df075bc4495b2f3f",
     "content_type": "physics"
   },
   {
@@ -17264,8 +17915,8 @@
   {
     "source_path": "domain-packs/education/modules/algebra-1/domain-physics.json",
     "heading": "permissions",
-    "text": "{\n \"mode\": \"750\",\n \"owner\": \"da_algebra1_lead_001\",\n \"group\": \"educators\",\n \"acl\": [\n  {\n   \"role\": \"qa\",\n   \"access\": \"rx\",\n   \"scope\": \"evaluation_only\"\n  },\n  {\n   \"role\": \"auditor\",\n   \"access\": \"r\",\n   \"scope\": \"log_records_only\"\n  },\n  {\n   \"domain_role\": \"student\",\n   \"access\": \"x\"\n  }\n ]\n}",
-    "content_hash": "30bb1e8a90ee5d8f57e1258d1e7253971ede3e625daec70c29f18652dd5798c6",
+    "text": "{\n \"mode\": \"750\",\n \"owner\": \"da_algebra1_lead_001\",\n \"group\": \"educators\",\n \"acl\": [\n  {\n   \"role\": \"qa\",\n   \"access\": \"rx\",\n   \"scope\": \"evaluation_only\"\n  },\n  {\n   \"role\": \"auditor\",\n   \"access\": \"rx\",\n   \"scope\": \"log_records_only\"\n  },\n  {\n   \"domain_role\": \"student\",\n   \"access\": \"x\"\n  }\n ]\n}",
+    "content_hash": "8c86eabf7547534dea5f3120d31d0bf1494ca8770a26415c58c773d709c2279b",
     "content_type": "physics"
   },
   {
@@ -17635,8 +18286,8 @@
   {
     "source_path": "domain-packs/education/modules/algebra-intro/domain-physics.json",
     "heading": "permissions",
-    "text": "{\n \"mode\": \"750\",\n \"owner\": \"da_algebra_intro_lead_001\",\n \"group\": \"educators\",\n \"acl\": [\n  {\n   \"role\": \"qa\",\n   \"access\": \"rx\",\n   \"scope\": \"evaluation_only\"\n  },\n  {\n   \"role\": \"auditor\",\n   \"access\": \"r\",\n   \"scope\": \"log_records_only\"\n  },\n  {\n   \"domain_role\": \"student\",\n   \"access\": \"x\"\n  }\n ]\n}",
-    "content_hash": "a4bf0bd6f5f98bf604756a639e080026ee798412c97cb809917bdc6657690a52",
+    "text": "{\n \"mode\": \"750\",\n \"owner\": \"da_algebra_intro_lead_001\",\n \"group\": \"educators\",\n \"acl\": [\n  {\n   \"role\": \"qa\",\n   \"access\": \"rx\",\n   \"scope\": \"evaluation_only\"\n  },\n  {\n   \"role\": \"auditor\",\n   \"access\": \"rx\",\n   \"scope\": \"log_records_only\"\n  },\n  {\n   \"domain_role\": \"student\",\n   \"access\": \"x\"\n  }\n ]\n}",
+    "content_hash": "8026d49ed13472fdf62f2b681c7e8e8aafa56ad85cf8204b017d249577aa6131",
     "content_type": "physics"
   },
   {
@@ -17978,8 +18629,8 @@
   {
     "source_path": "domain-packs/education/modules/algebra-level-1/domain-physics.json",
     "heading": "permissions",
-    "text": "{\n \"mode\": \"750\",\n \"owner\": \"da_algebra_lead_001\",\n \"group\": \"educators\",\n \"acl\": [\n  {\n   \"role\": \"qa\",\n   \"access\": \"rx\",\n   \"scope\": \"evaluation_only\"\n  },\n  {\n   \"role\": \"auditor\",\n   \"access\": \"r\",\n   \"scope\": \"log_records_only\"\n  },\n  {\n   \"domain_role\": \"student\",\n   \"access\": \"x\"\n  }\n ]\n}",
-    "content_hash": "7ffcf39136beaeccf7cae6c4ff7fecb5144bc8c10f8ef85181603681beaeb23c",
+    "text": "{\n \"mode\": \"750\",\n \"owner\": \"da_algebra_lead_001\",\n \"group\": \"educators\",\n \"acl\": [\n  {\n   \"role\": \"qa\",\n   \"access\": \"rx\",\n   \"scope\": \"evaluation_only\"\n  },\n  {\n   \"role\": \"auditor\",\n   \"access\": \"rx\",\n   \"scope\": \"log_records_only\"\n  },\n  {\n   \"domain_role\": \"student\",\n   \"access\": \"x\"\n  }\n ]\n}",
+    "content_hash": "83ecbfb3c7b008f248e455e61aee2a080e3d7e44a94ce996af16357d51eecdf3",
     "content_type": "physics"
   },
   {
@@ -18314,8 +18965,8 @@
   {
     "source_path": "domain-packs/education/modules/pre-algebra/domain-physics.json",
     "heading": "permissions",
-    "text": "{\n \"mode\": \"750\",\n \"owner\": \"da_prealgebra_lead_001\",\n \"group\": \"educators\",\n \"acl\": [\n  {\n   \"role\": \"qa\",\n   \"access\": \"rx\",\n   \"scope\": \"evaluation_only\"\n  },\n  {\n   \"role\": \"auditor\",\n   \"access\": \"r\",\n   \"scope\": \"log_records_only\"\n  },\n  {\n   \"domain_role\": \"student\",\n   \"access\": \"x\"\n  }\n ]\n}",
-    "content_hash": "8b3ec4d648ecd38eae5d824fe73e443be11b3c567238627504881029dfb4d57f",
+    "text": "{\n \"mode\": \"750\",\n \"owner\": \"da_prealgebra_lead_001\",\n \"group\": \"educators\",\n \"acl\": [\n  {\n   \"role\": \"qa\",\n   \"access\": \"rx\",\n   \"scope\": \"evaluation_only\"\n  },\n  {\n   \"role\": \"auditor\",\n   \"access\": \"rx\",\n   \"scope\": \"log_records_only\"\n  },\n  {\n   \"domain_role\": \"student\",\n   \"access\": \"x\"\n  }\n ]\n}",
+    "content_hash": "f01685daaa94979ef4e5c1844cc0f4043b7d42d705faa2b7d64534912dfb1c35",
     "content_type": "physics"
   },
   {

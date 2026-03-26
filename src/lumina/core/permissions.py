@@ -115,6 +115,11 @@ def check_permission(
     if user_role == "root":
         return True
 
+    # Step 1b: domain_authority is the domain-level administrator —
+    # full access to all domain modules (see ADMIN_ROLES in auth).
+    if user_role == "domain_authority":
+        return True
+
     # Step 2: INGEST is ACL-only — never in octal mode bits
     if operation == Operation.INGEST:
         acl = module_permissions.get("acl")
