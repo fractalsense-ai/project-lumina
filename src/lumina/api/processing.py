@@ -98,7 +98,12 @@ def process_message(
     model_id: str | None = None,
     model_version: str | None = None,
     holodeck: bool = False,
+    physics_sandbox: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    # physics_sandbox implies holodeck
+    if physics_sandbox is not None:
+        holodeck = True
+
     session = get_or_create_session(session_id, domain_id=domain_id, user=user)
 
     # ── Frozen-session gate: block input until teacher issues unlock PIN ──
@@ -147,6 +152,18 @@ def process_message(
     # Resolve per-session runtime context
     resolved_domain_id = session["domain_id"]
     runtime = _cfg.DOMAIN_REGISTRY.get_runtime_context(resolved_domain_id)
+
+    # ── Sandbox physics override ──────────────────────────────
+    # When physics_sandbox is provided (holodeck simulation), deep-copy the
+    # runtime so the cached live context is never mutated, then swap in the
+    # sandbox physics.  The orchestrator's domain reference is also updated
+    # so that standing-order evaluation uses the proposed physics.
+    if physics_sandbox is not None:
+        import copy as _copy
+        runtime = _copy.deepcopy(runtime)
+        runtime["domain"] = physics_sandbox
+        orch.domain = physics_sandbox
+
     runtime_provenance = dict(runtime.get("runtime_provenance") or {})
     system_prompt = runtime["system_prompt"]
 

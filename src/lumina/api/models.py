@@ -31,6 +31,39 @@ class ChatResponse(BaseModel):
     structured_content: dict[str, Any] | None = None
 
 
+# ── Holodeck Sandbox ─────────────────────────────────────────
+
+class HolodeckSimulateRequest(BaseModel):
+    """Run a test message through the pipeline with proposed physics changes.
+
+    Provide *either* ``staged_id`` (referencing a pending HITL staged command
+    whose operation is ``update_domain_physics``) *or* ``physics_override``
+    (an inline dict of physics fields to merge onto the live physics).
+    """
+    staged_id: str | None = None
+    physics_override: dict[str, Any] | None = None
+    domain_id: str
+    message: str
+    turn_data_override: dict[str, Any] | None = None
+    deterministic_response: bool = True
+
+
+class HolodeckSimulateResponse(BaseModel):
+    session_id: str
+    response: str
+    action: str
+    prompt_type: str
+    escalated: bool
+    tool_results: list[dict[str, Any]] | None = None
+    domain_id: str | None = None
+    structured_content: dict[str, Any] | None = None
+    sandbox_physics: dict[str, Any] | None = None
+    physics_diff: dict[str, Any] | None = None
+    live_physics_hash: str | None = None
+    sandbox_physics_hash: str | None = None
+    staged_id: str | None = None
+
+
 # ── Tools ────────────────────────────────────────────────────
 
 class ToolRequest(BaseModel):
