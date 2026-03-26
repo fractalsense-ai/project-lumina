@@ -222,6 +222,17 @@ ui_manifest:
     primary: "oklch(0.45 0.08 220)"
     accent: "oklch(0.72 0.12 60)"
     background: "oklch(0.96 0.01 80)"
+  panels:
+    - id: zpd_distribution
+      label: "ZPD Distribution"
+      endpoint: "/api/dashboard/education/zpd-distribution"
+      roles: [root, domain_authority, qa]
+      type: chart
+    - id: step_completion
+      label: "Step Completion"
+      endpoint: "/api/dashboard/education/step-completion"
+      roles: [root, domain_authority]
+      type: metric
 
 adapters:
   state_builder:

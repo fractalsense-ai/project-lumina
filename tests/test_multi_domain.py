@@ -51,6 +51,7 @@ def multi_domain_module(monkeypatch: pytest.MonkeyPatch):
 
     # Disable SLM so tests don't require a live Ollama instance
     monkeypatch.setattr(mod, "slm_available", lambda: False)
+    monkeypatch.setattr("lumina.api.processing.slm_available", lambda: False)
 
     monkeypatch.setattr(auth, "JWT_SECRET", "test-secret")
     return mod

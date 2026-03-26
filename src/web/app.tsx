@@ -74,9 +74,13 @@ function getApiBase(): string {
   return (import.meta as any).env?.VITE_LUMINA_API_BASE_URL ?? 'http://localhost:8000'
 }
 
-async function fetchDomainInfo(): Promise<DomainInfo | null> {
+async function fetchDomainInfo(token?: string): Promise<DomainInfo | null> {
   try {
-    const res = await fetch(`${getApiBase()}/api/domain-info`)
+    const headers: Record<string, string> = {}
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    const res = await fetch(`${getApiBase()}/api/domain-info`, { headers })
     if (!res.ok) return null
     return (await res.json()) as DomainInfo
   } catch {
@@ -371,9 +375,16 @@ function AppHeader({
     <header className="border-b border-border bg-card px-6 py-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-bold text-2xl md:text-3xl tracking-tight text-foreground">
-            {manifest.title}
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-bold text-2xl md:text-3xl tracking-tight text-foreground">
+              {manifest.title}
+            </h1>
+            {manifest.domain_label && (
+              <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                {manifest.domain_label}
+              </span>
+            )}
+          </div>
           <p className="text-sm md:text-base text-muted-foreground mt-1">
             {manifest.subtitle}
           </p>
@@ -602,12 +613,12 @@ function App() {
   }, [])
 
   useEffect(() => {
-    fetchDomainInfo().then((info) => {
+    fetchDomainInfo(auth?.token).then((info) => {
       if (!info) return
       setManifest(info.ui_manifest)
       applyThemeOverrides(info.ui_manifest.theme)
     })
-  }, [])
+  }, [auth?.token])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -646,7 +657,7 @@ function App() {
           unreadCount={unreadCount}
           onClearUnread={clearUnread}
         />
-        <DashboardPage auth={auth} />
+        <DashboardPage auth={auth} manifest={manifest} />
       </div>
     )
   }

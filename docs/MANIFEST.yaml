@@ -440,7 +440,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-23
-    sha256: cb009ccd427a8e8e09e861fa6e070d687ef150f253793deba463c7715935d2f4
+    sha256: 3c7d5eeceae62c0791d511ae5a12a2e457b11e8454f174390210155dcddf44ff
 
 
   # ── Section 8: Administration ─────────────────────────────────────────────

@@ -366,3 +366,68 @@ class TestGracefulDegradationAdmin:
             )
         assert resp.status_code == 422
         assert "committed" in resp.json()["detail"].lower()
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Feature D — Role-aware /api/domain-info
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def _make_token(role: str, governed_modules: list[str] | None = None) -> str:
+    """Create a signed JWT for the given role using the test JWT_SECRET."""
+    return auth.create_jwt(
+        user_id=f"test_{role}_dominfo",
+        role=role,
+        governed_modules=governed_modules or [],
+    )
+
+
+class TestRoleAwareDomainInfo:
+    """Feature D: /api/domain-info resolves domain based on authenticated user role."""
+
+    @pytest.mark.integration
+    def test_anonymous_returns_education(self, multi_client: TestClient) -> None:
+        """Unauthenticated request defaults to education (unauthenticated_domain)."""
+        resp = multi_client.get("/api/domain-info")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ui_manifest"]["domain_label"] == "Education"
+        assert "Algebra" in body["ui_manifest"]["subtitle"]
+
+    @pytest.mark.integration
+    def test_root_returns_system(self, multi_client: TestClient) -> None:
+        """Root user with no explicit domain_id gets the system domain manifest."""
+        token = _make_token("root")
+        resp = multi_client.get(
+            "/api/domain-info",
+            headers=_auth_header(token),
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ui_manifest"]["domain_label"] == "System"
+        assert "Infrastructure" in body["ui_manifest"]["subtitle"]
+
+    @pytest.mark.integration
+    def test_explicit_domain_id_overrides_role(self, multi_client: TestClient) -> None:
+        """Explicit domain_id param wins over role_defaults, even for root."""
+        token = _make_token("root")
+        resp = multi_client.get(
+            "/api/domain-info",
+            params={"domain_id": "education"},
+            headers=_auth_header(token),
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ui_manifest"]["domain_label"] == "Education"
+
+    @pytest.mark.integration
+    def test_regular_user_returns_education(self, multi_client: TestClient) -> None:
+        """A regular user with no role_defaults override gets education (global default)."""
+        token = _make_token("user")
+        resp = multi_client.get(
+            "/api/domain-info",
+            headers=_auth_header(token),
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["ui_manifest"]["domain_label"] == "Education"

@@ -43,6 +43,22 @@ interface TabDef {
   roles: string[]
 }
 
+interface PanelDef {
+  id: string
+  label: string
+  endpoint: string
+  roles: string[]
+  type: 'chart' | 'table' | 'metric'
+}
+
+interface UiManifest {
+  title: string
+  subtitle: string
+  domain_label: string
+  panels?: PanelDef[]
+  [key: string]: unknown
+}
+
 const TAB_MANIFEST: TabDef[] = [
   { id: 'overview',   label: 'Overview',     roles: ['root', 'domain_authority'] },
   { id: 'escalations', label: 'Escalations', roles: ['root', 'domain_authority', 'it_support', 'qa', 'auditor'] },
@@ -57,8 +73,16 @@ function getApiBase(): string {
   return (import.meta as any).env?.VITE_LUMINA_API_BASE_URL ?? 'http://localhost:8000'
 }
 
-export function DashboardPage({ auth }: { auth: AuthState }) {
-  const visibleTabs = TAB_MANIFEST.filter((t) => t.roles.includes(auth.role))
+export function DashboardPage({ auth, manifest }: { auth: AuthState; manifest?: UiManifest }) {
+  // Merge static governance tabs with domain-specific panels
+  const domainPanels: TabDef[] = (manifest?.panels ?? [])
+    .filter((p) => p.roles.includes(auth.role))
+    .map((p) => ({ id: `panel:${p.id}`, label: p.label, roles: p.roles }))
+  const allTabs = [
+    ...TAB_MANIFEST.filter((t) => t.roles.includes(auth.role)),
+    ...domainPanels,
+  ]
+  const visibleTabs = allTabs
   const [domains, setDomains] = useState<DomainSummary[]>([])
   const [telemetry, setTelemetry] = useState<TelemetrySummary | null>(null)
   const [tab, setTab] = useState(visibleTabs[0]?.id ?? 'overview')
@@ -131,7 +155,64 @@ export function DashboardPage({ auth }: { auth: AuthState }) {
       {tab === 'nightcycle' && (
         <NightCyclePanel auth={auth} />
       )}
+
+      {/* Domain-specific panels from ui_manifest */}
+      {tab.startsWith('panel:') && (
+        <DomainPanel
+          panelId={tab.replace('panel:', '')}
+          panel={manifest?.panels?.find((p) => `panel:${p.id}` === tab)}
+          auth={auth}
+        />
+      )}
     </div>
+  )
+}
+
+function DomainPanel({
+  panelId,
+  panel,
+  auth,
+}: {
+  panelId: string
+  panel?: PanelDef
+  auth: AuthState
+}) {
+  const [data, setData] = useState<unknown>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!panel) return
+    setLoading(true)
+    setError(null)
+    fetch(`${getApiBase()}${panel.endpoint}`, {
+      headers: { Authorization: `Bearer ${auth.token}` },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`${res.status}`)
+        return res.json()
+      })
+      .then(setData)
+      .catch(() => setError('Panel endpoint not yet implemented.'))
+      .finally(() => setLoading(false))
+  }, [panel?.endpoint, auth.token])
+
+  if (!panel) return <p className="text-sm text-muted-foreground">Unknown panel.</p>
+
+  return (
+    <Card className="p-6">
+      <h3 className="text-lg font-semibold text-foreground mb-2">{panel.label}</h3>
+      <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded mb-4 inline-block">
+        {panel.type}
+      </span>
+      {loading && <p className="text-sm text-muted-foreground mt-3">Loading…</p>}
+      {error && <p className="text-sm text-muted-foreground mt-3">{error}</p>}
+      {!loading && !error && data && (
+        <pre className="mt-3 text-xs bg-muted p-3 rounded overflow-auto max-h-64">
+          {JSON.stringify(data, null, 2)}
+        </pre>
+      )}
+    </Card>
   )
 }
 

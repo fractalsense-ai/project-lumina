@@ -148,6 +148,24 @@ computational logic. A domain pack with world-sim disabled and a domain pack wit
 "space exploration" theme produce identical evidence dicts — only the LLM's surface
 prose changes.
 
+Additionally, each domain pack declares a `ui_manifest` in its `runtime-config.yaml`.
+This manifest is the **declarative View binding** for the frontend:
+
+- `title`, `subtitle`, `domain_label` — chrome text and breadcrumb
+- `theme` — CSS custom property overrides (primary, accent, background)
+- `panels` — an array of domain-specific dashboard views, each specifying:
+  - `id` — unique panel identifier
+  - `label` — human-readable tab label
+  - `endpoint` — the API path the panel fetches data from
+  - `roles` — which RBAC roles may see this panel
+  - `type` — rendering hint (`chart`, `table`, or `metric`)
+
+The frontend reads `ui_manifest.panels` and merges them into the Dashboard tab bar
+alongside the static governance tabs.  Each domain can define its own telemetry and
+monitoring views (e.g., education: ZPD distribution; system: pack integrity; agriculture:
+yield variance) without the framework or other domains knowing about them — full HMVC
+View isolation.
+
 For the world-sim pattern and its invariant preservation guarantee, see
 [`world-sim-persona-pattern(7)`](world-sim-persona-pattern.md).
 

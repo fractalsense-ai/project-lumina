@@ -45,9 +45,18 @@ async def list_domains() -> list[dict[str, Any]]:
 
 
 @router.get("/api/domain-info")
-async def domain_info(domain_id: str | None = None) -> dict[str, Any]:
+async def domain_info(
+    domain_id: str | None = None,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+) -> dict[str, Any]:
+    user = await get_current_user(credentials)
     try:
-        resolved = _cfg.DOMAIN_REGISTRY.resolve_domain_id(domain_id)
+        if domain_id is not None:
+            resolved = _cfg.DOMAIN_REGISTRY.resolve_domain_id(domain_id)
+        elif user is not None:
+            resolved = _cfg.DOMAIN_REGISTRY.resolve_default_for_user(user)
+        else:
+            resolved = _cfg.DOMAIN_REGISTRY.resolve_domain_id(None)
     except DomainNotFoundError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     runtime = _cfg.DOMAIN_REGISTRY.get_runtime_context(resolved)
