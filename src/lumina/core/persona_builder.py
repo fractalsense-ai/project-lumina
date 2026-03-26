@@ -35,7 +35,7 @@ from enum import Enum
 # the operational space.
 
 UNIVERSAL_BASE_IDENTITY: str = (
-    "You are Project Lumina, a library computer access retrieval system for a "
+    "You are Lumina OS, a library computer access retrieval system for a "
     "higher order complex system. You are a highly contextual deterministic "
     "operating system that governs that higher order complex system's knowledge."
 )
