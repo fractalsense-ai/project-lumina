@@ -1,13 +1,13 @@
 ---
-version: 1.0.0
-last_updated: 2026-06-15
+version: 1.1.0
+last_updated: 2026-03-27
 ---
 
 # Concept — Resource Monitor Daemon
 
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Status:** Active  
-**Last updated:** 2026-06-15  
+**Last updated:** 2026-03-27  
 
 ---
 
@@ -119,6 +119,7 @@ task_priority:
   - knowledge_graph_rebuild
   - glossary_expansion
   - glossary_pruning
+  - rebuild_domain_vectors
   - telemetry_summary_refresh
   - rejection_corpus_alignment
   - pacing_heuristic_recompute
@@ -178,8 +179,17 @@ loop is never created).
 - `src/lumina/daemon/load_estimator.py` — `LoadEstimator` + `LoadSnapshot`
 - `src/lumina/daemon/preemption.py` — `PreemptionToken` + `TaskPreempted`
 - `src/lumina/daemon/resource_monitor.py` — `ResourceMonitorDaemon` state machine
-- `src/lumina/daemon/task_adapter.py` — `run_task_preemptible()` bridge
+- `src/lumina/daemon/task_adapter.py` — `run_task_preemptible()` + `run_cross_domain_task_preemptible()` bridges
 - `src/lumina/systools/hw_loop_latency.py` — Event-loop latency probe
 - `src/lumina/systools/hw_http_queue.py` — In-flight HTTP counter
 - `src/lumina/systools/hw_gpu.py` — GPU VRAM probe (stub)
 - `cfg/system-runtime-config.yaml` — Daemon configuration
+
+---
+
+## SEE ALSO
+
+- [`edge-vectorization(7)`](edge-vectorization.md) — per-domain vector stores and daemon-driven rebuild triggers
+- [`group-libraries-and-tools(7)`](group-libraries-and-tools.md) — Group Library dependency-aware rebuilds via `rebuild_group_library_dependents()`
+- [`execution-route-compilation(7)`](execution-route-compilation.md) — ahead-of-time route compilation (may be re-triggered after physics changes)
+- [`night-cycle-processing(7)`](night-cycle-processing.md) — batch processing subsystem that the daemon dispatches into

@@ -1,13 +1,13 @@
 ---
-version: 1.0.0
-last_updated: 2026-03-20
+version: 1.2.0
+last_updated: 2026-03-27
 ---
 
 # Domain Adapter Pattern
 
-**Version:** 1.1.0  
+**Version:** 1.2.0  
 **Status:** Active  
-**Last updated:** 2026-03-18  
+**Last updated:** 2026-03-27  
 
 ---
 
@@ -60,9 +60,9 @@ Both examples live entirely in their respective domain packs. The engine sees th
 
 ---
 
-## C. The Three-Layer Distinction
+## C. The Four-Layer Distinction
 
-Domain packs are authors of three distinct types of components. These are often confused; understanding the distinction is essential before writing a runtime adapter.
+Domain packs are authors of four distinct types of components. These are often confused; understanding the distinction is essential before writing a runtime adapter.
 
 ### 1. Tool Adapters (`controllers/tool_adapters.py` or `modules/<module>/tool-adapters/`)
 
@@ -93,6 +93,14 @@ The **synthesis layer** — the domain pack's primary integration point with the
 - **Phase B:** Signal synthesis (after all tool and domain-lib results are in)
 
 The adapter can call into domain-lib components and invoke tool functions directly (not via policy). Its output is the `evidence` dict, which the engine reads for invariant evaluation, action resolution, and engine contract field consumption.
+
+### 4. Group Libraries and Group Tools (`domain-lib/*.py` and `controllers/group_tool_adapters.py`)
+
+**Domain-scoped shared resources** used by multiple modules within the same domain pack. Group Libraries are passive pure-function modules (sensor normalisation, anomaly detection). Group Tools are active shared verifiers following the same `payload: dict → dict` contract as tool adapters.
+
+Both are declared in the module's `domain-physics.json` under `group_libraries` and `group_tools` arrays, discovered by `adapter_indexer.scan_group_resources()` at startup, and stored in the runtime context. The route compiler validates their references at compile time.
+
+For the complete reference on declaration format, resolution pipeline, and the agriculture reference implementation, see [`group-libraries-and-tools(7)`](group-libraries-and-tools.md).
 
 ---
 
@@ -296,4 +304,14 @@ The system domain's `system_domain_step` maps `query_type` evidence to six actio
 | anything else | `system_general` |
 
 If `command_dispatch` is non-null in evidence (populated by `slm_parse_admin_command`), it overrides the `query_type` mapping and forces `system_command` regardless of the classified type.
+
+---
+
+## SEE ALSO
+
+- [`domain-pack-anatomy(7)`](domain-pack-anatomy.md) — seven-component anatomy and file layout
+- [`group-libraries-and-tools(7)`](group-libraries-and-tools.md) — Group Libraries and Group Tools declaration, resolution, and examples
+- [`execution-route-compilation(7)`](execution-route-compilation.md) — ahead-of-time route compilation from physics pointers (validates tool and library references)
+- [`nlp-semantic-router(7)`](nlp-semantic-router.md) — Tier 1 domain classification and Tier 2 NLP pre-interpreter
+- [`edge-vectorization(7)`](edge-vectorization.md) — per-domain vector stores built from the same adapter-indexer discovery pass
 

@@ -450,6 +450,30 @@ artifacts:
     last_updated: 2026-03-23
     sha256: 28f488b4429378ab655ed3e2e8738c930d664dd86eec4cb92ea3e9f153d84b4c
 
+  - path: docs/7-concepts/group-libraries-and-tools.md
+    type: doc
+    section: 7
+    doc_version: 1.0.0
+    status: active
+    last_updated: 2026-03-27
+    sha256: 3f20d846e301ceaa0488c2b95117f6db1c0b09b6455ebc0eca514c6ef3188008
+
+  - path: docs/7-concepts/edge-vectorization.md
+    type: doc
+    section: 7
+    doc_version: 1.0.0
+    status: active
+    last_updated: 2026-03-27
+    sha256: b3929be41560bc0aab289b2dfb142c67143b69c2960ef9be079c9e7509725337
+
+  - path: docs/7-concepts/execution-route-compilation.md
+    type: doc
+    section: 7
+    doc_version: 1.0.0
+    status: active
+    last_updated: 2026-03-27
+    sha256: 3b44796987657b36271bee83f4402a18e4d951e9586773ad44aeb094c40bb96f
+
 
   # ── Section 8: Administration ─────────────────────────────────────────────
 

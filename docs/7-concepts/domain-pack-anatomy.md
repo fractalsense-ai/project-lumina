@@ -1,13 +1,13 @@
 ---
-version: 1.0.0
-last_updated: 2026-03-21
+version: 1.1.0
+last_updated: 2026-03-27
 ---
 
 # Domain Pack Anatomy
 
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Status:** Active  
-**Last updated:** 2026-03-21  
+**Last updated:** 2026-03-27  
 
 ---
 
@@ -44,10 +44,10 @@ entirely inside the pack. This is the **self-containment contract** (see §E).
 
 ---
 
-## B. The Six Components
+## B. The Seven Components
 
-Every domain pack is composed of up to six components. Not all are required for a minimal
-pack, but all six are present in a fully-realised production pack.
+Every domain pack is composed of up to seven components. Not all are required for a minimal
+pack, but all seven are present in a fully-realised production pack.
 
 | Component | Location | Who calls it | Mandatory | What it owns |
 |---|---|---|---|---|
@@ -56,6 +56,7 @@ pack, but all six are present in a fully-realised production pack.
 | **Runtime adapter** | `controllers/runtime_adapters.py` | Core engine on every turn | Yes | Phase A (NLP pre-processing before LLM) + Phase B (signal synthesis after tools); emits engine contract fields |
 | **NLP pre-interpreter** | `controllers/nlp_pre_interpreter.py` | Core engine before LLM prompt assembly | Yes (all text-input domains) | Deterministic extraction of domain-meaningful signals from raw input; produces `_nlp_anchors` |
 | **Domain library** | `domain-lib/*.md` specs + `controllers/*.py` implementations | Runtime adapter only — never the engine directly | Where applicable | Passive state estimators tracking entity state across turns (ZPD monitor, fluency tracker, fatigue model) |
+| **Group Libraries / Group Tools** | `domain-lib/*.py` (libraries) + `controllers/group_tool_adapters.py` (tools) | Runtime adapter (libraries) or policy system (tools) — declared in physics files | Where applicable | Shared pure-function libraries and shared active verifiers used by multiple modules within the domain |
 | **World-sim (optional)** | `world-sim/*.md` + `world-sim/templates.yaml` | Runtime adapter, once at session start | No | Narrative framing layer — cosmetic only; domain physics and invariants are unchanged inside any world-sim theme |
 
 These components are not interchangeable and must not be substituted for one another. The
@@ -316,9 +317,10 @@ domain-packs/{domain}/
 │   ├── 6-examples/                   #   Optional — worked domain examples
 │   └── 8-admin/                      #   Optional — domain admin operations
 │
-├── domain-lib/                       # PACK-LEVEL — passive state estimator specs + implementations
+├── domain-lib/                       # PACK-LEVEL — passive state estimator specs + shared libraries
 │   ├── {estimator}-spec-v1.md        #   Normative specification
-│   └── (implementations live in controllers/)
+│   ├── {group_library}.py            #   Group Library — shared pure-function module (see §B)
+│   └── (estimator implementations live in controllers/)
 │
 ├── prompts/                          # PACK-LEVEL — domain-scoped prompt text overrides
 │   ├── domain-system-override.md
@@ -383,6 +385,16 @@ Each document follows the same heading conventions as root docs:
 
 Where `{section}` is the numeric man section (1, 3, 7, etc.). This consistent structure
 enables automated chunking by `## ` headers for embedding pipelines.
+
+---
+
+## SEE ALSO
+
+- [`domain-adapter-pattern(7)`](domain-adapter-pattern.md) — three-layer distinction and Phase A/B lifecycle
+- [`group-libraries-and-tools(7)`](group-libraries-and-tools.md) — Group Libraries and Group Tools: shared resources within a domain pack
+- [`edge-vectorization(7)`](edge-vectorization.md) — per-domain vector stores and rebuild triggers
+- [`execution-route-compilation(7)`](execution-route-compilation.md) — ahead-of-time compilation of physics execution routes
+- [`nlp-semantic-router(7)`](nlp-semantic-router.md) — two-tier NLP architecture and domain classification
 
 ### Integrity tracking
 

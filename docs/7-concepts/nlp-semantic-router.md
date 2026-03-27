@@ -1,13 +1,13 @@
 ---
-version: 1.0.0
-last_updated: 2026-03-20
+version: 1.1.0
+last_updated: 2026-03-27
 ---
 
 # NLP Semantic Router
 
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Status:** Active
-**Last updated:** 2026-03-13
+**Last updated:** 2026-03-27
 
 ---
 
@@ -43,7 +43,7 @@ The NLP layer is split into two distinct tiers. They operate sequentially on the
 
 `classify_domain(text, domain_map, accessible_domains)` in `src/lumina/core/nlp.py` matches the incoming message against the keyword list for each registered domain in the active registry (`cfg/domain-registry.yaml`). It returns the best-matching domain above a confidence threshold, or `None` to fall back to the configured default.
 
-**Classification procedure (two passes):**
+**Classification procedure (three passes):**
 
 **Pass 1 — Keyword matching**
 
@@ -55,6 +55,14 @@ hits = sum(1 for kw in keywords if kw.lower() in text_lower)
 score = hits / len(keywords)
 confidence = min(score * 2.0, 1.0)   # 1 hit out of 5 keywords → 0.4 raw → 0.8 scaled
 ```
+
+**Pass 1.5 — Vector routing via global store**
+
+When keyword matching is inconclusive and the `VectorStoreRegistry` has been injected (via `set_vector_registry()`), the classifier queries the `_global` per-domain vector store for the top-5 nearest neighbours of the input text.  Each hit votes for its `domain_id`; the domain with the highest average cosine similarity score above the confidence threshold is selected.
+
+This pass uses domain-tuned embeddings (built from actual domain content by the Edge Vectorization housekeeper) rather than general-purpose word vectors, producing more accurate classification for specialised vocabulary.  For full details on the per-domain vector layout and the global routing index, see [`edge-vectorization(7)`](edge-vectorization.md) §E–F.
+
+Vector routing is a **soft dependency** — when the registry is not configured or the global store is empty, this pass is silently skipped and classification falls through to Pass 2.
 
 **Pass 2 — spaCy vector similarity**
 
@@ -267,6 +275,7 @@ The NLP layer influences the **quality of the LLM's input**. It does not influen
 - [`src/lumina/core/nlp.py`](../../src/lumina/core/nlp.py) — `classify_domain()` implementation; spaCy lazy loader; sentence splitter and tokenizer
 - [`cfg/domain-registry.yaml`](../../cfg/domain-registry.yaml) — domain keyword lists; default domain configuration
 - [`docs/7-concepts/domain-adapter-pattern.md`](domain-adapter-pattern.md) — Phase A NLP pre-processing and Phase B signal synthesis lifecycle
+- [`docs/7-concepts/edge-vectorization.md`](edge-vectorization.md) — per-domain vector stores, global routing index, and Pass 1.5 detail
 - [`domain-packs/education/controllers/nlp_pre_interpreter.py`](../../domain-packs/education/controllers/nlp_pre_interpreter.py) — education domain pre-interpreter (reference implementation)
 - [`specs/dsa-framework-v1.md`](../../specs/dsa-framework-v1.md) — D.S.A. structural schema and PPA orchestrator specification
 - [`standards/domain-registry-schema-v1.json`](../../standards/domain-registry-schema-v1.json) — schema for `cfg/domain-registry.yaml` including `keywords` field definition
