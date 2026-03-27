@@ -214,8 +214,11 @@ def test_classify_domain_description_fallback() -> None:
 
 
 @pytest.mark.unit
-def test_classify_domain_below_threshold_returns_none() -> None:
+def test_classify_domain_below_threshold_returns_none(monkeypatch: pytest.MonkeyPatch) -> None:
     # One keyword out of 5 at 20% → confidence 0.4, below 0.6 threshold
+    # Disable spaCy so only keyword matching is exercised.
+    monkeypatch.setattr(nlp_mod, "_nlp_instance", None)
+    monkeypatch.setattr(nlp_mod, "_spacy_available", False)
     domain_map = {
         "edu": {
             "label": "Edu",
