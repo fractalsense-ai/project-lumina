@@ -178,5 +178,19 @@
       "description": "Operators responsible for system configuration, RBAC, and domain lifecycle management.",
       "members": ["administrator"]
     }
-  }
+  },
+  "group_libraries": [
+    {
+      "id": "system_health",
+      "path": "domain-lib/system_health.py",
+      "description": "System health state estimator — aggregates hw_probes into a composite health snapshot.",
+      "shared_with_modules": ["system-core"]
+    },
+    {
+      "id": "hw_probes",
+      "path": "domain-lib/hw_probes/",
+      "description": "Hardware probe library — passive state estimators for disk, memory, temperature, GPU, loop latency, and HTTP queue depth.",
+      "shared_with_modules": ["system-core"]
+    }
+  ]
 }

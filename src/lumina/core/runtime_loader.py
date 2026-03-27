@@ -29,6 +29,7 @@ def _load_callable(repo_root: Path, module_path: str, callable_name: str) -> Cal
     mod = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
     sys.modules[module_key] = mod
     spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    mod = sys.modules[module_key]  # re-fetch; shim may have replaced entry
 
     fn = getattr(mod, callable_name, None)
     if fn is None or not callable(fn):
@@ -281,14 +282,21 @@ def load_runtime_context(repo_root: Path, runtime_config_path: str | None = None
     # --- Optional: merge auto-discovered tool adapter metadata --------
     # Explicit runtime-config declarations always take precedence.
     try:
-        from lumina.core.adapter_indexer import scan_tool_adapters
+        from lumina.core.adapter_indexer import scan_tool_adapters, scan_group_resources
 
         domain_pack_dir = (repo_root / cfg_path).parent.parent
         discovered = scan_tool_adapters(domain_pack_dir)
         ctx["discovered_tool_adapters"] = {
             aid: entry.to_dict() for aid, entry in discovered.items()
         }
+
+        # --- Group libraries and group tools from physics files --------
+        libs, grp_tools = scan_group_resources(domain_pack_dir)
+        ctx["group_libraries"] = {k: e.to_dict() for k, e in libs.items()}
+        ctx["group_tools"] = {k: e.to_dict() for k, e in grp_tools.items()}
     except Exception:
         ctx["discovered_tool_adapters"] = {}
+        ctx["group_libraries"] = {}
+        ctx["group_tools"] = {}
 
     return ctx

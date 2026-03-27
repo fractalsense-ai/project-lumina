@@ -141,5 +141,13 @@
       "description": "Human operators and technicians who make field decisions and record observations.",
       "members": ["operator"]
     }
-  }
+  },
+  "group_libraries": [
+    {
+      "id": "environmental_sensors",
+      "path": "domain-lib/environmental_sensors.py",
+      "description": "Sensor normalization, tolerance checking, and batch aggregation for field-operations IoT devices.",
+      "shared_with_modules": ["operations-level-1"]
+    }
+  ]
 }

@@ -421,3 +421,42 @@ actor_types:
       via problem-solving steps.
     evidence_sources:
       - adapter/edu/algebra-checker/v1
+
+# ── Group Libraries ──────────────────────────────────────────
+
+group_libraries:
+  - id: zpd_monitor
+    path: domain-lib/zpd_monitor_v0_2.py
+    description: >-
+      Zone of Proximal Development monitor — deterministic heuristic that
+      tracks challenge-band drift and produces scaffold/intervene decisions.
+    shared_with_modules:
+      - pre-algebra
+      - algebra-intro
+      - algebra-level-1
+      - algebra-1
+
+  - id: fluency_monitor
+    path: domain-lib/fluency_monitor.py
+    description: >-
+      Consecutive-success gate with time threshold — tracks procedural
+      fluency per difficulty tier before advancing.
+    shared_with_modules:
+      - pre-algebra
+      - algebra-intro
+      - algebra-level-1
+      - algebra-1
+
+# ── Group Tools ──────────────────────────────────────────────
+
+group_tools:
+  - id: problem_generator
+    path: domain-lib/problem_generator.py
+    description: >-
+      Deterministic algebra equation generator — maps ZPD difficulty to
+      a tier and produces randomised equations with guaranteed integer solutions.
+    call_types:
+      - deterministic
+    shared_with_modules:
+      - algebra-level-1
+      - algebra-1

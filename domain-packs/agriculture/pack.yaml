@@ -16,6 +16,8 @@ layers:
     - modules/operations-level-1/domain-physics.json
   controller:
     - controllers/runtime_adapters.py
+  domain_lib:
+    - domain-lib/environmental_sensors.py
   view:
     - prompts/
   docs:

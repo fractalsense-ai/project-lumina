@@ -17,6 +17,7 @@ build_router_index(domain_packs_root)  → RouterIndex
 
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -59,6 +60,48 @@ class AdapterEntry:
         }
 
 
+@dataclass(frozen=True)
+class GroupLibraryEntry:
+    """Metadata for a shared Group Library declared in a physics file."""
+
+    library_id: str
+    domain_id: str
+    path: str              # Relative to domain pack root
+    description: str
+    shared_with_modules: tuple[str, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "library_id": self.library_id,
+            "domain_id": self.domain_id,
+            "path": self.path,
+            "description": self.description,
+            "shared_with_modules": list(self.shared_with_modules),
+        }
+
+
+@dataclass(frozen=True)
+class GroupToolEntry:
+    """Metadata for a shared Group Tool declared in a physics file."""
+
+    tool_id: str
+    domain_id: str
+    path: str              # Relative to domain pack root
+    description: str
+    call_types: tuple[str, ...]
+    shared_with_modules: tuple[str, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "tool_id": self.tool_id,
+            "domain_id": self.domain_id,
+            "path": self.path,
+            "description": self.description,
+            "call_types": list(self.call_types),
+            "shared_with_modules": list(self.shared_with_modules),
+        }
+
+
 @dataclass
 class RouterIndex:
     """Aggregated index of all discovered adapters across domain packs."""
@@ -66,6 +109,8 @@ class RouterIndex:
     adapters: dict[str, AdapterEntry] = field(default_factory=dict)
     runtime_adapter_modules: dict[str, str] = field(default_factory=dict)
     tool_adapter_modules: dict[str, str] = field(default_factory=dict)
+    group_libraries: dict[str, GroupLibraryEntry] = field(default_factory=dict)
+    group_tools: dict[str, GroupToolEntry] = field(default_factory=dict)
 
     @property
     def adapter_ids(self) -> frozenset[str]:
@@ -76,6 +121,8 @@ class RouterIndex:
             "adapters": {k: v.to_dict() for k, v in self.adapters.items()},
             "runtime_adapter_modules": dict(self.runtime_adapter_modules),
             "tool_adapter_modules": dict(self.tool_adapter_modules),
+            "group_libraries": {k: v.to_dict() for k, v in self.group_libraries.items()},
+            "group_tools": {k: v.to_dict() for k, v in self.group_tools.items()},
         }
 
 
@@ -161,6 +208,80 @@ def scan_runtime_adapters(domain_pack_path: Path) -> dict[str, str]:
     return result
 
 
+def _load_physics(physics_path: Path) -> dict[str, Any] | None:
+    """Load a domain-physics file (JSON or YAML) and return the parsed dict."""
+    try:
+        if physics_path.suffix == ".json":
+            return json.loads(physics_path.read_text(encoding="utf-8"))  # type: ignore[no-any-return]
+        return load_yaml(physics_path)  # type: ignore[return-value]
+    except Exception as exc:
+        log.warning("Could not parse physics file %s: %s", physics_path.name, exc)
+        return None
+
+
+def scan_group_resources(
+    domain_pack_path: Path,
+) -> tuple[dict[str, GroupLibraryEntry], dict[str, GroupToolEntry]]:
+    """Discover group_libraries and group_tools from physics files.
+
+    Reads every ``modules/*/domain-physics.{json,yaml}`` file and extracts
+    the ``group_libraries`` and ``group_tools`` arrays.
+
+    Returns
+    -------
+    (group_libraries, group_tools) dicts keyed by ``{pack_name}/{id}``.
+    """
+    libraries: dict[str, GroupLibraryEntry] = {}
+    tools: dict[str, GroupToolEntry] = {}
+    modules_dir = domain_pack_path / "modules"
+    if not modules_dir.is_dir():
+        return libraries, tools
+
+    pack_name = domain_pack_path.name
+
+    for module_dir in sorted(modules_dir.iterdir()):
+        if not module_dir.is_dir():
+            continue
+        for suffix in (".json", ".yaml"):
+            physics_path = module_dir / f"domain-physics{suffix}"
+            if not physics_path.is_file():
+                continue
+            data = _load_physics(physics_path)
+            if not isinstance(data, dict):
+                continue
+
+            for lib in data.get("group_libraries") or []:
+                if not isinstance(lib, dict) or "id" not in lib:
+                    continue
+                lib_id = str(lib["id"])
+                key = f"{pack_name}/{lib_id}"
+                if key not in libraries:
+                    libraries[key] = GroupLibraryEntry(
+                        library_id=lib_id,
+                        domain_id=pack_name,
+                        path=str(lib.get("path", "")),
+                        description=str(lib.get("description", "")),
+                        shared_with_modules=tuple(lib.get("shared_with_modules") or []),
+                    )
+
+            for tool in data.get("group_tools") or []:
+                if not isinstance(tool, dict) or "id" not in tool:
+                    continue
+                tool_id = str(tool["id"])
+                key = f"{pack_name}/{tool_id}"
+                if key not in tools:
+                    tools[key] = GroupToolEntry(
+                        tool_id=tool_id,
+                        domain_id=pack_name,
+                        path=str(tool.get("path", "")),
+                        description=str(tool.get("description", "")),
+                        call_types=tuple(tool.get("call_types") or []),
+                        shared_with_modules=tuple(tool.get("shared_with_modules") or []),
+                    )
+
+    return libraries, tools
+
+
 def build_router_index(domain_packs_root: Path) -> RouterIndex:
     """Aggregate all domain packs' adapters into a single ``RouterIndex``.
 
@@ -171,7 +292,8 @@ def build_router_index(domain_packs_root: Path) -> RouterIndex:
 
     Returns
     -------
-    RouterIndex with all discovered tool adapters and runtime modules.
+    RouterIndex with all discovered tool adapters, runtime modules,
+    group libraries, and group tools.
     """
     index = RouterIndex()
     if not domain_packs_root.is_dir():
@@ -203,9 +325,17 @@ def build_router_index(domain_packs_root: Path) -> RouterIndex:
             qualified_key = f"{pack_name}/{key}"
             index.runtime_adapter_modules[qualified_key] = f"domain-packs/{pack_name}/{rel_path}"
 
+        # Group libraries and group tools
+        libs, grp_tools = scan_group_resources(pack_dir)
+        index.group_libraries.update(libs)
+        index.group_tools.update(grp_tools)
+
     log.info(
-        "Adapter index built: %d tool adapters, %d runtime modules",
+        "Adapter index built: %d tool adapters, %d runtime modules, "
+        "%d group libraries, %d group tools",
         len(index.adapters),
         len(index.runtime_adapter_modules),
+        len(index.group_libraries),
+        len(index.group_tools),
     )
     return index

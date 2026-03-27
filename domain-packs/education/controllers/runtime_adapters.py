@@ -9,10 +9,11 @@ from pathlib import Path
 from typing import Any, Callable
 
 _THIS_DIR = Path(__file__).resolve().parent
+_DOMAIN_LIB = _THIS_DIR.parent / "domain-lib"
 
 _zpd_spec = importlib.util.spec_from_file_location(
     "zpd_monitor_runtime",
-    str(_THIS_DIR / "zpd_monitor_v0_2.py"),
+    str(_DOMAIN_LIB / "zpd_monitor_v0_2.py"),
 )
 _zpd_mod = importlib.util.module_from_spec(_zpd_spec)  # type: ignore[arg-type]
 sys.modules["zpd_monitor_runtime"] = _zpd_mod
@@ -25,7 +26,7 @@ zpd_monitor_step = _zpd_mod.zpd_monitor_step
 
 _fluency_spec = importlib.util.spec_from_file_location(
     "fluency_monitor_runtime",
-    str(_THIS_DIR / "fluency_monitor.py"),
+    str(_DOMAIN_LIB / "fluency_monitor.py"),
 )
 _fluency_mod = importlib.util.module_from_spec(_fluency_spec)  # type: ignore[arg-type]
 sys.modules["fluency_monitor_runtime"] = _fluency_mod

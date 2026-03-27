@@ -23,7 +23,7 @@ import importlib.util
 
 _spec = importlib.util.spec_from_file_location(
     "zpd_monitor",
-    os.path.join(os.path.dirname(__file__), "zpd_monitor_v0_2.py"),
+    os.path.join(os.path.dirname(__file__), os.pardir, "domain-lib", "zpd_monitor_v0_2.py"),
 )
 _mod = importlib.util.module_from_spec(_spec)  # type: ignore[arg-type]
 sys.modules["zpd_monitor"] = _mod

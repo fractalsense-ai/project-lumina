@@ -353,6 +353,20 @@
       },
       "description": "Declares the domain-scoped deterministic tools that must validate proposals before HITL review. Omit for domains with no domain-scoped validation requirement beyond the system-level admin command schema."
     },
+    "group_libraries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/group_library"
+      },
+      "description": "Shared libraries declared at the domain-pack level and attached to modules that need them. Analogous to shared prep stations in a kitchen or Components in an ECS — loaded once and cached across all modules that reference them. Omit for domains with no shared library components."
+    },
+    "group_tools": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/group_tool"
+      },
+      "description": "Shared tool callables declared at the domain-pack level that multiple modules can invoke. Unlike group_libraries (passive/pure), group_tools have side effects or produce LLM-visible output. Omit for domains with no shared tool components."
+    },
     "temporal_policy": {
       "type": "object",
       "additionalProperties": false,
@@ -636,6 +650,81 @@
             "type": "string"
           },
           "description": "Actor group IDs this Actor belongs to. Groups may overlap — a sensor can be in both 'environmental_monitors' and 'barn_subsystem'."
+        }
+      }
+    },
+    "group_library": {
+      "type": "object",
+      "required": [
+        "id",
+        "path",
+        "description"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{1,47}$",
+          "description": "Unique identifier for this group library within the domain pack (e.g. 'zpd_monitor', 'system_health')."
+        },
+        "path": {
+          "type": "string",
+          "description": "Relative path from the domain pack root to the library module (e.g. 'domain-lib/zpd_monitor_v0_2.py')."
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable purpose of this shared library."
+        },
+        "shared_with_modules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Module IDs that share this library. The runtime loads the library once and caches it for all listed modules. Empty or omitted means available to all modules in this domain."
+        }
+      }
+    },
+    "group_tool": {
+      "type": "object",
+      "required": [
+        "id",
+        "path",
+        "description",
+        "call_types"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{1,47}$",
+          "description": "Unique identifier for this group tool within the domain pack (e.g. 'problem_generator', 'collar_sensor_normalizer')."
+        },
+        "path": {
+          "type": "string",
+          "description": "Relative path from the domain pack root to the tool module (e.g. 'domain-lib/problem_generator.py')."
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable purpose of this shared tool."
+        },
+        "call_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "deterministic",
+              "stateful",
+              "llm_visible"
+            ]
+          },
+          "description": "How this tool is invoked: deterministic (pure validation), stateful (modifies session state), llm_visible (output included in LLM context)."
+        },
+        "shared_with_modules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Module IDs that share this tool. Empty or omitted means available to all modules in this domain."
         }
       }
     }
