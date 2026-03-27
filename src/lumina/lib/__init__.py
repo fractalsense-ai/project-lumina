@@ -1,21 +1,13 @@
-"""lumina.lib — Domain-library equivalent for the system domain.
+"""lumina.lib — Compatibility shims for system domain-lib.
 
-The ``lib`` package holds passive state estimators that belong to
-Lumina's system layer — the exact analogue of domain-lib components
-in named domain packs (e.g., the education ZPD monitor or fluency
-tracker).
+Canonical source: domain-packs/system/domain-lib/
+Shim layer:       src/lumina/lib/
 
-Calling convention
-------------------
-Components here are called BY the **system runtime adapter** each
-orchestration cycle to update mutable system state.  They are NEVER
-called directly by the core orchestrator (``lumina.orchestrator``) or
-by the CLI.
+The real implementations have been relocated to the system domain pack
+(domain-packs/system/domain-lib/).  Each module in this package is a
+thin shim that loads from the canonical location and re-exports its
+public API so that existing ``from lumina.lib.system_health import …``
+statements continue to work without modification.
 
-Current components
-------------------
-system_health.py
-    Samples passive hardware probes (hw_disk, hw_temp, hw_memory)
-    from ``lumina.systools`` and aggregates their values into a single
-    ``SystemHealthState`` snapshot.
+See also: ``lumina.systools._domain_pack_loader``
 """

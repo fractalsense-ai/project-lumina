@@ -18,6 +18,21 @@ layers:
   controller:
     - controllers/runtime_adapters.py
     - controllers/tool_adapters.py
+    - controllers/manifest_integrity.py
+    - controllers/verify_repo.py
+    - controllers/yaml_converter.py
+    - controllers/system_log_validator.py
+    - controllers/security_freeze.py
+    - controllers/ppa_demo.py
+    - controllers/logic_scraper.py
+  domain_lib:
+    - domain-lib/system_health.py
+    - domain-lib/hw_probes/hw_disk.py
+    - domain-lib/hw_probes/hw_memory.py
+    - domain-lib/hw_probes/hw_temp.py
+    - domain-lib/hw_probes/hw_gpu.py
+    - domain-lib/hw_probes/hw_loop_latency.py
+    - domain-lib/hw_probes/hw_http_queue.py
   view:
     - prompts/
   docs:
