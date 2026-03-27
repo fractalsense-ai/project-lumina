@@ -10,6 +10,7 @@ import {
   PencilSimple,
   ShieldCheck,
 } from '@phosphor-icons/react'
+import { InviteLinkDisplay } from '@/components/InviteLinkDisplay'
 
 export interface ActionCardAction {
   id: string
@@ -57,6 +58,7 @@ const ACTION_ICONS: Record<string, React.ReactNode> = {
 export function ActionCard({ card, token, onResolved }: ActionCardProps) {
   const [resolving, setResolving] = useState<string | null>(null)
   const [resolved, setResolved] = useState(false)
+  const [resolveResult, setResolveResult] = useState<Record<string, unknown> | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const handleAction = async (action: ActionCardAction) => {
@@ -76,6 +78,8 @@ export function ActionCard({ card, token, onResolved }: ActionCardProps) {
         ),
       })
       if (res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setResolveResult(data)
         setResolved(true)
         onResolved?.(card.id, action.id)
       } else {
@@ -98,6 +102,11 @@ export function ActionCard({ card, token, onResolved }: ActionCardProps) {
     : 'border-l-blue-500'
 
   if (resolved) {
+    const result = resolveResult?.result as Record<string, unknown> | undefined
+    const setupUrl = result?.setup_url as string | undefined
+    const username = result?.username as string | undefined
+    const emailSent = result?.email_sent as boolean | undefined
+
     return (
       <motion.div
         initial={{ opacity: 1 }}
@@ -109,6 +118,13 @@ export function ActionCard({ card, token, onResolved }: ActionCardProps) {
             <CheckCircle size={16} weight="bold" className="text-green-500" />
             <span>Resolved</span>
           </div>
+          {setupUrl && username && (
+            <InviteLinkDisplay
+              setupUrl={setupUrl}
+              username={username}
+              emailSent={emailSent ?? false}
+            />
+          )}
         </Card>
       </motion.div>
     )

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { InviteLinkDisplay } from '@/components/InviteLinkDisplay'
 
 interface AuthState {
   token: string
@@ -35,6 +36,7 @@ export function StagedCommandsPanel({ auth }: { auth: AuthState }) {
   const [total, setTotal] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [resolving, setResolving] = useState<string | null>(null)
+  const [resolveResults, setResolveResults] = useState<Record<string, Record<string, unknown>>>({})
 
   const headers = {
     Authorization: `Bearer ${auth.token}`,
@@ -69,8 +71,13 @@ export function StagedCommandsPanel({ auth }: { auth: AuthState }) {
         headers,
         body: JSON.stringify({ action }),
       })
-      if (res.ok) await load()
-      else setError('Failed to resolve command.')
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setResolveResults((prev) => ({ ...prev, [id]: data }))
+        await load()
+      } else {
+        setError('Failed to resolve command.')
+      }
     } catch {
       setError('Could not reach API.')
     } finally {
@@ -136,14 +143,28 @@ export function StagedCommandsPanel({ auth }: { auth: AuthState }) {
       {resolved.length > 0 && (
         <div className="flex flex-col gap-2">
           <p className="text-xs text-muted-foreground font-medium">Resolved</p>
-          {resolved.map((cmd) => (
-            <Card key={cmd.staged_id} className="p-3 opacity-60">
-              <p className="font-medium text-foreground text-sm">{cmd.operation}</p>
-              <p className="text-xs text-muted-foreground">
-                by {cmd.actor_id} · {cmd.staged_at}
-              </p>
-            </Card>
-          ))}
+          {resolved.map((cmd) => {
+            const rr = resolveResults[cmd.staged_id]
+            const result = rr?.result as Record<string, unknown> | undefined
+            const setupUrl = result?.setup_url as string | undefined
+            const username = result?.username as string | undefined
+            const emailSent = result?.email_sent as boolean | undefined
+            return (
+              <Card key={cmd.staged_id} className="p-3 opacity-60">
+                <p className="font-medium text-foreground text-sm">{cmd.operation}</p>
+                <p className="text-xs text-muted-foreground">
+                  by {cmd.actor_id} · {cmd.staged_at}
+                </p>
+                {setupUrl && username && (
+                  <InviteLinkDisplay
+                    setupUrl={setupUrl}
+                    username={username}
+                    emailSent={emailSent ?? false}
+                  />
+                )}
+              </Card>
+            )
+          })}
         </div>
       )}
     </div>

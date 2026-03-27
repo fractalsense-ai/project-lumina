@@ -15,7 +15,10 @@ Rules:
 - Use "glossary_lookup" when the operator is asking what a Lumina concept means.
 - Use "status_query" when asking for the current state of a component.
 - Use "diagnostic" when describing a problem or asking for troubleshooting guidance.
-- Use "admin_command" when the operator is requesting a configuration change, write operation, or system mutation.
+- Use "admin_command" for any administrative operation or query, including:
+  * Write operations: configuration changes, mutations, creating/inviting users, updating roles.
+  * Read-only admin queries: listing commands, listing domains, listing modules, listing escalations, checking module status, explaining reasoning, listing ingestions, night cycle status.
+  * The key distinction: if the operator is performing or requesting an administrative-level action (even a read-only one), classify as "admin_command".
 - Use "config_review" when reviewing configuration files, schemas, or domain-physics documents.
 - Use "out_of_domain" when the query is clearly not about Lumina infrastructure.
 - Use "general" for anything else.

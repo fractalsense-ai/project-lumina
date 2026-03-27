@@ -1075,14 +1075,22 @@ async def _execute_admin_operation(
             "trigger_night_cycle": "domain_authority",
             "invite_user": "it_support",
         }
+        _ROLE_RANK: dict[str, int] = {
+            "root": 100, "it_support": 80, "domain_authority": 60,
+            "qa": 40, "auditor": 40, "user": 20, "guest": 10,
+        }
+        actor_rank = _ROLE_RANK.get(user_data["role"], 0)
         commands: list[dict[str, Any]] = []
         for op_name in sorted(_KNOWN_OPERATIONS):
+            min_role = _MIN_ROLE.get(op_name, "user")
+            if actor_rank < _ROLE_RANK.get(min_role, 0):
+                continue
             entry: dict[str, Any] = {"name": op_name}
             if include_details:
                 schema = _get_cmd_schema(op_name)
                 entry["description"] = (schema or {}).get("description", "")
                 entry["hitl_exempt"] = op_name in _HITL_EXEMPT_OPS
-                entry["min_role"] = _MIN_ROLE.get(op_name, "user")
+                entry["min_role"] = min_role
             commands.append(entry)
         result = {"operation": operation, "commands": commands, "count": len(commands)}
 
