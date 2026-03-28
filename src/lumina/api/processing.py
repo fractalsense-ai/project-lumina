@@ -340,6 +340,15 @@ def process_message(
 
     slm_weight_overrides = runtime.get("slm_weight_overrides") or {}
 
+    # ── Inject sliding-window telemetry into turn evidence ────
+    try:
+        from lumina.daemon import resource_monitor as _rm
+        _daemon_status = _rm.get_status()
+        if _daemon_status.get("enabled") and _daemon_status.get("telemetry_window"):
+            turn_data["_system_telemetry"] = _daemon_status["telemetry_window"]
+    except Exception:
+        pass  # Graceful fallback — telemetry is optional
+
     prompt_contract, resolved_action = orch.process_turn(
         task_spec,
         turn_data,
@@ -549,6 +558,8 @@ def process_message(
         llm_payload["next_problem"] = current_problem
     if tool_results:
         llm_payload["tool_results"] = tool_results
+    if turn_data.get("_system_telemetry"):
+        llm_payload["system_telemetry"] = turn_data["_system_telemetry"]
 
     if deterministic_response:
         llm_response = render_contract_response(
@@ -583,6 +594,16 @@ def process_message(
             )
 
     llm_response = strip_latex_delimiters(llm_response)
+
+    # ── Push turn into conversation ring buffer ──────────────
+    _container = _session_containers.get(session_id)
+    if _container is not None and hasattr(_container, "ring_buffer"):
+        _container.ring_buffer.push(
+            user_message=input_text,
+            llm_response=llm_response,
+            turn_number=session.get("turn_count", 0),
+            domain_id=resolved_domain_id,
+        )
 
     # ── Reset problem_presented_at after response is ready ───
     # Timestamp is anchored to when the outgoing response is fully built so

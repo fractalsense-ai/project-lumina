@@ -249,6 +249,42 @@ class SystemLogWriter:
             record["metadata"]["system_physics_hash"] = self._system_physics_hash
         self._append_log_record(record)
 
+        # ── Black-box capture on escalation trigger ───────────
+        try:
+            from lumina.session.blackbox_triggers import trigger_registry
+            fired = trigger_registry.check(record)
+            if fired:
+                from lumina.session.blackbox import capture_blackbox, write_blackbox
+                from lumina.api.session import _session_containers
+                from lumina.daemon import resource_monitor as _rm
+
+                container = _session_containers.get(self.session_id)
+                rb_snap = container.ring_buffer.snapshot() if container and hasattr(container, "ring_buffer") else []
+                telem = _rm.get_status().get("telemetry_window", {})
+                sess_state = {
+                    "task_id": task_spec.get("task_id", ""),
+                    "turn_count": container.active_context.turn_count if container else 0,
+                    "domain_id": container.active_domain_id if container else "",
+                }
+                recent_traces = [r for r in self.log_records[-10:] if r.get("record_type") == "TraceEvent"]
+
+                snap = capture_blackbox(
+                    session_id=self.session_id,
+                    domain_id=sess_state.get("domain_id", ""),
+                    trigger_type=",".join(fired),
+                    trigger_source="escalation",
+                    ring_buffer_snapshot=rb_snap,
+                    telemetry_summary=telem,
+                    recent_trace_events=recent_traces,
+                    session_state=sess_state,
+                )
+                write_blackbox(snap)
+        except Exception:
+            import logging as _log_mod
+            _log_mod.getLogger("lumina.blackbox").warning(
+                "Black-box capture failed on escalation", exc_info=True,
+            )
+
     def append_provenance_trace(
         self,
         task_id: str,

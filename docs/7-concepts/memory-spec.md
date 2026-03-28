@@ -68,6 +68,27 @@ artifacts_earned:
 - Verbatim responses from the entity/subject
 - Any content that would allow re-reading the session like a transcript
 
+### Exception: Black Box Snapshots
+
+When a black-box trigger fires (escalation event, resource anomaly, or
+domain-pack-registered trigger), the last *N* turn-pairs from the
+ephemeral conversation ring buffer are frozen alongside telemetry, trace
+events, and session state into a local JSON file under `data/blackbox/`.
+
+This is a controlled exception to the "no transcript retention" rule:
+
+- **Scope-limited** — only the last N turns (default 10), not the full
+  session history.
+- **Trigger-gated** — only captured when a specific condition fires, not
+  on every turn.
+- **Locally stored** — `data/blackbox/` is user-side only, never
+  transmitted externally.
+- **Auto-purged** — oldest snapshots are pruned when the directory
+  exceeds `max_blackbox_files` (default 100).
+
+See [telemetry-and-blackbox](telemetry-and-blackbox.md) for full
+architectural details.
+
 ### Preferences Memory
 
 Preferences (interests, dislikes) are stored in the entity profile but tagged as immersion-only. They are never used for assessment and are clearly separated from entity state.

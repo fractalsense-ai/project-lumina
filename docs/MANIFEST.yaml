@@ -418,6 +418,14 @@ artifacts:
     last_updated: 2026-03-24
     sha256: beac1d748982db68162e818e0379f90c24f0570ec9ff039eaf6c2a2f6f978e1b
 
+  - path: docs/7-concepts/telemetry-and-blackbox.md
+    type: doc
+    section: 7
+    doc_version: 1.0.0
+    status: active
+    last_updated: 2025-07-15
+    sha256: 4dd7199d35dc5f880970ea927b20751f33db0d470ba79dca4c8e50b2db934ef0
+
   - path: docs/7-concepts/state-change-commit-policy.md
     type: doc
     section: 7
@@ -586,7 +594,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-08
-    sha256: ad4965139952051115df1622cf7821e89598db9dc950cf405c02cc2b124d7c36
+    sha256: e0d752086c2740c4b6bd2fa4d59a3567d79d18f09cb3ad0501029d51695fc735
 
   - path: docs/5-standards/orchestrator-system-prompt.md
     type: spec
@@ -766,6 +774,13 @@ artifacts:
     status: active
     last_updated: 2026-03-24
     sha256: 5a9a3fe3f4d100a39d4bd21ef386593291315452a65bb2f601df400ff1c91fab
+
+  - path: standards/blackbox-snapshot-schema-v1.json
+    type: schema
+    doc_version: 1.0.0
+    status: active
+    last_updated: 2025-07-15
+    sha256: abde9307e065c5a21582376704fffd38cbd10b3ccffed65a7cfa392f4dba8350
 
   - path: standards/action-card-schema-v1.json
     type: schema

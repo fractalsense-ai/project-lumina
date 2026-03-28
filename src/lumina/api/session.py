@@ -141,10 +141,13 @@ class DomainContext:
             self.problem_presented_at = d["problem_presented_at"]
 
 
+from lumina.session.ring_buffer import ConversationRingBuffer
+
+
 class SessionContainer:
     """Holds isolated domain contexts for a single session."""
 
-    __slots__ = ("active_domain_id", "contexts", "user", "last_activity", "frozen", "ttl_manager", "consent_accepted", "consent_timestamp")
+    __slots__ = ("active_domain_id", "contexts", "user", "last_activity", "frozen", "ttl_manager", "consent_accepted", "consent_timestamp", "ring_buffer")
 
     def __init__(self, active_domain_id: str, user: dict[str, Any] | None = None) -> None:
         self.active_domain_id = active_domain_id
@@ -155,6 +158,7 @@ class SessionContainer:
         self.ttl_manager: TTLManager = TTLManager()
         self.consent_accepted: bool = False
         self.consent_timestamp: float | None = None
+        self.ring_buffer: ConversationRingBuffer = ConversationRingBuffer()
 
     @property
     def active_context(self) -> DomainContext:

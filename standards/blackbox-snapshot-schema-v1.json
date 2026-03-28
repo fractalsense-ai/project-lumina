@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "blackbox-snapshot-schema-v1",
+  "schema_version": "1.0.0",
+  "title": "Black Box Snapshot",
+  "description": "Diagnostic package captured when a blackbox trigger fires. Contains conversation ring buffer, telemetry window, trace events, session state, and system health.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "timestamp_utc",
+    "session_id",
+    "domain_id",
+    "trigger_type",
+    "trigger_source"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "timestamp_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp of capture."
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "domain_id": {
+      "type": "string"
+    },
+    "trigger_type": {
+      "type": "string",
+      "description": "Comma-separated list of trigger names that fired."
+    },
+    "trigger_source": {
+      "type": "string",
+      "enum": ["escalation", "daemon_telemetry", "domain_trigger", "manual"]
+    },
+    "conversation_buffer": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["timestamp", "user_message", "llm_response", "turn_number", "domain_id"],
+        "properties": {
+          "timestamp": { "type": "number" },
+          "user_message": { "type": "string" },
+          "llm_response": { "type": "string" },
+          "turn_number": { "type": "integer" },
+          "domain_id": { "type": "string" }
+        }
+      }
+    },
+    "telemetry_window": {
+      "type": "object",
+      "properties": {
+        "load_trajectory": { "type": "string" },
+        "load_delta_pct": { "type": "number" },
+        "curve": { "type": "string" },
+        "baseline": { "type": "number" },
+        "current": { "type": "number" },
+        "peak": { "type": "number" },
+        "trough": { "type": "number" },
+        "ewma": { "type": "number" },
+        "samples": { "type": "integer" }
+      }
+    },
+    "trace_events": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "session_state": {
+      "type": "object"
+    },
+    "system_health": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "last_updated": "2025-07-15"
+}

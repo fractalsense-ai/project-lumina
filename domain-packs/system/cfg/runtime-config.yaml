@@ -160,6 +160,7 @@ daemon:
   enabled: false
   poll_interval_sec: 30
   idle_threshold: 0.20
+  telemetry_window_depth: 20
   probe_weights:
     cpu: 0.4
     memory: 0.3
@@ -167,3 +168,11 @@ daemon:
   task_priority:
     - log_integrity
     - retrieval_reindex
+
+# ── Black Box Snapshot ────────────────────────────────────────
+blackbox:
+  enabled: true
+  buffer_size: 10
+  output_dir: data/blackbox
+  max_files: 100
+  include_trace_events: true

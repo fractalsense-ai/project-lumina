@@ -155,6 +155,7 @@ class ResourceMonitorDaemon:
     def get_status(self) -> dict[str, Any]:
         """Return daemon status for ``/api/health``."""
         snap = self._last_snapshot
+        telem = self._estimator.get_window_summary()
         return {
             "state": self._state.value,
             "enabled": self._enabled,
@@ -163,6 +164,7 @@ class ResourceMonitorDaemon:
             "current_task": self._current_task_name,
             "idle_since": self._idle_since,
             "poll_interval_seconds": self._poll_interval,
+            "telemetry_window": telem.json_summary,
         }
 
     # ── Main loop ─────────────────────────────────────────────
@@ -184,6 +186,36 @@ class ResourceMonitorDaemon:
         """Single poll iteration."""
         snap = await self._estimator.sample()
         self._last_snapshot = snap
+
+        # ── Check blackbox triggers against telemetry state ───
+        try:
+            from lumina.session.blackbox_triggers import trigger_registry
+            telem = self._estimator.get_window_summary()
+            event = dict(telem.json_summary)
+            event["load_score"] = snap.load_score
+            event["is_idle"] = snap.is_idle
+            fired = trigger_registry.check(event)
+            if fired:
+                from lumina.session.blackbox import capture_blackbox, write_blackbox
+                from lumina.api.session import _session_containers
+
+                for sid, container in list(_session_containers.items()):
+                    try:
+                        rb_snap = container.ring_buffer.snapshot() if hasattr(container, "ring_buffer") else []
+                        bb = capture_blackbox(
+                            session_id=sid,
+                            domain_id=container.active_domain_id,
+                            trigger_type=",".join(fired),
+                            trigger_source="daemon_telemetry",
+                            ring_buffer_snapshot=rb_snap,
+                            telemetry_summary=telem.json_summary,
+                            session_state={"domain_id": container.active_domain_id},
+                        )
+                        write_blackbox(bb)
+                    except Exception:
+                        log.warning("Blackbox capture failed for session %s", sid, exc_info=True)
+        except Exception:
+            pass  # Trigger check is best-effort
 
         # Grace period — don't dispatch during startup
         if (time.monotonic() - self._started_at) < self._grace_period:
@@ -271,6 +303,10 @@ def init(
     """Create or reconfigure the module-level daemon singleton."""
     global _daemon
     cfg = config or {}
+    if estimator is None:
+        estimator = LoadEstimator(
+            window_depth=cfg.get("telemetry_window_depth", 20),
+        )
     _daemon = ResourceMonitorDaemon(
         estimator=estimator,
         task_runner=task_runner,

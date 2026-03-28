@@ -287,6 +287,7 @@ async def _start_idle_cleanup() -> None:
         estimator = LoadEstimator(
             weights=daemon_cfg.get("probe_weights"),
             idle_threshold=daemon_cfg.get("idle_threshold", 0.20),
+            window_depth=daemon_cfg.get("telemetry_window_depth", 20),
         )
         runner = functools.partial(
             run_task_preemptible,
