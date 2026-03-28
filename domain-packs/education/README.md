@@ -108,8 +108,8 @@ See [`../README.md`](../README.md#domain-lib-vs-tool-adapters) for the full arch
 
 Universal engine contracts live in:
 - [`../../README.md`](../../README.md)
-- [`../../specs/dsa-framework-v1.md`](../../specs/dsa-framework-v1.md) (D.S.A. structural schema underlying PPA)
-- [`../../specs/principles-v1.md`](../../specs/principles-v1.md)
+- [`../../docs/7-concepts/dsa-framework.md`](../../docs/7-concepts/dsa-framework.md) (D.S.A. structural schema underlying PPA)
+- [`../../docs/7-concepts/principles.md`](../../docs/7-concepts/principles.md)
 
 Education-specific principles, rules, states, and physics stay in this directory and its packs.
 

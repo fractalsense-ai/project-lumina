@@ -39,4 +39,4 @@ agriculture/
 
 Use this pack as an experimental reference, not as a fully validated production domain.
 
-For authoring guidance, see [`../README.md`](../README.md) and [`../../specs/domain-profile-spec-v1.md`](../../specs/domain-profile-spec-v1.md).
+For authoring guidance, see [`../README.md`](../README.md) and [`../../docs/7-concepts/domain-profile-spec.md`](../../docs/7-concepts/domain-profile-spec.md).

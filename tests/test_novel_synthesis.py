@@ -214,7 +214,7 @@ class TestNovelSynthesisCommitmentTypes:
         """novel_synthesis_verified is a valid commitment_type."""
         record = self._make_commitment("novel_synthesis_verified")
         # Validate against the schema enum by loading the schema
-        schema_path = REPO_ROOT / "ledger" / "commitment-record-schema-v1.json"
+        schema_path = REPO_ROOT / "standards" / "commitment-record-schema-v1.json"
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         allowed = schema["properties"]["commitment_type"]["enum"]
         assert "novel_synthesis_verified" in allowed
@@ -223,7 +223,7 @@ class TestNovelSynthesisCommitmentTypes:
     def test_novel_synthesis_rejected_commitment(self):
         """novel_synthesis_rejected is a valid commitment_type."""
         record = self._make_commitment("novel_synthesis_rejected")
-        schema_path = REPO_ROOT / "ledger" / "commitment-record-schema-v1.json"
+        schema_path = REPO_ROOT / "standards" / "commitment-record-schema-v1.json"
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         allowed = schema["properties"]["commitment_type"]["enum"]
         assert "novel_synthesis_rejected" in allowed
@@ -236,7 +236,7 @@ class TestNovelSynthesisCommitmentTypes:
 class TestNovelSynthesisEscalationTrigger:
     def test_novel_synthesis_review_in_trigger_type_enum(self):
         """novel_synthesis_review is a valid trigger_type in the escalation schema."""
-        schema_path = REPO_ROOT / "ledger" / "escalation-record-schema-v1.json"
+        schema_path = REPO_ROOT / "standards" / "escalation-record-schema-v1.json"
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         allowed = schema["properties"]["trigger_type"]["enum"]
         assert "novel_synthesis_review" in allowed
@@ -256,7 +256,7 @@ class TestNovelSynthesisEscalationTrigger:
             "evidence_summary": {"method_recognized": False},
             "status": "pending",
         }
-        schema_path = REPO_ROOT / "ledger" / "escalation-record-schema-v1.json"
+        schema_path = REPO_ROOT / "standards" / "escalation-record-schema-v1.json"
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         allowed = schema["properties"]["trigger_type"]["enum"]
         assert record["trigger_type"] in allowed
@@ -268,7 +268,7 @@ class TestNovelSynthesisEscalationTrigger:
 class TestNovelSynthesisEventType:
     def test_novel_synthesis_flagged_in_event_type_enum(self):
         """novel_synthesis_flagged is a valid event_type in the trace event schema."""
-        schema_path = REPO_ROOT / "ledger" / "trace-event-schema-v1.json"
+        schema_path = REPO_ROOT / "standards" / "trace-event-schema-v1.json"
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         allowed = schema["properties"]["event_type"]["enum"]
         assert "novel_synthesis_flagged" in allowed

@@ -22,7 +22,7 @@ A domain pack is the **D (Domain)** pillar of the D.S.A. Framework. It defines:
 - **Artifacts** — milestones that can be earned in this domain
 - **Subsystem Configuration** — domain-specific domain-lib parameters and drift thresholds
 
-See [`../specs/domain-profile-spec-v1.md`](../specs/domain-profile-spec-v1.md) for the full authoring specification.
+See [`../docs/7-concepts/domain-profile-spec.md`](../docs/7-concepts/domain-profile-spec.md) for the full authoring specification.
 
 ---
 

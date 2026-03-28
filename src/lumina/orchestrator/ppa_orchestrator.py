@@ -2,8 +2,8 @@
 ppa_orchestrator.py â€” Project Lumina Prompt Packet Assembly (PPA) Orchestrator
 
 Version: 0.4.0
-Conforms to: specs/dsa-framework-v1.md
-             standards/system-log-v1.md
+Conforms to: docs/7-concepts/dsa-framework.md
+             docs/5-standards/system-log.md
 
 Implements the Actor layer of the D.S.A. framework as a thin pipeline
 coordinator.  Heavy concerns are delegated to three focused collaborators:

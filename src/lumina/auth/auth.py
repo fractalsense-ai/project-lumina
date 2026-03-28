@@ -51,7 +51,7 @@ PASSWORD_HASH_ALGORITHM: str = os.environ.get(
     "LUMINA_PASSWORD_HASH_ALGORITHM", "argon2id"
 ).lower()
 
-# Valid Lumina roles (see specs/rbac-spec-v1.md)
+# Valid Lumina roles (see docs/5-standards/rbac-spec.md)
 VALID_ROLES: frozenset[str] = frozenset(
     {"root", "domain_authority", "it_support", "qa", "auditor", "user", "guest"}
 )

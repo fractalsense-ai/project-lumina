@@ -32,8 +32,8 @@ log = logging.getLogger("lumina.persona-builder")
 
 # ── Universal Base Identity ───────────────────────────────────
 #
-# Source of truth: cfg/system-physics.yaml  »  universal_base_identity
-# Compiled render: specs/global-system-prompt-v1.md
+# Source of truth: domain-packs/system/cfg/system-physics.yaml  »  universal_base_identity
+# Compiled render: docs/5-standards/global-system-prompt.md
 #
 # This string MUST precede every system prompt in the codebase.
 # It establishes what the system is before role directives narrow

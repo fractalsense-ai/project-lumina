@@ -23,7 +23,7 @@ import pytest
 # ─────────────────────────────────────────────────────────────
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-LEDGER_DIR = REPO_ROOT / "ledger"
+LEDGER_DIR = REPO_ROOT / "standards"
 SRC_ROOT = REPO_ROOT / "src" / "lumina"
 
 
@@ -159,7 +159,7 @@ _LEDGER_SCHEMAS = [
     "trace-event-schema-v1.json",
     "commitment-record-schema-v1.json",
     "escalation-record-schema-v1.json",
-    "ingestion-record-schema.json",
+    "ingestion-record-schema-v1.json",
 ]
 
 

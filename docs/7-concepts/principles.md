@@ -1,3 +1,8 @@
+---
+version: "2.0.0"
+last_updated: "2026-03-03"
+---
+
 # Core Principles — Project Lumina
 
 **Version:** 2.0.0  

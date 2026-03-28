@@ -24,7 +24,7 @@ def registry() -> DomainRegistry:
     """Load DomainRegistry in multi-domain mode from the real registry YAML."""
     return DomainRegistry(
         repo_root=_REPO_ROOT,
-        registry_path="cfg/domain-registry.yaml",
+        registry_path="domain-packs/system/cfg/domain-registry.yaml",
         # No load_runtime_context_fn needed — we only test resolve_default_for_user
     )
 
@@ -262,7 +262,7 @@ def test_unauthenticated_domain_invalid_raises(tmp_path: Path) -> None:
 
 @pytest.mark.unit
 def test_real_registry_unauthenticated_routes_to_education(registry: DomainRegistry) -> None:
-    """Integration: real cfg/domain-registry.yaml unauthenticated_domain resolves to education."""
+    """Integration: real domain-packs/system/cfg/domain-registry.yaml unauthenticated_domain resolves to education."""
     assert registry.resolve_default_for_user(None) == "education"
 
 

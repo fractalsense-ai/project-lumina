@@ -1,3 +1,8 @@
+---
+version: "1.3.0"
+last_updated: "2026-03-21"
+---
+
 # D.S.A. Framework — V1 Specification
 
 **Version:** 1.3.0  

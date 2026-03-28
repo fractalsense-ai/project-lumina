@@ -44,6 +44,7 @@ src/web/lib/openaikey.md
 # Per-domain vector stores (generated at runtime)
 data/retrieval-index/*/vectors.npz
 data/retrieval-index/*/metadata.json
+data/profiles/
 
 # test artifacts
 cfg/profiles/
@@ -74,3 +75,4 @@ full_suite_results2.txt
 full_suite_post_fix.txt
 full_suite_post_fix2.txt
 full_suite_march27.txt
+

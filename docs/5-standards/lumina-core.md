@@ -1,3 +1,8 @@
+---
+version: "1.1.0"
+last_updated: "2026-03-13"
+---
+
 # Lumina Core V1 — Meta Specification
 
 **Version:** 1.1.0  

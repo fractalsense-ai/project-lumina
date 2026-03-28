@@ -1,5 +1,5 @@
 runtime:
-  global_system_prompt_path: specs/global-system-prompt-v1.md
+  global_system_prompt_path: docs/5-standards/global-system-prompt.md
   domain_system_prompt_path: domain-packs/system/prompts/domain-system-override.md
   turn_interpretation_prompt_path: domain-packs/system/prompts/turn-interpretation.md
 
@@ -143,3 +143,27 @@ adapters:
     list_log_records:
       module_path: domain-packs/system/controllers/tool_adapters.py
       callable: list_log_records
+
+# ── Night Cycle ───────────────────────────────────────────────
+night_cycle:
+  enabled: false
+  schedule: "0 2 * * *"
+  max_duration_minutes: 240
+  tasks:
+    - verify_repo
+    - schema_integrity
+    - log_integrity
+    - retrieval_reindex
+
+# ── Resource Monitor Daemon ───────────────────────────────────
+daemon:
+  enabled: false
+  poll_interval_sec: 30
+  idle_threshold: 0.20
+  probe_weights:
+    cpu: 0.4
+    memory: 0.3
+    inflight: 0.3
+  task_priority:
+    - log_integrity
+    - retrieval_reindex

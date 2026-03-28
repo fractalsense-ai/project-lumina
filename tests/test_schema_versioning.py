@@ -146,7 +146,7 @@ class TestManifestCoverage:
 
 # ── Config file versioning ──────────────────────────────────────────────────
 
-CONFIG_FILES = ["cfg/domain-registry.yaml", "cfg/system-runtime-config.yaml"]
+CONFIG_FILES = ["domain-packs/system/cfg/domain-registry.yaml"]
 
 
 @pytest.mark.unit

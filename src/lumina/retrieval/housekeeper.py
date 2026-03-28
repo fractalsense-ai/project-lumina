@@ -1,7 +1,7 @@
 """housekeeper.py — Background document indexing for the MiniLM retrieval layer.
 
 Walks ``docs/`` trees (root and every ``domain-packs/*/docs/``), domain-physics
-files, schemas, specs, and standards — then indexes all discoverable content
+files, and standards — then indexes all discoverable content
 into a :class:`VectorStore`.  Content-hash dedup ensures unchanged files are
 not re-embedded.
 
@@ -55,11 +55,11 @@ def collect_md_files(trees: list[Path]) -> list[Path]:
 
 
 def discover_structured_files(repo_root: Path = REPO_ROOT) -> list[Path]:
-    """Discover JSON/YAML files from specs, standards, ledger, cfg, and domain-physics."""
+    """Discover JSON/YAML files from standards and domain-physics."""
     files: list[Path] = []
 
     # Top-level directories that contain indexable structured content
-    for subdir in ("specs", "standards", "ledger", "cfg"):
+    for subdir in ("standards",):
         d = repo_root / subdir
         if d.is_dir():
             files.extend(sorted(d.rglob("*.json")))
@@ -147,7 +147,7 @@ def discover_global_files(repo_root: Path = REPO_ROOT) -> tuple[list[Path], list
         md_files.extend(sorted(root_docs.rglob("*.md")))
 
     structured: list[Path] = []
-    for subdir in ("specs", "standards", "ledger", "cfg"):
+    for subdir in ("standards",):
         d = repo_root / subdir
         if d.is_dir():
             structured.extend(sorted(d.rglob("*.json")))
@@ -197,7 +197,7 @@ class Housekeeper:
             text = md_path.read_text(encoding="utf-8", errors="replace")
             all_chunks.extend(chunk_markdown(text, source_path=rel))
 
-        # Structured files: JSON/YAML (physics, schemas, specs, standards)
+        # Structured files: JSON/YAML (physics, schemas, standards)
         structured_files = discover_structured_files(self._repo_root)
         for sf in structured_files:
             rel = sf.relative_to(self._repo_root).as_posix()
@@ -381,7 +381,7 @@ def rebuild_global_index(
     embedder: DocEmbedder | None = None,
     repo_root: Path = REPO_ROOT,
 ) -> dict[str, Any]:
-    """Rebuild the ``_global`` store from root-level docs/specs/standards."""
+    """Rebuild the ``_global`` store from root-level docs/standards."""
     start = time.monotonic()
     embedder = embedder or DocEmbedder()
     store = registry.global_store

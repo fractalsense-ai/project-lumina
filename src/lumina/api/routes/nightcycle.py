@@ -30,7 +30,7 @@ def _get_night_scheduler() -> Any:
 
         nc_cfg: dict[str, Any] = {}
         try:
-            rt = load_yaml(Path("cfg/system-runtime-config.yaml"))
+            rt = load_yaml(Path("domain-packs/system/cfg/runtime-config.yaml"))
             nc_cfg = rt.get("night_cycle", {})
         except Exception:
             pass

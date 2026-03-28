@@ -1,3 +1,8 @@
+---
+version: "1.2.0"
+last_updated: "2026-03-21"
+---
+
 # Orchestrator System Prompt — V1 Specification
 
 **Version:** 1.2.0  

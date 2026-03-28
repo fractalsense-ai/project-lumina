@@ -1,3 +1,8 @@
+---
+version: "1.1.0"
+last_updated: "2026-03-15"
+---
+
 # System Logs — V1 Specification
 
 **Version:** 1.1.0

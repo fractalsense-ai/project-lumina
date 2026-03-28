@@ -276,12 +276,12 @@ async def _start_idle_cleanup() -> None:
 
     daemon_cfg: dict = {}
     try:
-        _cfg_path = _REPO_ROOT / "cfg" / "system-runtime-config.yaml"
+        _cfg_path = _REPO_ROOT / "domain-packs" / "system" / "cfg" / "runtime-config.yaml"
         if _cfg_path.exists():
             _raw = _load_yaml(_cfg_path)
             daemon_cfg = _raw.get("daemon", {})
     except Exception:
-        log.warning("Could not load daemon config from system-runtime-config.yaml")
+        log.warning("Could not load daemon config from runtime-config.yaml")
 
     if daemon_cfg.get("enabled", False):
         estimator = LoadEstimator(

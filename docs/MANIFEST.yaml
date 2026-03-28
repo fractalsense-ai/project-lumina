@@ -10,7 +10,7 @@
 # The value "pending" is reserved for the initial bootstrap only.
 
 schema_version: 1.0.0
-last_updated: 2026-03-27
+last_updated: 2026-03-28
 
 artifacts:
 
@@ -280,7 +280,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-15
-    sha256: 29f5b27b534125be54dd0d83db25c94ed94376aea9f9690ae8824ffd7c0a5989
+    sha256: ea0bdda400d361a2f8b88129bcf986f6eecc27f7d5a320923f37c8c7503770ae
 
   - path: docs/7-concepts/domain-role-hierarchy.md
     type: doc
@@ -544,108 +544,127 @@ artifacts:
     sha256: 40f9ab31417132cd9b4746e376270b162d34b3ef1f501bfcca78d78a0cf68f4c
 
 
-  # ── Specs ─────────────────────────────────────────────────────────────────
+  # ── Specs (relocated to docs/) ────────────────────────────────────────────
 
-  - path: specs/audit-log-spec-v1.md
+  - path: docs/8-admin/audit-log-spec.md
     type: spec
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-08
-    sha256: 1c66666b2eb96befda421a52d77a1df459c86a048c12ef3ebb81ac0366cafe79
+    sha256: 11dc81cdc7ebeb7e67c56750b38583894b9fe95a546843daeae40f7fed98b700
 
-  - path: specs/domain-profile-spec-v1.md
+  - path: docs/7-concepts/domain-profile-spec.md
     type: spec
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-08
-    sha256: cf111238ab1df0d156ec2ff5d0cee03ff9eafe82e3666954776f71c29b810007
+    sha256: 9f304f1463eb02326f2244361c19425339b67ec1d1a83cb7907dd0ecd5f1fd07
 
-  - path: specs/dsa-framework-v1.md
+  - path: docs/7-concepts/dsa-framework.md
     type: spec
     doc_version: 1.2.0
     status: active
     last_updated: 2026-03-08
-    sha256: d3648d45a16862dbe8d3d6ac6ea81f65ea28d9e2e4dcdb1137134c97fe164ff7
+    sha256: ab2f799e7e8c7ee54f1b8104699e358fc9e9819b8acf43a8a5f985ef0d532fc5
 
-  - path: specs/evaluation-harness-v1.md
+  - path: docs/8-admin/evaluation-harness.md
     type: spec
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-08
-    sha256: c3d620afb8f8e46a7bdce7b60ac92bdc7afde04538bfcb7737ee2097d7867558
+    sha256: daa06594c1ab8fe2d1e93529c73b12ece14ddd1a5457a01960526b0b18f3cfc7
 
-  - path: specs/global-system-prompt-v1.md
+  - path: docs/5-standards/global-system-prompt.md
     type: spec
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-12
-    sha256: 20f44198520584ff89841617946cb659900c3f908f4541ecf259364ea8939e98
+    sha256: 42c8fda3da3ee5db0ef97a321a915e435c822259263bc44e03aae95eff23c371
 
-  - path: specs/memory-spec-v1.md
+  - path: docs/7-concepts/memory-spec.md
     type: spec
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-08
-    sha256: 74bb5eb9ecc4c84d5afbdfcbdea809fed8616c54d6681ec6d79031102bc3680f
+    sha256: ad4965139952051115df1622cf7821e89598db9dc950cf405c02cc2b124d7c36
 
-  - path: specs/orchestrator-system-prompt-v1.md
+  - path: docs/5-standards/orchestrator-system-prompt.md
     type: spec
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-08
-    sha256: 24caded947c2a6baa42d9a6107d38d4359f51c27a8a32c1e1b3d2fd9f2a12ab0
+    sha256: 2d60e6d9e7e29c62cc68eb576fcdc24cc1137089b39defa44ebed9b1a302c93c
 
-  - path: specs/principles-v1.md
+  - path: docs/7-concepts/principles.md
     type: spec
     doc_version: 2.0.0
     status: active
     last_updated: 2026-03-03
-    sha256: cfcf8037d9a0d859f3f5202a9fa2a028ea605c900cf868cea9579b01d900bc76
+    sha256: 04dfcd65c3aae1cd87b39afe8b0cf75620226bd13c9e39cb95d42093d1aef058
 
-  - path: specs/rbac-spec-v1.md
+  - path: docs/5-standards/rbac-spec.md
     type: spec
     doc_version: 1.1.0
     status: active
     last_updated: 2026-03-15
-    sha256: dc5ea560f4cc4347cad66c096b722df1a3b55ecf495a2214b03ea1124f724ec1
+    sha256: 4f6ee86355ff4bf2eb0b7b1a944be6300ca92d5ea3af27b30330f62038001bf3
 
-  - path: specs/reports-spec-v1.md
+  - path: docs/8-admin/reports-spec.md
     type: spec
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-08
-    sha256: 0d24f68e9101ca292cdc0715a9302100d198b2551e9791e85b9b4cdb0a7f3fd7
+    sha256: 9370b5d0b578f4a930041c9a8e8faaaa1eeabbc074b5f32e0f2ba282649bdb3b
 
 
-  # ── Standards (.md) ───────────────────────────────────────────────────────
+  # ── Governance (relocated to docs/8-admin/) ───────────────────────────────
 
-  - path: standards/system-log-v1.md
+  - path: docs/8-admin/audit-and-rollback.md
+    type: doc
+    section: 8
+    doc_version: 1.0.0
+    status: active
+    last_updated: 2026-03-02
+    sha256: 6b875cafc35de9f9b289cc971fc1abeba24c55168857b4889f886d7da4bab238
+
+  - path: docs/8-admin/domain-authority-roles.md
+    type: doc
+    section: 8
+    doc_version: 1.1.0
+    status: active
+    last_updated: 2026-03-09
+    sha256: 9ee2af99b9125c0be6db31105c2e45922e7407d76971b3b98522bf7ffb1fc27f
+
+
+  # ── Standards (.md, relocated to docs/) ───────────────────────────────────
+
+  - path: docs/5-standards/system-log.md
     type: standard
     doc_version: 1.1.0
     status: active
     last_updated: 2026-03-15
-    sha256: 8c967129b71d180bcedc61edebf1dad4c4de80212d1655834ab5220dc233a75f
+    sha256: 8fee40bf64508bb585d3dce52b6bd6c43aedede381d1cca26bf938fa6d062b51
 
-  - path: standards/domain-evidence-extension-v1.md
+  - path: docs/7-concepts/domain-evidence-extension.md
     type: standard
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-15
-    sha256: 7b397de4677c6b96e26b3f02515a1fd9f56bdfaf40a44d484fa5c059e0172e80
+    sha256: ea0bdda400d361a2f8b88129bcf986f6eecc27f7d5a320923f37c8c7503770ae
 
-  - path: standards/domain-state-lib-contract-v1.md
+  - path: docs/3-functions/domain-state-lib.md
     type: standard
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-08
-    sha256: 7a3ad57455412f7854c4cbb577795eb2112310d38d59893fe6d6bb81872f7318
+    sha256: b45a77872123a658dffcbf325a30b063bb902730c60bf136dd87be86809cbf97
 
-  - path: standards/lumina-core-v1.md
+  - path: docs/5-standards/lumina-core.md
     type: standard
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-12
-    sha256: 58ec190982e12579fd10933c42ca3b1b87d8f4757806cc51d567a3be7624bf58
+    sha256: c14bc237b4503bd51025669db2f366f7182509429125ab50d9a0212e5e169134
 
 
   # ── Standards (JSON Schemas) ──────────────────────────────────────────────
@@ -908,35 +927,35 @@ artifacts:
 
   # ── Ledger Schemas ────────────────────────────────────────────────────────
 
-  - path: ledger/system-log-schema-v1.json
+  - path: standards/system-log-schema-v1.json
     type: schema
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-02
     sha256: 75ab47f4caf9d00bc6358cf15730efe1230b1d6a3d549cf9e79e2e3fc91df1d9
 
-  - path: ledger/commitment-record-schema-v1.json
+  - path: standards/commitment-record-schema-v1.json
     type: schema
     doc_version: 1.1.0
     status: active
     last_updated: 2026-03-15
     sha256: ea4b9e461351734343174d7fd24866bf5d83694d408bd805b4a489d99f6ef60b
 
-  - path: ledger/escalation-record-schema-v1.json
+  - path: standards/escalation-record-schema-v1.json
     type: schema
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-02
     sha256: 47561ec9ea876ce2669eb0fd5be80ac47d52abc049e9d795d8984cfdff21b2f0
 
-  - path: ledger/ingestion-record-schema.json
+  - path: standards/ingestion-record-schema-v1.json
     type: schema
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-20
     sha256: 4588fca1a0c7742a94e65ebe9b6a9ecbb3adb7a9c9561bab3b49777191c82ef3
 
-  - path: ledger/trace-event-schema-v1.json
+  - path: standards/trace-event-schema-v1.json
     type: schema
     doc_version: 1.1.0
     status: active
@@ -946,50 +965,43 @@ artifacts:
 
   # ── System Config ─────────────────────────────────────────────────────────
 
-  - path: cfg/domain-registry.yaml
+  - path: domain-packs/system/cfg/domain-registry.yaml
     type: config
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-20
     sha256: 173bbf1cca2ec0f1c5acce0ebd542747a95962da8074df43c5b0e6f60274a6aa
 
-  - path: cfg/system-physics.json
+  - path: domain-packs/system/cfg/system-physics.json
     type: config
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-12
     sha256: a84a16850f80d6bfa31f04d6c13bb62089762e564bf6c2817ef046ba694c5453
 
-  - path: cfg/system-physics.yaml
+  - path: domain-packs/system/cfg/system-physics.yaml
     type: config
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-12
-    sha256: 5e354e0ced1b2fa2edb4e1b04c72291d28be54f7644afcebd73779dc3bea6516
-
-  - path: cfg/system-runtime-config.yaml
-    type: config
-    doc_version: 1.0.0
-    status: active
-    last_updated: 2026-03-20
-    sha256: 93fbcdab30f9735232d754a102d476c8f8ce5f724b9782877d2038da0e6fee00
+    sha256: b2b2c21cfca9e69e64817ac31eb6c0245a4059a8f08080b10d471079deac40b8
 
 
-  # ── Retrieval ─────────────────────────────────────────────────────────────
+  # ── Retrieval (relocated) ─────────────────────────────────────────────────
 
-  - path: retrieval/rag-contracts.md
+  - path: docs/7-concepts/rag-contracts.md
     type: doc
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-20
-    sha256: 5d0bb097d3e799e6fb0e50a134c539564edd18d09e64ca3a77993f43d4857b9b
+    sha256: 0b9c8969cbd6937a4ae34760cbb442a795ee8c97bf3f878cb580b9a54bab18ab
 
-  - path: retrieval/retrieval-index-schema-v1.json
+  - path: standards/retrieval-index-schema-v1.json
     type: schema
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-08
-    sha256: 0a393413bc4faeea167a4244a48b7f9371b101da31bc4405766f166a15f8a220
+    sha256: 74f82ef2a4366e21045841b32f6f5a80cc525e2a4b3dcb3e0acfe616facc9c9c
   - path: domain-packs/agriculture/docs/1-commands/README.md
     sha256: 62791ccb67feda1e6099e9a1cb914b21190ae53bd35d55d5de7dc1371fceb56d
   - path: domain-packs/agriculture/docs/3-functions/README.md

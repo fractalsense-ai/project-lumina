@@ -163,7 +163,7 @@ class TestLedgerSchemas:
     """Verify ledger schema files use new names."""
 
     def test_system_log_schema_exists(self) -> None:
-        assert (REPO_ROOT / "ledger" / "system-log-schema-v1.json").is_file()
+        assert (REPO_ROOT / "standards" / "system-log-schema-v1.json").is_file()
 
     def test_old_ctl_schema_removed(self) -> None:
         assert not (REPO_ROOT / "ledger" / "causal-trace-ledger-schema-v1.json").exists()
@@ -172,4 +172,4 @@ class TestLedgerSchemas:
         assert not (REPO_ROOT / "standards" / "causal-trace-ledger-v1.md").exists()
 
     def test_system_log_standard_exists(self) -> None:
-        assert (REPO_ROOT / "standards" / "system-log-v1.md").is_file()
+        assert (REPO_ROOT / "docs" / "5-standards" / "system-log.md").is_file()

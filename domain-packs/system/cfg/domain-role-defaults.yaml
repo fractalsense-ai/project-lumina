@@ -1,0 +1,33 @@
+# Domain Role Defaults — Project Lumina
+# Defines the built-in tier hierarchy that Domain Authorities can adopt
+# for any domain pack.  Individual domains may override labels and permissions
+# but must preserve the tier_level ordering.
+#
+# tier_level: lower = more privileged (1 = top)
+# default_access: permission chars (r=read, w=write, x=execute, i=ingest)
+
+domain_role_defaults:
+  - role_id: supervisor
+    label: Supervisor
+    tier_level: 1
+    description: "First-level Domain Authority delegate. Oversees employees and user-members within the domain. Has broad read/write access and can approve or escalate domain events."
+    default_access: rwxi
+
+  - role_id: employee
+    label: Employee
+    tier_level: 2
+    description: "Operational member of the domain team. Can read and execute domain resources and contribute ingest artefacts with explicit permission."
+    default_access: rwx
+
+  - role_id: user_member
+    label: User Member
+    tier_level: 3
+    description: "Registered participant in the domain (e.g. enrolled student, community member). Has read and execute access; no write by default."
+    default_access: rx
+
+  - role_id: guest
+    label: Guest
+    tier_level: 4
+    description: "Unauthenticated or unregistered visitor with minimal read-only access, subject to the domain guest_access policy."
+    default_access: r
+

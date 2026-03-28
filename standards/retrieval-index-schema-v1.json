@@ -1,6 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://projectlumina.org/retrieval/retrieval-index-schema-v1.json",
+  "schema_version": "1.0.0",
+  "last_updated": "2026-03-28",
   "title": "Retrieval Index Schema V1",
   "description": "Schema for entries in the Project Lumina retrieval index. Each entry represents a retrievable artifact with its metadata, scope, and hash.",
   "type": "object",

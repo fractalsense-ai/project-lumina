@@ -15,7 +15,7 @@
 #      with the SHA-256 hash of the compiled system-physics.json
 #      before the updated physics takes operational effect.
 #
-# Human-readable rendering: specs/global-system-prompt-v1.md
+# Human-readable rendering: docs/5-standards/global-system-prompt.md
 # ============================================================
 
 id: system/lumina/conversational-interface/v1
@@ -36,7 +36,7 @@ description: >
 #
 # Source of truth for the identity string prepended to every LLM/SLM
 # system prompt by src/lumina/core/persona_builder.py.
-# Human-readable rendering: specs/global-system-prompt-v1.md
+# Human-readable rendering: docs/5-standards/global-system-prompt.md
 #
 # This text is the foundation layer that precedes ALL operational role
 # directives regardless of context (conversational, librarian, physics
@@ -227,7 +227,7 @@ escalation_triggers:
 # ── CI Output Contract ────────────────────────────────────────
 #
 # Machine-readable source of truth for CI output behaviour.
-# Human-readable rendering lives in specs/global-system-prompt-v1.md.
+# Human-readable rendering lives in docs/5-standards/global-system-prompt.md.
 # ─────────────────────────────────────────────────────────────
 
 ci_output_contract:

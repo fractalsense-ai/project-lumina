@@ -105,7 +105,7 @@ def _validate_runtime_config(repo_root: Path, cfg: dict[str, Any], cfg_path: str
         _require_key(runtime_cfg, key, "runtime")
 
     # Validate referenced files exist.
-    global_prompt_path = runtime_cfg.get("global_system_prompt_path", "specs/global-system-prompt-v1.md")
+    global_prompt_path = runtime_cfg.get("global_system_prompt_path", "docs/5-standards/global-system-prompt.md")
     _require_file(repo_root, _require_str(global_prompt_path, "runtime.global_system_prompt_path"), "runtime.global_system_prompt_path")
     _require_file(repo_root, _require_str(runtime_cfg["domain_system_prompt_path"], "runtime.domain_system_prompt_path"), "runtime.domain_system_prompt_path")
     _require_file(repo_root, _require_str(runtime_cfg["turn_interpretation_prompt_path"], "runtime.turn_interpretation_prompt_path"), "runtime.turn_interpretation_prompt_path")
@@ -159,7 +159,7 @@ def load_runtime_context(repo_root: Path, runtime_config_path: str | None = None
 
     runtime_cfg, adapters_cfg = _validate_runtime_config(repo_root, cfg, cfg_path)
 
-    global_prompt_path = repo_root / runtime_cfg.get("global_system_prompt_path", "specs/global-system-prompt-v1.md")
+    global_prompt_path = repo_root / runtime_cfg.get("global_system_prompt_path", "docs/5-standards/global-system-prompt.md")
     domain_prompt_path = repo_root / runtime_cfg["domain_system_prompt_path"]
     turn_prompt_path = repo_root / runtime_cfg["turn_interpretation_prompt_path"]
     domain_physics_path = repo_root / runtime_cfg["domain_physics_path"]

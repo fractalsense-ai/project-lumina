@@ -5,7 +5,7 @@ Evaluates module access by parsing the octal ``permissions.mode`` from
 a domain-physics document and checking the requesting user's role and
 identity against owner/group/others categories.
 
-See specs/rbac-spec-v1.md for the full specification.
+See docs/5-standards/rbac-spec.md for the full specification.
 """
 
 from __future__ import annotations

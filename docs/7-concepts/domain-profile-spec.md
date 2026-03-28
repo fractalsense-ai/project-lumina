@@ -1,3 +1,8 @@
+---
+version: "1.0.0"
+last_updated: "2026-03-02"
+---
+
 # Domain Profile Specification — V1
 
 **Version:** 1.0.0  

@@ -1,5 +1,5 @@
 runtime:
-  global_system_prompt_path: specs/global-system-prompt-v1.md
+  global_system_prompt_path: docs/5-standards/global-system-prompt.md
   domain_system_prompt_path: domain-packs/education/prompts/domain-system-override.md
   turn_interpretation_prompt_path: domain-packs/education/prompts/turn-interpretation.md
 

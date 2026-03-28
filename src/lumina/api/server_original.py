@@ -88,7 +88,7 @@ _explicit_registry = os.environ.get("LUMINA_DOMAIN_REGISTRY_PATH")
 DOMAIN_REGISTRY_PATH: str | None = (
     _explicit_registry
     if _explicit_registry
-    else (None if RUNTIME_CONFIG_PATH else "cfg/domain-registry.yaml")
+    else (None if RUNTIME_CONFIG_PATH else "domain-packs/system/cfg/domain-registry.yaml")
 )
 PERSISTENCE_BACKEND = os.environ.get("LUMINA_PERSISTENCE_BACKEND", "filesystem").strip().lower()
 DB_URL = os.environ.get("LUMINA_DB_URL")
@@ -145,11 +145,11 @@ PERSISTENCE: PersistenceAdapter = _build_persistence_adapter()
 # Per-user profile helpers
 # ─────────────────────────────────────────────────────────────
 
-_PROFILES_DIR = _REPO_ROOT / "cfg" / "profiles"
+_PROFILES_DIR = _REPO_ROOT / "data" / "profiles"
 
 
 def _resolve_user_profile_path(user_id: str, domain_key: str) -> Path:
-    """Return ``cfg/profiles/{user_id}/{domain_key}.yaml`` under the repo root."""
+    """Return ``data/profiles/{user_id}/{domain_key}.yaml`` under the repo root."""
     safe_uid = user_id.replace("/", "_").replace("\\", "_")
     safe_domain = domain_key.replace("/", "_").replace("\\", "_")
     return _PROFILES_DIR / safe_uid / f"{safe_domain}.yaml"
@@ -2612,7 +2612,7 @@ def _get_night_scheduler() -> Any:
 
         nc_cfg: dict[str, Any] = {}
         try:
-            rt = load_yaml(Path("cfg/system-runtime-config.yaml"))
+            rt = load_yaml(Path("domain-packs/system/cfg/runtime-config.yaml"))
             nc_cfg = rt.get("night_cycle", {})
         except Exception:
             pass

@@ -1,3 +1,8 @@
+---
+version: "1.1.0"
+last_updated: "2026-03-05"
+---
+
 # Reports Specification — V1
 
 **Version:** 1.1.0  

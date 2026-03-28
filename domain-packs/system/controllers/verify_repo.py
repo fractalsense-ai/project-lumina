@@ -26,13 +26,13 @@ PROVENANCE_POST_PAYLOAD_KEYS = [
 ]
 
 PROVENANCE_STRICT_FILES = [
-    Path("ledger/trace-event-schema.json"),
-    Path("specs/dsa-framework-v1.md"),
-    Path("specs/audit-log-spec-v1.md"),
-    Path("specs/evaluation-harness-v1.md"),
+    Path("standards/trace-event-schema-v1.json"),
+    Path("docs/7-concepts/dsa-framework.md"),
+    Path("docs/8-admin/audit-log-spec.md"),
+    Path("docs/8-admin/evaluation-harness.md"),
 ]
 
-PROVENANCE_ESCALATION_ADVISORY_FILE = Path("ledger/escalation-record-schema.json")
+PROVENANCE_ESCALATION_ADVISORY_FILE = Path("standards/escalation-record-schema-v1.json")
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
@@ -275,7 +275,7 @@ def check_auth_infrastructure(errors: list[str]) -> None:
     perms_path = REPO_ROOT / "src" / "lumina" / "core" / "permissions.py"
     rbac_schema = REPO_ROOT / "standards" / "rbac-permission-schema-v1.json"
     role_schema = REPO_ROOT / "standards" / "role-definition-schema-v1.json"
-    rbac_spec = REPO_ROOT / "specs" / "rbac-spec-v1.md"
+    rbac_spec = REPO_ROOT / "docs" / "5-standards" / "rbac-spec.md"
 
     for p, label in [
         (auth_path, "auth.py"),

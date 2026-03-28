@@ -1,3 +1,8 @@
+---
+version: "1.0.0"
+last_updated: "2026-03-08"
+---
+
 # Domain State Lib Contract — V1
 
 **Version:** 1.0.0  

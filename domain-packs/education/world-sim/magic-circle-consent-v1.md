@@ -113,7 +113,7 @@ A session closes with:
 A session is forcibly closed when:
 - The participant invokes the exit clause ("exit session" or equivalent)
 - An escalation is not acknowledged within SLA
-- A principle violation is detected (see [`../../../specs/principles-v1.md`](../../../specs/principles-v1.md))
+- A principle violation is detected (see [`../../../docs/7-concepts/principles.md`](../../../docs/7-concepts/principles.md))
 - A technical failure prevents System Log writes
 
 A forced close is recorded as a session-close `CommitmentRecord` with `close_type: forced` and the reason noted.

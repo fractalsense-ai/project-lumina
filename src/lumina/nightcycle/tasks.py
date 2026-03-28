@@ -869,7 +869,7 @@ def housekeeper_full_reindex(
 ) -> TaskResult:
     """Re-embed all docs into per-domain MiniLM vector stores.
 
-    Walks every domain pack and the global ``docs/``/``specs/`` trees,
+    Walks every domain pack and the global ``docs/`` trees,
     rebuilding each domain's ``.npz`` store separately.  Falls back to
     the legacy single-store ``full_reindex`` when per-domain discovery
     finds nothing (preserving backward compat).

@@ -47,13 +47,13 @@ _explicit_registry = os.environ.get("LUMINA_DOMAIN_REGISTRY_PATH")
 DOMAIN_REGISTRY_PATH: str | None = (
     _explicit_registry
     if _explicit_registry
-    else (None if RUNTIME_CONFIG_PATH else "cfg/domain-registry.yaml")
+    else (None if RUNTIME_CONFIG_PATH else "domain-packs/system/cfg/domain-registry.yaml")
 )
 PERSISTENCE_BACKEND = os.environ.get("LUMINA_PERSISTENCE_BACKEND", "filesystem").strip().lower()
 DB_URL = os.environ.get("LUMINA_DB_URL")
 ENFORCE_POLICY_COMMITMENT = os.environ.get("LUMINA_ENFORCE_POLICY_COMMITMENT", "true").strip().lower() not in {"0", "false", "no"}
 
-_SYSTEM_PHYSICS_PATH = Path(os.environ.get("LUMINA_SYSTEM_PHYSICS_PATH", str(_REPO_ROOT / "cfg" / "system-physics.json")))
+_SYSTEM_PHYSICS_PATH = Path(os.environ.get("LUMINA_SYSTEM_PHYSICS_PATH", str(_REPO_ROOT / "domain-packs" / "system" / "cfg" / "system-physics.json")))
 try:
     with open(_SYSTEM_PHYSICS_PATH, encoding="utf-8") as _fh:
         _system_physics_data = json.load(_fh)
@@ -108,11 +108,11 @@ PERSISTENCE: PersistenceAdapter = _build_persistence_adapter()
 # Per-user profile helpers
 # ─────────────────────────────────────────────────────────────
 
-_PROFILES_DIR = _REPO_ROOT / "cfg" / "profiles"
+_PROFILES_DIR = _REPO_ROOT / "data" / "profiles"
 
 
 def _resolve_user_profile_path(user_id: str, domain_key: str) -> Path:
-    """Return ``cfg/profiles/{user_id}/{domain_key}.yaml`` under the repo root."""
+    """Return ``data/profiles/{user_id}/{domain_key}.yaml`` under the repo root."""
     safe_uid = user_id.replace("/", "_").replace("\\", "_")
     safe_domain = domain_key.replace("/", "_").replace("\\", "_")
     return _PROFILES_DIR / safe_uid / f"{safe_domain}.yaml"

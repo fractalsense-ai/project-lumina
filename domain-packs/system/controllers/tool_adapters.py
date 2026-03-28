@@ -27,7 +27,7 @@ _REPO_ROOT: Path = Path(__file__).resolve().parents[3]
 _DEFAULT_LOG_DIR = Path(tempfile.gettempdir()) / "lumina-log"
 _LOG_DIR: Path = Path(os.environ.get("LUMINA_LOG_DIR", os.environ.get("LUMINA_CTL_DIR", str(_DEFAULT_LOG_DIR))))
 
-_DOMAIN_REGISTRY_PATH: Path = _REPO_ROOT / "cfg" / "domain-registry.yaml"
+_DOMAIN_REGISTRY_PATH: Path = _REPO_ROOT / "domain-packs" / "system" / "cfg" / "domain-registry.yaml"
 
 
 def _load_yaml(path: Path) -> Any:

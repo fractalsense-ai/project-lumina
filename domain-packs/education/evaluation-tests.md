@@ -28,4 +28,4 @@ This document contains education-domain-specific domain-lib evaluation cases tha
 
 - [`domain-lib/zpd-monitor-spec-v1.md`](domain-lib/zpd-monitor-spec-v1.md)
 - [`reference-implementations/zpd-monitor-v0.2.py`](reference-implementations/zpd-monitor-v0.2.py)
-- [`../../specs/evaluation-harness-v1.md`](../../specs/evaluation-harness-v1.md)
+- [`../../docs/8-admin/evaluation-harness.md`](../../docs/8-admin/evaluation-harness.md)

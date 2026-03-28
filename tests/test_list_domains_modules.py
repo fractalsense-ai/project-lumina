@@ -48,7 +48,7 @@ def api_module(monkeypatch: pytest.MonkeyPatch):
     from lumina.api import config as _cfg
     registry = DomainRegistry(
         repo_root=_REPO_ROOT,
-        registry_path=str(_REPO_ROOT / "cfg" / "domain-registry.yaml"),
+        registry_path=str(_REPO_ROOT / "domain-packs" / "system" / "cfg" / "domain-registry.yaml"),
     )
     monkeypatch.setattr(_cfg, "DOMAIN_REGISTRY", registry)
 

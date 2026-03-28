@@ -340,7 +340,7 @@ def test_check_auth_infrastructure_rbac_invalid_json(tmp_path: Path) -> None:
     for path_str, content in [
         ("src/lumina/auth/auth.py", "# auth"),
         ("src/lumina/core/permissions.py", "# perms"),
-        ("specs/rbac-spec-v1.md", "# rbac"),
+        ("docs/5-standards/rbac-spec.md", "# rbac"),
         ("standards/role-definition-schema-v1.json", json.dumps({"properties": {}})),
     ]:
         p = tmp_path / path_str
@@ -364,7 +364,7 @@ def test_check_auth_infrastructure_rbac_missing_properties(tmp_path: Path) -> No
     for path_str, content in [
         ("src/lumina/auth/auth.py", "# auth"),
         ("src/lumina/core/permissions.py", "# perms"),
-        ("specs/rbac-spec-v1.md", "# rbac"),
+        ("docs/5-standards/rbac-spec.md", "# rbac"),
         ("standards/role-definition-schema-v1.json", json.dumps({"properties": {}})),
     ]:
         p = tmp_path / path_str
@@ -389,7 +389,7 @@ def test_check_auth_infrastructure_all_present(tmp_path: Path) -> None:
         ("src/lumina/core/permissions.py", "# permissions module"),
         ("standards/rbac-permission-schema-v1.json", json.dumps({"properties": {"role": {}}})),
         ("standards/role-definition-schema-v1.json", json.dumps({"properties": {}})),
-        ("specs/rbac-spec-v1.md", "# RBAC spec"),
+        ("docs/5-standards/rbac-spec.md", "# RBAC spec"),
     ]
     for path_str, content in file_contents:
         p = tmp_path / path_str
