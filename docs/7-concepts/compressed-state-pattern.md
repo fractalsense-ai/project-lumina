@@ -116,7 +116,7 @@ The model never reads raw session history. It reads a summary of state that was 
 
 ### 3. SLM Context Compression (Layer 2½)
 
-The SLM layer sits between domain adapter A and the global base prompt. Its role is to receive the normalized input signal and produce a compressed interpretation of it in terms of the live domain physics.
+The SLM layer sits between domain adapter A and the global base prompt. Its role is to receive the normalized input signal — along with the actor's raw input text — and produce a compressed interpretation of it in terms of the live domain physics.
 
 Where the raw input might be `"I think x = 4"`, the SLM context adds:
 ```python

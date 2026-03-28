@@ -384,7 +384,7 @@ artifacts:
     doc_version: 1.2.0
     status: active
     last_updated: 2026-03-18
-    sha256: 54316fd3f956b3e38fc162b7ada5ab3f2eef37c6c09ed12c699d3ff4411117c5
+    sha256: 13d50970e90e4af9eae1c721e888059cf53ec4eeff32a53c391d35b2fc84fd19
 
   - path: docs/7-concepts/system-log-micro-router.md
     type: doc
@@ -488,7 +488,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-28
-    sha256: 14258166c26df8a03072ebf86d8cec7d95e6b97ccaa342c73bf52b08c2fe9d4d
+    sha256: a173c7cdf9b5bfada8230b37289dc80b25308201271ba44919f0e75ecc91b4c7
 
   - path: docs/7-concepts/holodeck-physics-sandbox.md
     type: doc

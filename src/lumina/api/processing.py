@@ -286,6 +286,7 @@ def process_message(
             incoming_signals=turn_data,
             domain_physics=domain_physics,
             glossary=glossary,
+            actor_input=input_text,
         )
         turn_data["_slm_context"] = slm_context
 

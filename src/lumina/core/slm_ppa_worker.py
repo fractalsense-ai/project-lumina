@@ -185,6 +185,7 @@ async def _enrich_physics(payload: dict[str, Any]) -> dict[str, Any]:
         incoming_signals=payload["incoming_signals"],
         domain_physics=payload["domain_physics"],
         glossary=payload.get("glossary"),
+        actor_input=payload.get("actor_input"),
     )
 
 

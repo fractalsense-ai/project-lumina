@@ -109,7 +109,7 @@ When the glossary intercept pattern detects a known term in the user's message, 
 
 Before the prompt packet reaches the LLM, the Physics Interpreter pre-digests incoming signals against domain physics. This compresses the raw context into a structured summary.
 
-**Input:** Incoming signals (NLP anchors, sensor data, tool outputs) + domain physics (invariants, standing orders) + glossary terms.  
+**Input:** Incoming signals (NLP anchors, sensor data, tool outputs) + the actor's raw input text (`actor_input`) + domain physics (invariants, standing orders) + glossary terms. When `actor_input` is present the SLM uses it as the primary signal for intent recognition and invariant matching; the structured signals provide supporting evidence.  
 **Output:** A `_slm_context` dict containing:
 - `matched_invariants` — which invariants are relevant to this turn
 - `relevant_glossary_terms` — which terms apply

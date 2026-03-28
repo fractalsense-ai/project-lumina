@@ -258,6 +258,7 @@ def slm_interpret_physics_context(
     incoming_signals: dict[str, Any],
     domain_physics: dict[str, Any],
     glossary: list[dict[str, Any]] | None = None,
+    actor_input: str | None = None,
 ) -> dict[str, Any]:
     """Use the SLM to compress incoming signals against domain physics.
 
@@ -307,8 +308,14 @@ def slm_interpret_physics_context(
         ],
     }
 
+    slm_payload: dict[str, Any] = {
+        "incoming_signals": incoming_signals,
+        "domain_physics": physics_subset,
+    }
+    if actor_input:
+        slm_payload["actor_input"] = actor_input
     user_payload = json.dumps(
-        {"incoming_signals": incoming_signals, "domain_physics": physics_subset},
+        slm_payload,
         indent=2,
         ensure_ascii=False,
     )
