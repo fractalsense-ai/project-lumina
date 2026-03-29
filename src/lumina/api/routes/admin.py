@@ -426,6 +426,9 @@ _FALLBACK_HITL_EXEMPT: frozenset[str] = frozenset({
     "list_domains", "list_modules", "list_ingestions", "list_escalations",
     "module_status", "night_cycle_status", "explain_reasoning",
     "list_commands", "invite_user",
+    "update_user_role", "deactivate_user",
+    "assign_domain_role", "revoke_domain_role",
+    "review_ingestion", "review_proposals",
 })
 
 _FALLBACK_ROLE_HIERARCHY: dict[str, int] = {
@@ -1284,13 +1287,22 @@ async def admin_command(
         # Read-only queries don't write a log record; satisfy the commit guard.
         from lumina.system_log.commit_guard import notify_log_commit
         notify_log_commit()
-        return {
+        response: dict[str, Any] = {
             "staged_id": None,
             "staged_command": parsed,
             "original_instruction": req.instruction,
             "result": exec_result,
             "hitl_exempt": True,
         }
+        # Return list/query results as structured_content so the UI can
+        # render them directly without LLM summarization.
+        if operation.startswith("list_") or operation in ("review_ingestion", "review_proposals"):
+            response["structured_content"] = {
+                "type": "query_result",
+                "operation": operation,
+                "data": exec_result,
+            }
+        return response
 
     try:
         entry = _stage_command(
@@ -1351,7 +1363,6 @@ async def admin_command_resolve(
     with _STAGED_COMMANDS_LOCK:
         if _STAGED_COMMANDS.get(staged_id, {}).get("resolved"):
             raise HTTPException(status_code=409, detail="Staged command has already been resolved")
-        _STAGED_COMMANDS[staged_id]["resolved"] = True
 
     actor_role = map_role_to_actor_role(user_data["role"])
     parsed = entry["parsed_command"]
@@ -1378,6 +1389,8 @@ async def admin_command_resolve(
                 "parsed_command": parsed,
             },
         )
+        with _STAGED_COMMANDS_LOCK:
+            _STAGED_COMMANDS[staged_id]["resolved"] = True
         _cfg.PERSISTENCE.append_log_record(
             "admin", record,
             ledger_path=_cfg.PERSISTENCE.get_log_ledger_path("admin"),
@@ -1421,6 +1434,10 @@ async def admin_command_resolve(
             "log_stage_record_id": entry["log_stage_record_id"],
             "parsed_command": parsed,
         }
+
+    # All validation passed — mark resolved before executing side-effects
+    with _STAGED_COMMANDS_LOCK:
+        _STAGED_COMMANDS[staged_id]["resolved"] = True
 
     # Advance state transaction → COMMITTED before executing side-effects
     txn = entry.get("transaction")

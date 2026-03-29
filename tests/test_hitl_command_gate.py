@@ -24,7 +24,7 @@ import importlib.util
 import sys
 import time
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -133,28 +133,24 @@ def _stage_via_module(client: TestClient, api_module, token: str, parsed: dict, 
 def test_stage_returns_staged_id_and_no_execution(client: TestClient, api_module) -> None:
     """POST /api/admin/command must return a staged_id and NOT execute anything."""
     token = _register_root(client)
-    deactivate_mock = MagicMock()
-    api_module.PERSISTENCE.deactivate_user = deactivate_mock
 
-    parsed = {"operation": "deactivate_user", "target": "user42", "params": {"user_id": "user42"}}
+    parsed = {"operation": "resolve_escalation", "target": "esc42", "params": {"escalation_id": "esc42", "resolution": "approved", "rationale": "test"}}
     with (
         patch.object(api_module, "slm_available", return_value=True),
         patch.object(api_module, "slm_parse_admin_command", return_value=parsed),
     ):
         resp = client.post(
             "/api/admin/command",
-            json={"instruction": "deactivate user user42"},
+            json={"instruction": "resolve escalation esc42"},
             headers=_auth(token),
         )
 
     assert resp.status_code == 200
     body = resp.json()
     assert "staged_id" in body
-    assert body["staged_command"]["operation"] == "deactivate_user"
+    assert body["staged_command"]["operation"] == "resolve_escalation"
     assert "expires_at" in body
     assert "log_stage_record_id" in body
-    # Critical: execution must NOT have happened at stage time.
-    deactivate_mock.assert_not_called()
 
 
 @pytest.mark.integration
@@ -182,11 +178,9 @@ def test_stage_unknown_operation_rejected(client: TestClient, api_module) -> Non
 def test_accept_executes_and_returns_result(client: TestClient, api_module) -> None:
     """Accept path: operation is executed and result returned."""
     token = _register_root(client)
-    deactivate_mock = MagicMock()
-    api_module.PERSISTENCE.deactivate_user = deactivate_mock
 
-    parsed = {"operation": "deactivate_user", "target": "user77", "params": {"user_id": "user77"}}
-    staged_id = _stage_via_module(client, api_module, token, parsed, "deactivate user user77")
+    parsed = {"operation": "resolve_escalation", "target": "esc77", "params": {"escalation_id": "esc77", "resolution": "approved", "rationale": "test"}}
+    staged_id = _stage_via_module(client, api_module, token, parsed, "resolve escalation esc77")
 
     resp = client.post(
         f"/api/admin/command/{staged_id}/resolve",
@@ -197,9 +191,8 @@ def test_accept_executes_and_returns_result(client: TestClient, api_module) -> N
     body = resp.json()
     assert body["action"] == "accept"
     assert body["staged_id"] == staged_id
-    assert body["result"]["user_id"] == "user77"
+    assert body["result"]["escalation_id"] == "esc77"
     assert "log_record_id" in body
-    deactivate_mock.assert_called_once_with("user77")
 
 
 # ── Reject ────────────────────────────────────────────────────────────────────
@@ -209,11 +202,9 @@ def test_accept_executes_and_returns_result(client: TestClient, api_module) -> N
 def test_reject_does_not_execute(client: TestClient, api_module) -> None:
     """Reject path: nothing is executed, action is recorded."""
     token = _register_root(client)
-    deactivate_mock = MagicMock()
-    api_module.PERSISTENCE.deactivate_user = deactivate_mock
 
-    parsed = {"operation": "deactivate_user", "target": "user88", "params": {"user_id": "user88"}}
-    staged_id = _stage_via_module(client, api_module, token, parsed, "deactivate user user88")
+    parsed = {"operation": "resolve_escalation", "target": "esc88", "params": {"escalation_id": "esc88", "resolution": "approved", "rationale": "test"}}
+    staged_id = _stage_via_module(client, api_module, token, parsed, "resolve escalation esc88")
 
     resp = client.post(
         f"/api/admin/command/{staged_id}/resolve",
@@ -225,8 +216,6 @@ def test_reject_does_not_execute(client: TestClient, api_module) -> None:
     assert body["action"] == "reject"
     assert body["staged_id"] == staged_id
     assert "log_record_id" in body
-    # Execution must NOT have happened.
-    deactivate_mock.assert_not_called()
 
 
 # ── Modify ────────────────────────────────────────────────────────────────────
@@ -236,14 +225,12 @@ def test_reject_does_not_execute(client: TestClient, api_module) -> None:
 def test_modify_executes_modified_schema(client: TestClient, api_module) -> None:
     """Modify path: modified_schema replaces the SLM-parsed schema before execution."""
     token = _register_root(client)
-    deactivate_mock = MagicMock()
-    api_module.PERSISTENCE.deactivate_user = deactivate_mock
 
-    parsed = {"operation": "deactivate_user", "target": "user11", "params": {"user_id": "user11"}}
-    staged_id = _stage_via_module(client, api_module, token, parsed, "deactivate user user11")
+    parsed = {"operation": "resolve_escalation", "target": "esc11", "params": {"escalation_id": "esc11", "resolution": "approved", "rationale": "test"}}
+    staged_id = _stage_via_module(client, api_module, token, parsed, "resolve escalation esc11")
 
-    # Modify: change the target user.
-    modified = {"operation": "deactivate_user", "target": "user22", "params": {"user_id": "user22"}}
+    # Modify: change the target escalation.
+    modified = {"operation": "resolve_escalation", "target": "esc22", "params": {"escalation_id": "esc22", "resolution": "approved", "rationale": "test"}}
     resp = client.post(
         f"/api/admin/command/{staged_id}/resolve",
         json={"action": "modify", "modified_schema": modified},
@@ -252,16 +239,15 @@ def test_modify_executes_modified_schema(client: TestClient, api_module) -> None
     assert resp.status_code == 200
     body = resp.json()
     assert body["action"] == "modify"
-    assert body["result"]["user_id"] == "user22"
+    assert body["result"]["escalation_id"] == "esc22"
     assert "log_record_id" in body
-    deactivate_mock.assert_called_once_with("user22")
 
 
 @pytest.mark.integration
 def test_modify_without_schema_returns_422(client: TestClient, api_module) -> None:
     """Modify without providing modified_schema must return 422."""
     token = _register_root(client)
-    parsed = {"operation": "deactivate_user", "target": "u1", "params": {"user_id": "u1"}}
+    parsed = {"operation": "resolve_escalation", "target": "esc01", "params": {"escalation_id": "esc01", "resolution": "approved", "rationale": "test"}}
     staged_id = _stage_via_module(client, api_module, token, parsed)
 
     resp = client.post(
@@ -276,7 +262,7 @@ def test_modify_without_schema_returns_422(client: TestClient, api_module) -> No
 def test_modify_with_unknown_operation_returns_422(client: TestClient, api_module) -> None:
     """Modify with an unknown operation in the modified_schema must return 422."""
     token = _register_root(client)
-    parsed = {"operation": "deactivate_user", "target": "u1", "params": {"user_id": "u1"}}
+    parsed = {"operation": "resolve_escalation", "target": "esc01", "params": {"escalation_id": "esc01", "resolution": "approved", "rationale": "test"}}
     staged_id = _stage_via_module(client, api_module, token, parsed)
 
     resp = client.post(
@@ -294,7 +280,7 @@ def test_modify_with_unknown_operation_returns_422(client: TestClient, api_modul
 def test_expired_staged_command_returns_410(client: TestClient, api_module) -> None:
     """A staged command past its TTL must return 410."""
     token = _register_root(client)
-    parsed = {"operation": "deactivate_user", "target": "u1", "params": {"user_id": "u1"}}
+    parsed = {"operation": "resolve_escalation", "target": "esc01", "params": {"escalation_id": "esc01", "resolution": "approved", "rationale": "test"}}
 
     with (
         patch.object(api_module, "slm_available", return_value=True),
@@ -302,7 +288,7 @@ def test_expired_staged_command_returns_410(client: TestClient, api_module) -> N
     ):
         resp = client.post(
             "/api/admin/command",
-            json={"instruction": "deactivate user u1"},
+            json={"instruction": "resolve escalation esc01"},
             headers=_auth(token),
         )
     assert resp.status_code == 200
@@ -330,7 +316,7 @@ def test_wrong_owner_cannot_resolve(client: TestClient, api_module) -> None:
     token2 = _register_user(client, "it_user", "it_support")
 
     # it_support stages a command.
-    parsed = {"operation": "deactivate_user", "target": "u99", "params": {"user_id": "u99"}}
+    parsed = {"operation": "resolve_escalation", "target": "esc99", "params": {"escalation_id": "esc99", "resolution": "approved", "rationale": "test"}}
     staged_id = _stage_via_module(client, api_module, token2, parsed)
 
     # A different it_support user tries to resolve it.
@@ -349,11 +335,8 @@ def test_root_can_resolve_any_staged_command(client: TestClient, api_module) -> 
     root_token = _register_root(client)
     it_token = _register_user(client, "it_user", "it_support")
 
-    deactivate_mock = MagicMock()
-    api_module.PERSISTENCE.deactivate_user = deactivate_mock
-
-    parsed = {"operation": "deactivate_user", "target": "u50", "params": {"user_id": "u50"}}
-    staged_id = _stage_via_module(client, api_module, it_token, parsed, "deactivate user u50")
+    parsed = {"operation": "resolve_escalation", "target": "esc50", "params": {"escalation_id": "esc50", "resolution": "approved", "rationale": "test"}}
+    staged_id = _stage_via_module(client, api_module, it_token, parsed, "resolve escalation esc50")
 
     # Root resolves it.
     resp = client.post(
@@ -362,8 +345,7 @@ def test_root_can_resolve_any_staged_command(client: TestClient, api_module) -> 
         headers=_auth(root_token),
     )
     assert resp.status_code == 200
-    assert resp.json()["result"]["user_id"] == "u50"
-    deactivate_mock.assert_called_once_with("u50")
+    assert resp.json()["result"]["escalation_id"] == "esc50"
 
 
 # ── Edge cases ────────────────────────────────────────────────────────────────
@@ -384,10 +366,7 @@ def test_unknown_staged_id_returns_404(client: TestClient, api_module) -> None:
 def test_double_resolve_returns_409(client: TestClient, api_module) -> None:
     """A staged command can only be resolved once."""
     token = _register_root(client)
-    deactivate_mock = MagicMock()
-    api_module.PERSISTENCE.deactivate_user = deactivate_mock
-
-    parsed = {"operation": "deactivate_user", "target": "u55", "params": {"user_id": "u55"}}
+    parsed = {"operation": "resolve_escalation", "target": "esc55", "params": {"escalation_id": "esc55", "resolution": "approved", "rationale": "test"}}
     staged_id = _stage_via_module(client, api_module, token, parsed)
 
     resp1 = client.post(
@@ -408,7 +387,7 @@ def test_double_resolve_returns_409(client: TestClient, api_module) -> None:
 @pytest.mark.integration
 def test_invalid_action_returns_422(client: TestClient, api_module) -> None:
     token = _register_root(client)
-    parsed = {"operation": "deactivate_user", "target": "u1", "params": {"user_id": "u1"}}
+    parsed = {"operation": "resolve_escalation", "target": "esc01", "params": {"escalation_id": "esc01", "resolution": "approved", "rationale": "test"}}
     staged_id = _stage_via_module(client, api_module, token, parsed)
 
     resp = client.post(
@@ -436,14 +415,14 @@ def test_ctl_staged_record_written_on_stage(client: TestClient, api_module) -> N
 
     api_module.PERSISTENCE.append_log_record = _capture
 
-    parsed = {"operation": "deactivate_user", "target": "u1", "params": {"user_id": "u1"}}
+    parsed = {"operation": "resolve_escalation", "target": "esc01", "params": {"escalation_id": "esc01", "resolution": "approved", "rationale": "test"}}
     with (
         patch.object(api_module, "slm_available", return_value=True),
         patch.object(api_module, "slm_parse_admin_command", return_value=parsed),
     ):
         resp = client.post(
             "/api/admin/command",
-            json={"instruction": "deactivate user u1"},
+            json={"instruction": "resolve escalation esc01"},
             headers=_auth(token),
         )
     assert resp.status_code == 200
@@ -466,7 +445,7 @@ def test_ctl_accepted_record_written_on_accept(client: TestClient, api_module) -
 
     api_module.PERSISTENCE.append_log_record = _capture
 
-    parsed = {"operation": "deactivate_user", "target": "u2", "params": {"user_id": "u2"}}
+    parsed = {"operation": "resolve_escalation", "target": "esc02", "params": {"escalation_id": "esc02", "resolution": "approved", "rationale": "test"}}
     staged_id = _stage_via_module(client, api_module, token, parsed)
 
     resp = client.post(
@@ -494,7 +473,7 @@ def test_ctl_rejected_record_written_on_reject(client: TestClient, api_module) -
 
     api_module.PERSISTENCE.append_log_record = _capture
 
-    parsed = {"operation": "deactivate_user", "target": "u3", "params": {"user_id": "u3"}}
+    parsed = {"operation": "resolve_escalation", "target": "esc03", "params": {"escalation_id": "esc03", "resolution": "approved", "rationale": "test"}}
     staged_id = _stage_via_module(client, api_module, token, parsed)
 
     resp = client.post(

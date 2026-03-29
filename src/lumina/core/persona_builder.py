@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from enum import Enum
 from pathlib import Path
 
@@ -117,6 +118,23 @@ _COMMAND_TRANSLATOR_FALLBACK: str = (
 )
 
 
+_RE_HEADING = re.compile(r"^#{1,6}\s+", re.MULTILINE)
+_RE_BOLD = re.compile(r"\*\*(.+?)\*\*")
+_RE_ITALIC = re.compile(r"\*(.+?)\*")
+_RE_INLINE_CODE = re.compile(r"`([^`]+)`")
+_RE_FENCED_BLOCK = re.compile(r"```[^\n]*\n(.*?)```", re.DOTALL)
+
+
+def _strip_markdown(text: str) -> str:
+    """Remove markdown formatting from *text*, preserving content and structure."""
+    text = _RE_FENCED_BLOCK.sub(r"\1", text)
+    text = _RE_HEADING.sub("", text)
+    text = _RE_BOLD.sub(r"\1", text)
+    text = _RE_ITALIC.sub(r"\1", text)
+    text = _RE_INLINE_CODE.sub(r"\1", text)
+    return text
+
+
 def _load_prompt_file(rel_path: str, fallback: str) -> str:
     """Read a prompt file relative to the repo root; cache the result."""
     if rel_path in _prompt_cache:
@@ -128,6 +146,7 @@ def _load_prompt_file(rel_path: str, fallback: str) -> str:
         try:
             content = prompt_path.read_text(encoding="utf-8").strip()
             if content:
+                content = _strip_markdown(content)
                 _prompt_cache[rel_path] = content
                 log.info("Loaded prompt from %s", prompt_path)
                 return content

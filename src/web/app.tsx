@@ -507,6 +507,7 @@ function ChatInterface({
 
   // Attempt to resume a locally-stored session on mount
   useEffect(() => {
+    if (!sessionId || !auth.token) return
     const store = transcriptStoreRef.current
     ;(async () => {
       try {
@@ -544,7 +545,7 @@ function ChatInterface({
         // Network error or store error — start fresh
       }
     })()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sessionId, auth.token]) // re-run when session/auth changes
 
   // Best-effort save on tab close / navigation
   useEffect(() => {
@@ -628,6 +629,8 @@ function ChatInterface({
           },
           updatedAt: Date.now(),
         }).catch(() => {})
+      } else {
+        console.warn('[lumina] transcript_seal missing from API response — transcript not persisted this turn')
       }
     } catch (error) {
       const errorMessage: Message = {

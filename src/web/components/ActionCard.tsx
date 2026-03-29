@@ -60,22 +60,53 @@ export function ActionCard({ card, token, onResolved }: ActionCardProps) {
   const [resolved, setResolved] = useState(false)
   const [resolveResult, setResolveResult] = useState<Record<string, unknown> | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [modifyMode, setModifyMode] = useState(false)
+  const [modifiedSchema, setModifiedSchema] = useState(() => {
+    const ctx = card.context ?? {}
+    return JSON.stringify(
+      {
+        operation: ctx.operation ?? '',
+        target: ctx.target ?? '',
+        params: ctx.params ?? {},
+      },
+      null,
+      2,
+    )
+  })
 
   const handleAction = async (action: ActionCardAction) => {
+    if (action.id === 'modify' && card.card_type === 'command_proposal' && !modifyMode) {
+      setModifyMode(true)
+      return
+    }
     setResolving(action.id)
     setError(null)
     try {
+      let body: Record<string, unknown>
+      if (card.card_type === 'command_proposal') {
+        if (action.id === 'modify') {
+          let parsed: Record<string, unknown>
+          try {
+            parsed = JSON.parse(modifiedSchema)
+          } catch {
+            setError('Invalid JSON in modified schema.')
+            setResolving(null)
+            return
+          }
+          body = { action: action.id, modified_schema: parsed }
+        } else {
+          body = { action: action.id }
+        }
+      } else {
+        body = { decision: action.id, reasoning: 'Resolved via chat action card' }
+      }
       const res = await fetch(`${getApiBase()}${card.resolve_endpoint}`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(
-          card.card_type === 'command_proposal'
-            ? { action: action.id }
-            : { decision: action.id, reasoning: 'Resolved via chat action card' },
-        ),
+        body: JSON.stringify(body),
       })
       if (res.ok) {
         const data = await res.json().catch(() => ({}))
@@ -156,6 +187,39 @@ export function ActionCard({ card, token, onResolved }: ActionCardProps) {
         )}
 
         {error && <p className="text-xs text-destructive">{error}</p>}
+
+        {modifyMode && (
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-medium text-muted-foreground">
+              Edit command schema (JSON):
+            </label>
+            <textarea
+              className="w-full rounded border bg-background p-2 font-mono text-xs leading-relaxed"
+              rows={8}
+              value={modifiedSchema}
+              onChange={(e) => setModifiedSchema(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => handleAction({ id: 'modify', label: 'Submit', style: 'primary' })}
+                disabled={resolving !== null}
+                className="gap-1"
+              >
+                <PencilSimple size={16} weight="bold" />
+                Submit Modification
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => { setModifyMode(false); setError(null) }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-2 flex-wrap">
           {card.actions.map((action) => (

@@ -148,25 +148,15 @@ def test_deactivate_user_dispatches(client: TestClient, api_module) -> None:
         patch.object(api_module, "slm_available", return_value=True),
         patch.object(api_module, "slm_parse_admin_command", return_value=parsed),
     ):
-        # Stage the command.
-        stage_resp = client.post(
+        # deactivate_user is now HITL-exempt — executes immediately.
+        resp = client.post(
             "/api/admin/command",
             json={"instruction": "deactivate user user99"},
             headers=_auth_header(token),
         )
-    assert stage_resp.status_code == 200
-    staged_id = stage_resp.json()["staged_id"]
-    assert stage_resp.json()["staged_command"]["operation"] == "deactivate_user"
-
-    # Human accepts the staged command.
-    resolve_resp = client.post(
-        f"/api/admin/command/{staged_id}/resolve",
-        json={"action": "accept"},
-        headers=_auth_header(token),
-    )
-    assert resolve_resp.status_code == 200
-    body = resolve_resp.json()
-    assert body["action"] == "accept"
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["hitl_exempt"] is True
     assert body["result"]["user_id"] == "user99"
     deactivate_mock.assert_called_once_with("user99")
 
@@ -227,7 +217,7 @@ def test_resolve_escalation_dispatches(client: TestClient, api_module) -> None:
 
 @pytest.mark.integration
 def test_update_user_role_requires_root(client: TestClient, api_module) -> None:
-    """Only root can call update_user_role — domain_authority stages OK but gets 403 on resolve."""
+    """Only root can call update_user_role — domain_authority gets 403 immediately (HITL-exempt)."""
     _register_root(client)
     da_token = _register_user(client, "da_user", "domain_authority")
 
@@ -240,21 +230,14 @@ def test_update_user_role_requires_root(client: TestClient, api_module) -> None:
         patch.object(api_module, "slm_available", return_value=True),
         patch.object(api_module, "slm_parse_admin_command", return_value=parsed),
     ):
-        stage_resp = client.post(
+        # update_user_role is now HITL-exempt but still requires root.
+        # domain_authority should get 403 at execution time.
+        resp = client.post(
             "/api/admin/command",
             json={"instruction": "change someone's role to auditor"},
             headers=_auth_header(da_token),
         )
-    assert stage_resp.status_code == 200
-    staged_id = stage_resp.json()["staged_id"]
-
-    # domain_authority cannot execute update_user_role — RBAC fires at resolve time.
-    resolve_resp = client.post(
-        f"/api/admin/command/{staged_id}/resolve",
-        json={"action": "accept"},
-        headers=_auth_header(da_token),
-    )
-    assert resolve_resp.status_code == 403
+    assert resp.status_code == 403
 
 
 # ── Dispatch-type classification unit tests ───────────────────────────────────
