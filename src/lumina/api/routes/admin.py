@@ -656,6 +656,30 @@ def _normalize_slm_command(parsed_command: dict[str, Any]) -> dict[str, Any]:
                 # will catch it downstream
                 pass
 
+        # ── Expand wildcard patterns: "domain/edu/*" → actual module IDs ──
+        gm_list = params.get("governed_modules")
+        if isinstance(gm_list, list) and _cfg.DOMAIN_REGISTRY is not None:
+            expanded: list[str] = []
+            changed = False
+            for mod_id in gm_list:
+                if isinstance(mod_id, str) and ("*" in mod_id or mod_id.endswith("/")):
+                    _parts = mod_id.replace("*", "").rstrip("/").split("/")
+                    _hint = _parts[-1] if _parts else ""
+                    if not _hint:
+                        _hint = _parts[-2] if len(_parts) > 1 else ""
+                    try:
+                        _resolved = _cfg.DOMAIN_REGISTRY.resolve_domain_id(_hint)
+                        _mods = _cfg.DOMAIN_REGISTRY.list_modules_for_domain(_resolved)
+                        if _mods:
+                            expanded.extend(m["module_id"] for m in _mods)
+                            changed = True
+                            continue
+                    except Exception:
+                        pass
+                expanded.append(mod_id)
+            if changed:
+                params["governed_modules"] = expanded
+
     elif operation in ("assign_domain_role", "revoke_domain_role"):
         # Similar user_id fallback for role assignment operations
         if not params.get("user_id") and target:
@@ -1075,6 +1099,21 @@ async def _execute_admin_operation(
         governed_modules: list[str] = list(governed_modules_raw) if governed_modules_raw else []
         email = str(params.get("email", "")) or None
 
+        # Validate governed_modules against real module IDs (only when
+        # the registry is populated — skip in minimal/test environments).
+        if governed_modules and _cfg.DOMAIN_REGISTRY is not None:
+            _known_modules: set[str] = set()
+            for _dom in (_cfg.DOMAIN_REGISTRY.list_domains() or []):
+                for _m in (_cfg.DOMAIN_REGISTRY.list_modules_for_domain(_dom.get("domain_id", "")) or []):
+                    _known_modules.add(_m["module_id"])
+            if _known_modules:  # only enforce when registry is populated
+                _invalid = [m for m in governed_modules if m not in _known_modules]
+                if _invalid:
+                    raise HTTPException(
+                        status_code=422,
+                        detail=f"Unknown governed_modules: {_invalid}. Use list_modules to see valid IDs.",
+                    )
+
         if not username:
             raise HTTPException(status_code=422, detail="username required")
         if role not in VALID_ROLES:
@@ -1419,7 +1458,7 @@ async def admin_command_resolve(
                 detail=f"Modified command schema validation failed: {'; '.join(mod_violations)}",
             )
         delta = _compute_schema_delta(parsed, req.modified_schema)
-        parsed = req.modified_schema
+        parsed = _normalize_slm_command(req.modified_schema)
         commitment_type: str = "hitl_command_modified"
         metadata: dict[str, Any] = {
             "staged_id": staged_id,

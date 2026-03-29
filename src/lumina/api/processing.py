@@ -560,7 +560,12 @@ def process_message(
     if turn_data.get("_system_telemetry"):
         llm_payload["system_telemetry"] = turn_data["_system_telemetry"]
 
-    if deterministic_response:
+    # When a query_result structured_content is present, the UI renders the
+    # data directly — skip LLM summarisation to avoid redundant narration.
+    if structured_content and isinstance(structured_content, dict) and structured_content.get("type") == "query_result":
+        _op_name = structured_content.get("operation", "command")
+        llm_response = f"Executed {_op_name} successfully."
+    elif deterministic_response:
         llm_response = render_contract_response(
             prompt_contract, runtime,
             mud_world_state=mud_world_state,
@@ -632,7 +637,7 @@ def process_message(
                     _user_id, {"transcript": _transcript, "metadata": _seal_meta}
                 )
         except Exception:
-            log.debug("Could not compute transcript seal for %s", session_id)
+            log.warning("Could not compute transcript seal for %s", session_id, exc_info=True)
 
     # ── Reset problem_presented_at after response is ready ───
     # Timestamp is anchored to when the outgoing response is fully built so

@@ -423,6 +423,12 @@ def _get_admin_operations() -> list[dict[str, Any]]:
         try:
             _admin_ops_cache = _load_admin_operations_from_yaml(yaml_path)
             log.info("Loaded %d admin operations from %s", len(_admin_ops_cache), yaml_path)
+            if len(_admin_ops_cache) < 10:
+                log.warning(
+                    "Only %d admin operations loaded (expected 22+) — "
+                    "YAML may be incomplete: %s",
+                    len(_admin_ops_cache), yaml_path,
+                )
             return _admin_ops_cache
         except Exception as exc:
             log.warning("Failed to load admin-operations.yaml (%s); using fallback", exc)
