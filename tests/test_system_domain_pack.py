@@ -19,17 +19,17 @@ class TestSystemDomainLibExists:
     def test_system_health_in_domain_lib(self):
         assert (SYSTEM_PACK / "domain-lib" / "system_health.py").is_file()
 
-    def test_hw_probes_directory(self):
-        assert (SYSTEM_PACK / "domain-lib" / "hw_probes").is_dir()
+    def test_sensors_directory(self):
+        assert (SYSTEM_PACK / "domain-lib" / "sensors").is_dir()
 
-    def test_hw_probes_files(self):
-        hw_dir = SYSTEM_PACK / "domain-lib" / "hw_probes"
+    def test_sensors_files(self):
+        sensors_dir = SYSTEM_PACK / "domain-lib" / "sensors"
         expected = [
             "hw_disk.py", "hw_gpu.py", "hw_http_queue.py",
             "hw_loop_latency.py", "hw_memory.py", "hw_temp.py",
         ]
         for name in expected:
-            assert (hw_dir / name).is_file(), f"Missing: {name}"
+            assert (sensors_dir / name).is_file(), f"Missing: {name}"
 
     def test_environmental_sensors_not_in_system(self):
         """Sanity: environmental_sensors belongs to agriculture, not system."""

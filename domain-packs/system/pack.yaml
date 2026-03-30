@@ -27,14 +27,16 @@ layers:
     - controllers/logic_scraper.py
   domain_lib:
     - domain-lib/system_health.py
-    - domain-lib/hw_probes/hw_disk.py
-    - domain-lib/hw_probes/hw_memory.py
-    - domain-lib/hw_probes/hw_temp.py
-    - domain-lib/hw_probes/hw_gpu.py
-    - domain-lib/hw_probes/hw_loop_latency.py
-    - domain-lib/hw_probes/hw_http_queue.py
+    - domain-lib/sensors/hw_disk.py
+    - domain-lib/sensors/hw_memory.py
+    - domain-lib/sensors/hw_temp.py
+    - domain-lib/sensors/hw_gpu.py
+    - domain-lib/sensors/hw_loop_latency.py
+    - domain-lib/sensors/hw_http_queue.py
+    - domain-lib/reference/turn-interpretation-spec-v1.md
+    - domain-lib/reference/command-interpreter-spec-v1.md
   view:
-    - prompts/
+    - prompts/domain-persona-v1.md
   docs:
     - docs/
 

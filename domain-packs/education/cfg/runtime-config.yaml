@@ -1,7 +1,7 @@
 runtime:
   global_system_prompt_path: docs/5-standards/global-system-prompt.md
-  domain_system_prompt_path: domain-packs/education/prompts/domain-system-override.md
-  turn_interpretation_prompt_path: domain-packs/education/prompts/turn-interpretation.md
+  domain_system_prompt_path: domain-packs/education/prompts/domain-persona-v1.md
+  turn_interpretation_prompt_path: domain-packs/education/domain-lib/reference/turn-interpretation-spec-v1.md
 
   domain_physics_path: domain-packs/education/modules/algebra-level-1/domain-physics.json
   subject_profile_path: domain-packs/education/modules/algebra-level-1/student-profile-template.yaml

@@ -1,13 +1,13 @@
 ---
-version: 1.1.0
-last_updated: 2026-03-27
+version: 1.2.0
+last_updated: 2026-03-30
 ---
 
 # Domain Pack Anatomy
 
-**Version:** 1.1.0  
+**Version:** 1.2.0  
 **Status:** Active  
-**Last updated:** 2026-03-27  
+**Last updated:** 2026-03-30  
 
 ---
 
@@ -55,7 +55,7 @@ pack, but all seven are present in a fully-realised production pack.
 | **Tool adapters** | `modules/<module>/tool-adapters/*.yaml` + `controllers/tool_adapters.py` | Orchestrator policy system (YAML-declared) or runtime adapter directly (Python) | Recommended | Active, deterministic verifiers — compute domain-specific field values on demand |
 | **Runtime adapter** | `controllers/runtime_adapters.py` | Core engine on every turn | Yes | Phase A (NLP pre-processing before LLM) + Phase B (signal synthesis after tools); emits engine contract fields |
 | **NLP pre-interpreter** | `controllers/nlp_pre_interpreter.py` | Core engine before LLM prompt assembly | Yes (all text-input domains) | Deterministic extraction of domain-meaningful signals from raw input; produces `_nlp_anchors` |
-| **Domain library** | `domain-lib/*.md` specs + `controllers/*.py` implementations | Runtime adapter only — never the engine directly | Where applicable | Passive state estimators tracking entity state across turns (ZPD monitor, fluency tracker, fatigue model) |
+| **Domain library** | `domain-lib/reference/*.md` specs + `controllers/*.py` implementations | Runtime adapter only — never the engine directly | Where applicable | Passive reference specs (interpretation schemas, estimator definitions) and state estimators tracking entity state across turns (ZPD monitor, fluency tracker, fatigue model) |
 | **Group Libraries / Group Tools** | `domain-lib/*.py` (libraries) + `controllers/group_tool_adapters.py` (tools) | Runtime adapter (libraries) or policy system (tools) — declared in physics files | Where applicable | Shared pure-function libraries and shared active verifiers used by multiple modules within the domain |
 | **World-sim (optional)** | `world-sim/*.md` + `world-sim/templates.yaml` | Runtime adapter, once at session start | No | Narrative framing layer — cosmetic only; domain physics and invariants are unchanged inside any world-sim theme |
 
@@ -256,7 +256,7 @@ The three currently active domain packs illustrate this:
 | **Pre-interpreter extractors** | answer_match, frustration_markers, hint_request, off_task_ratio | admin_verb (mutation/read), target_user, target_role, compound_command, glossary_match | soil sensor thresholds, pest signal keywords, moisture anomaly detection |
 | **Physics invariant type** | Pedagogical (max_consecutive_incorrect, zpd_drift_limit, session_fatigue) | Operational security (privilege escalation gates, unauthorised access paths) | Environmental (moisture_low, pest_pressure_critical, yield_at_risk) |
 | **Tool adapters** | algebra-parser, substitution-checker, calculator | system ctl tools | operations tool adapters |
-| **Domain library components** | ZPD monitor, fluency tracker, fatigue estimator | — | — |
+| **Domain library components** | ZPD monitor, fluency tracker, fatigue estimator | Turn interpretation spec, command interpreter spec, sensor probes | Turn interpretation spec, sensor normalisation |
 | **World-sim enabled** | Yes (space, nature, sports, general_math themes) | No | No |
 | **Access roles** | user, domain_authority, it_support, qa, root | it_support, root | domain-specific |
 | **LLM vs SLM routing** | LLM (external permitted) | SLM-only (`local_only: true`) | LLM (external permitted) |
@@ -317,14 +317,18 @@ domain-packs/{domain}/
 │   ├── 6-examples/                   #   Optional — worked domain examples
 │   └── 8-admin/                      #   Optional — domain admin operations
 │
-├── domain-lib/                       # PACK-LEVEL — passive state estimator specs + shared libraries
-│   ├── {estimator}-spec-v1.md        #   Normative specification
+├── domain-lib/                       # PACK-LEVEL — passive reference specs + shared libraries
+│   ├── README.md                     #   Directory contents and component descriptions
+│   ├── reference/                    #   Interpretation schemas and domain knowledge specs (TMs)
+│   │   ├── turn-interpretation-spec-v1.md    # Turn-level field extraction schema
+│   │   └── {domain-specific}-spec-v1.md      # Additional spec files per domain
+│   ├── sensors/                      #   Sensor and telemetry modules (where applicable)
+│   │   └── {sensor_module}.py
 │   ├── {group_library}.py            #   Group Library — shared pure-function module (see §B)
 │   └── (estimator implementations live in controllers/)
 │
-├── prompts/                          # PACK-LEVEL — domain-scoped prompt text overrides
-│   ├── domain-system-override.md
-│   └── turn-interpretation.md
+├── prompts/                          # PACK-LEVEL — persona directives ONLY
+│   └── domain-persona-v1.md          #   Domain voice and identity ("how to talk")
 │
 └── world-sim/                        # PACK-LEVEL — optional narrative framing (omit if unused)
     ├── world-sim-spec-v1.md
@@ -332,6 +336,19 @@ domain-packs/{domain}/
     ├── artifact-and-mastery-spec-v1.md
     └── world-sim-templates.yaml
 ```
+
+### Prompts vs Domain Library — "How to Talk" vs "What to Know"
+
+The `prompts/` and `domain-lib/reference/` directories serve fundamentally different roles:
+
+| Directory | Analogy | Contains | Consumed by |
+|-----------|---------|----------|-------------|
+| `prompts/` | **Voice** — persona directives | `domain-persona-v1.md` — the CI's tone, vocabulary, and identity | Persona builder at session start |
+| `domain-lib/reference/` | **Knowledge** — Tech Manuals | Interpretation schemas, field extraction rules, command disambiguation specs | Runtime adapter and SLM on every turn; physics files reference these as group libraries |
+
+Persona directives tell the CI *how to talk*. Reference specs tell it *what to know*. This
+distinction is enforced by convention: `prompts/` contains no interpretation logic, and
+`domain-lib/reference/` contains no voice or identity directives.
 
 `cfg/runtime-config.yaml` is the pack's manifest to the engine: it registers adapters,
 declares access control, maps entity domain IDs to module physics paths, and enables

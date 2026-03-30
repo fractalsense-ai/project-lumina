@@ -183,13 +183,25 @@
     {
       "id": "system_health",
       "path": "domain-lib/system_health.py",
-      "description": "System health state estimator — aggregates hw_probes into a composite health snapshot.",
+      "description": "System health state estimator — aggregates sensor probes into a composite health snapshot.",
       "shared_with_modules": ["system-core"]
     },
     {
-      "id": "hw_probes",
-      "path": "domain-lib/hw_probes/",
-      "description": "Hardware probe library — passive state estimators for disk, memory, temperature, GPU, loop latency, and HTTP queue depth.",
+      "id": "sensors",
+      "path": "domain-lib/sensors/",
+      "description": "Hardware sensor library — passive state estimators for disk, memory, temperature, GPU, loop latency, and HTTP queue depth.",
+      "shared_with_modules": ["system-core"]
+    },
+    {
+      "id": "turn_interpretation",
+      "path": "domain-lib/reference/turn-interpretation-spec-v1.md",
+      "description": "Turn interpretation output schema — defines the JSON structure the SLM must emit when classifying operator intent.",
+      "shared_with_modules": ["system-core"]
+    },
+    {
+      "id": "command_interpreter",
+      "path": "domain-lib/reference/command-interpreter-spec-v1.md",
+      "description": "Command interpreter specification — disambiguation rules, param schemas, and role mapping for admin command translation.",
       "shared_with_modules": ["system-core"]
     }
   ],

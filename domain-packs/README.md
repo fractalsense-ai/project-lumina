@@ -35,17 +35,21 @@ domain-packs/
 │   ├── README.md                ← domain principles/rules/states/physics index
 │   ├── cfg/
 │   │   └── runtime-config.yaml  ← defaults, schema, tool policies, deterministic templates
-│   ├── domain-lib/             ← passive state estimators (specs + implementations)
+│   ├── domain-lib/             ← passive reference specs + state estimators
 │   │   ├── README.md
-│   │   ├── compressed-state-estimators.md
-│   │   ├── zpd-monitor-spec-v1.md
-│   │   └── fatigue-estimation-spec-v1.md
+│   │   └── reference/          ← interpretation schemas and domain knowledge specs (TMs)
+│   │       ├── turn-interpretation-spec-v1.md
+│   │       ├── compressed-state-estimators.md
+│   │       ├── zpd-monitor-spec-v1.md
+│   │       └── fatigue-estimation-spec-v1.md
 │   ├── controllers/            ← runtime adapter: NLP pre-processing + signal synthesis
 │   │   ├── nlp_pre_interpreter.py   ← Phase A: deterministic extractors
 │   │   ├── runtime_adapters.py      ← interpret_turn_input: Phase A + B + domain-lib calls
 │   │   ├── problem_generator.py     ← generates next task spec (sets min_steps etc.)
 │   │   ├── fluency_monitor.py       ← domain-lib: fluency state estimator
 │   │   └── zpd_monitor_v0_2.py      ← domain-lib: ZPD state estimator
+│   ├── prompts/                ← persona directives ONLY
+│   │   └── domain-persona-v1.md     ← domain voice and identity
 │   ├── world-sim/              ← optional: persona layer (theme, consent, mastery surface)
 │   │   ├── world-sim-spec-v1.md     ← persona parameters: theme, setting, in-world labels
 │   │   ├── magic-circle-consent-v1.md  ← activation gate: consent required before persona starts
@@ -62,8 +66,37 @@ domain-packs/
 │           ├─ example-student-alice.yaml
 │           ├─ prompt-contract-schema.json
 │           └─ CHANGELOG.md
+├── system/
+│   ├── cfg/
+│   │   └── runtime-config.yaml
+│   ├── domain-lib/
+│   │   ├── README.md
+│   │   ├── reference/          ← interpretation schemas and command specs
+│   │   │   ├── turn-interpretation-spec-v1.md
+│   │   │   └── command-interpreter-spec-v1.md
+│   │   └── sensors/            ← hardware sensor probe modules
+│   │       ├── __init__.py
+│   │       └── {probe}.py
+│   ├── prompts/
+│   │   └── domain-persona-v1.md
+│   └── modules/
+│       └── system-core/
+│           └── domain-physics.json
 └── agriculture/
-  └── README.md               ← domain principles/rules/states/physics index
+    ├── README.md               ← domain principles/rules/states/physics index
+    ├── cfg/
+    │   └── runtime-config.yaml
+    ├── domain-lib/
+    │   ├── README.md
+    │   ├── reference/          ← interpretation schemas
+    │   │   └── turn-interpretation-spec-v1.md
+    │   └── sensors/            ← environmental sensor modules
+    │       └── environmental_sensors.py
+    ├── prompts/
+    │   └── domain-persona-v1.md
+    └── modules/
+        └── operations-level-1/
+            └── domain-physics.json
 ```
 
 ### Three-layer distinction
@@ -161,12 +194,22 @@ Each domain pack may contain two distinct component types. Understanding the dis
 
 The `domain-lib/` folder holds **passive reference documents** — specifications, estimation models, threshold tables, and subsystem profiles that the orchestrator and LLM *read* but never *execute*.
 
-Examples:
-- A ZPD monitor specification that defines zone boundaries and drift thresholds
-- A fatigue estimation model describing decay curves and recovery windows
-- A pH sensor profile specifying operating ranges and tolerance bands
+Domain-lib is organised into subcategories:
 
-Domain-lib files have **no callable entry point**. They are consumed by the LLM as context or by the orchestrator as configuration lookup. They describe *what* the domain measures, not *how* to compute it.
+| Subcategory | Path | Contains |
+|-------------|------|----------|
+| **Reference specs** | `domain-lib/reference/` | Interpretation schemas, field extraction rules, command disambiguation specs — the "Tech Manuals" that physics files reference |
+| **Sensors** | `domain-lib/sensors/` | Sensor normalisation and telemetry modules (where applicable) |
+| **Root** | `domain-lib/` | Group Library Python modules, README |
+
+Examples of reference specs:
+- A turn interpretation spec defining the JSON output schema for field extraction
+- A command interpreter spec defining disambiguation rules and parameter schemas
+- A ZPD monitor specification that defines zone boundaries and drift thresholds
+
+Domain-lib files have **no callable entry point** (reference specs) or are **pure-function modules** (sensors, group libraries). They are consumed by the LLM as context, by the runtime adapter as configuration lookup, or by the SLM for structured extraction. They describe *what* the domain measures, not *how* to compute it.
+
+`prompts/` contains only persona directives (`domain-persona-v1.md`) — the CI's voice and identity. It must not contain interpretation schemas or reference material.
 
 `world-sim/` content is a separate optional layer for interaction framing. It is not the source of normative thresholds or standing-order policy.
 

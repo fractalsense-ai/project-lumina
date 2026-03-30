@@ -1,13 +1,13 @@
 ---
-version: 1.0.0
-last_updated: 2026-03-21
+version: 1.1.0
+last_updated: 2026-03-30
 ---
 
 # Command Execution Pipeline
 
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Status:** Active
-**Last updated:** 2026-03-21
+**Last updated:** 2026-03-30
 
 ---
 
@@ -165,6 +165,27 @@ entries in the System Log:
 
 These records are write-once and form the audit trail linking every executed
 change back to the validated proposal and the human who approved it.
+
+---
+
+## Admin Commands as Actor Telemetry
+
+An admin issuing a natural language command is not a special case — the admin is just
+another **Actor** feeding intent into the D.S.A. framework. The pipeline processes admin
+intent identically to how it processes sensor telemetry or student input:
+
+1. The Actor produces a signal (natural language instruction)
+2. The SLM Command Translator reads the domain library **Tech Manual**
+   (`domain-lib/reference/command-interpreter-spec-v1.md`) to understand what the data
+   means — disambiguation rules, parameter schemas, role mapping
+3. The orchestrator checks the **physics file** (SOP) to determine whether the proposed
+   state change is permitted under current invariants and RBAC policy
+4. The proposal enters the standard three-stage pipeline: Proposal → Validation → HITL
+
+The interpretation spec lives in `domain-lib/reference/` rather than `prompts/` because
+it is reference knowledge (a Tech Manual), not a persona directive. The physics file
+defines what actions are allowed; the reference spec defines how to parse the Actor's
+intent. This is the same TM/SOP separation that governs all domain pack components.
 
 ---
 

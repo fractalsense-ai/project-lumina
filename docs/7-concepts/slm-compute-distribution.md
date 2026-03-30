@@ -1,13 +1,13 @@
 ---
-version: 1.0.0
-last_updated: 2026-03-20
+version: 1.3.0
+last_updated: 2026-03-30
 ---
 
 # SLM Compute Distribution
 
-**Version:** 1.2.0  
+**Version:** 1.3.0  
 **Status:** Active  
-**Last updated:** 2026-03-18  
+**Last updated:** 2026-03-30  
 
 ---
 
@@ -124,10 +124,12 @@ The `_slm_context` dict is injected into `turn_data` alongside `_nlp_anchors`. B
 
 When an authorized admin issues a natural language instruction (e.g., "update the coefficient threshold in algebra to 0.8"), the Command Translator parses it into a structured operation.
 
-**Input:** Natural language instruction + list of available admin operations.  
+**Input:** Natural language instruction + list of available admin operations + the command interpretation spec (`domain-lib/reference/command-interpreter-spec-v1.md`).  
 **Output:** `{"operation": "update_domain_physics", "target": "algebra", "params": {"updates": {"coefficient_threshold": 0.8}}}` — or `null` if unparseable.  
 **Execution:** The structured command executes through existing admin endpoints with full RBAC enforcement. The SLM only translates — it does not execute. Unauthorized commands are rejected at the endpoint layer.  
 **Available operations:** `update_domain_physics`, `commit_domain_physics`, `update_user_role`, `deactivate_user`, `resolve_escalation`.
+
+The command interpretation spec is a domain library reference document (Tech Manual) — it defines disambiguation rules, parameter schemas, and role mapping that the SLM reads to understand admin intent. It lives in `domain-lib/reference/` rather than `prompts/` because it is passive knowledge, not a persona directive. This follows the same TM/SOP separation used throughout the domain pack: the physics file (SOP) says what state changes are allowed; the reference spec (TM) says how to parse the Actor's intent.
 
 ---
 

@@ -23,7 +23,7 @@ def load_domain_pack_module(rel_path: str, module_key: str | None = None):
     ----------
     rel_path:
         Path relative to the repository root, e.g.
-        ``"domain-packs/system/domain-lib/hw_probes/hw_disk.py"``.
+        ``"domain-packs/system/domain-lib/sensors/hw_disk.py"``.
     module_key:
         Key to register in ``sys.modules``.  Defaults to a mangled version
         of *rel_path* to avoid collisions with regular package imports.

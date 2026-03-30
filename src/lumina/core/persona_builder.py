@@ -188,7 +188,7 @@ def _load_prompt_file(rel_path: str, fallback: str) -> str:
 def _get_command_translator_directive() -> str:
     """Return the COMMAND_TRANSLATOR directive, loaded from file if available."""
     return _load_prompt_file(
-        "domain-packs/system/prompts/command-translator.md",
+        "domain-packs/system/domain-lib/reference/command-interpreter-spec-v1.md",
         _COMMAND_TRANSLATOR_FALLBACK,
     )
 

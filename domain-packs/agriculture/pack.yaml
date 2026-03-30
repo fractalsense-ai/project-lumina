@@ -17,9 +17,10 @@ layers:
   controller:
     - controllers/runtime_adapters.py
   domain_lib:
-    - domain-lib/environmental_sensors.py
+    - domain-lib/sensors/environmental_sensors.py
+    - domain-lib/reference/turn-interpretation-spec-v1.md
   view:
-    - prompts/
+    - prompts/domain-persona-v1.md
   docs:
     - docs/
 

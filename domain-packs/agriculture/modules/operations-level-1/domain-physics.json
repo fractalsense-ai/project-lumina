@@ -160,8 +160,14 @@
   "group_libraries": [
     {
       "id": "environmental_sensors",
-      "path": "domain-lib/environmental_sensors.py",
+      "path": "domain-lib/sensors/environmental_sensors.py",
       "description": "Sensor normalization, tolerance checking, and batch aggregation for field-operations IoT devices.",
+      "shared_with_modules": ["operations-level-1"]
+    },
+    {
+      "id": "turn_interpretation",
+      "path": "domain-lib/reference/turn-interpretation-spec-v1.md",
+      "description": "Turn interpretation output schema — defines the JSON structure the SLM must emit when classifying operator intent.",
       "shared_with_modules": ["operations-level-1"]
     }
   ]

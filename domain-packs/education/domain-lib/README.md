@@ -20,9 +20,10 @@ Each component defines a deterministic heuristic that takes structured evidence 
 
 | Component | File | Description |
 |-----------|------|-------------|
-| Compressed State Estimators | [`compressed-state-estimators.md`](compressed-state-estimators.md) | Affect (SVA), mastery, challenge, uncertainty, and ZPD window estimators |
-| ZPD Monitor | [`zpd-monitor-spec-v1.md`](zpd-monitor-spec-v1.md) | Zone of Proximal Development drift detection and decision tier |
-| Fatigue Estimator | [`fatigue-estimation-spec-v1.md`](fatigue-estimation-spec-v1.md) | Cognitive fatigue estimation from structural signals |
+| Compressed State Estimators | [`reference/compressed-state-estimators.md`](reference/compressed-state-estimators.md) | Affect (SVA), mastery, challenge, uncertainty, and ZPD window estimators |
+| ZPD Monitor | [`reference/zpd-monitor-spec-v1.md`](reference/zpd-monitor-spec-v1.md) | Zone of Proximal Development drift detection and decision tier |
+| Fatigue Estimator | [`reference/fatigue-estimation-spec-v1.md`](reference/fatigue-estimation-spec-v1.md) | Cognitive fatigue estimation from structural signals |
+| Turn Interpretation | [`reference/turn-interpretation-spec-v1.md`](reference/turn-interpretation-spec-v1.md) | Turn interpretation output schema for classifying student responses |
 
 ---
 

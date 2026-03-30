@@ -627,5 +627,13 @@
       "description": "Actors who produce evidence by working through domain artifacts and problem-solving steps.",
       "members": ["student"]
     }
-  }
+  },
+  "group_libraries": [
+    {
+      "id": "turn_interpretation",
+      "path": "domain-lib/reference/turn-interpretation-spec-v1.md",
+      "description": "Turn interpretation output schema — defines the JSON structure the SLM must emit when classifying student intent.",
+      "shared_with_modules": ["algebra-1"]
+    }
+  ]
 }

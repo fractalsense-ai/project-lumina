@@ -30,8 +30,12 @@ layers:
     - domain-lib/zpd_monitor_v0_2.py
     - domain-lib/fluency_monitor.py
     - domain-lib/problem_generator.py
+    - domain-lib/reference/turn-interpretation-spec-v1.md
+    - domain-lib/reference/compressed-state-estimators.md
+    - domain-lib/reference/zpd-monitor-spec-v1.md
+    - domain-lib/reference/fatigue-estimation-spec-v1.md
   view:
-    - prompts/
+    - prompts/domain-persona-v1.md
     - world-sim/
   docs:
     - docs/

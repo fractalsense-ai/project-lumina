@@ -1,13 +1,13 @@
 ---
-version: 1.0.0
-last_updated: 2026-03-27
+version: 1.1.0
+last_updated: 2026-03-30
 ---
 
 # Group Libraries and Group Tools
 
-**Version:** 1.0.0  
+**Version:** 1.1.0  
 **Status:** Active  
-**Last updated:** 2026-03-27  
+**Last updated:** 2026-03-30  
 
 ---
 
@@ -55,7 +55,7 @@ Each module that uses a Group Library declares it in `domain-physics.json` under
   "group_libraries": [
     {
       "id": "environmental_sensors",
-      "path": "domain-lib/environmental_sensors.py",
+      "path": "domain-lib/sensors/environmental_sensors.py",
       "description": "Sensor normalisation and anomaly detection",
       "shared_with_modules": [
         "operations-level-1",
@@ -151,7 +151,7 @@ for validation — see [`execution-route-compilation(7)`](execution-route-compil
 ## D. Agriculture Example — Environmental Sensors
 
 The agriculture domain provides the reference implementation of a Group Library:
-`domain-packs/agriculture/domain-lib/environmental_sensors.py`.
+`domain-packs/agriculture/domain-lib/sensors/environmental_sensors.py`.
 
 This module provides:
 
@@ -171,11 +171,14 @@ livestock) can reference the same library by adding it to their own physics decl
 ```
 domain-packs/agriculture/
 ├── domain-lib/
-│   └── environmental_sensors.py    ← Group Library (shared)
+│   ├── sensors/
+│   │   └── environmental_sensors.py    ← Group Library (shared)
+│   └── reference/
+│       └── turn-interpretation-spec-v1.md  ← Reference spec (TM)
 ├── modules/
 │   ├── operations-level-1/
-│   │   └── domain-physics.json     ← declares group_libraries: ["environmental_sensors"]
-│   └── crop-planning/              ← (future) would also declare the same library
+│   │   └── domain-physics.json     ← declares group_libraries: ["environmental_sensors", "turn_interpretation"]
+│   └── crop-planning/              ← (future) would also declare the same libraries
 └── controllers/
     └── runtime_adapters.py         ← calls environmental_sensors functions via ctx
 ```
@@ -218,6 +221,41 @@ task list includes vector rebuilds that honour these dependency chains — see
 
 ---
 
+## G. Reference Specs as Group Libraries
+
+Not all group library entries point to executable Python modules. A group library may also
+reference a **passive specification file** — a Markdown document in `domain-lib/reference/`
+that defines an interpretation schema, rendering rule set, or domain knowledge spec.
+
+These reference specs are the **Tech Manuals** that physics files (SOPs) reference. They
+are consumed by the runtime adapter, the SLM, or the LLM as structured context — not
+executed as code. Examples:
+
+| Reference spec | Domain | Purpose |
+|----------------|--------|---------|
+| `domain-lib/reference/turn-interpretation-spec-v1.md` | All | Defines the JSON output schema for turn-level field extraction |
+| `domain-lib/reference/command-interpreter-spec-v1.md` | System | Defines disambiguation rules and parameter schemas for admin commands |
+| `domain-lib/reference/compressed-state-estimators.md` | Education | Defines compressed state estimator formulas and thresholds |
+
+Reference specs follow the same `group_libraries` declaration pattern in `domain-physics.json`:
+
+```json
+{
+  "id": "turn_interpretation",
+  "path": "domain-lib/reference/turn-interpretation-spec-v1.md",
+  "description": "Turn-level field extraction schema",
+  "shared_with_modules": ["algebra-level-1", "algebra-1"]
+}
+```
+
+The distinction from executable group libraries is that reference specs have no callable
+entry point. They are passive knowledge — the domain equivalent of a technical manual that
+operators and automated systems read to understand what data fields mean and how to parse
+them. The `path` field in the physics declaration serves as a dependency link: if the
+reference spec changes, all referencing modules know they may need revalidation.
+
+---
+
 ## SEE ALSO
 
 - [`domain-pack-anatomy(7)`](domain-pack-anatomy.md) — six-component anatomy and file layout
@@ -226,4 +264,4 @@ task list includes vector rebuilds that honour these dependency chains — see
 - [`execution-route-compilation(7)`](execution-route-compilation.md) — route compiler validates group library dependencies at compile time
 - `src/lumina/core/adapter_indexer.py` — `GroupLibraryEntry`, `GroupToolEntry`, `scan_group_resources()`
 - `src/lumina/core/runtime_loader.py` — group resource discovery and context injection
-- `domain-packs/agriculture/domain-lib/environmental_sensors.py` — reference Group Library implementation
+- `domain-packs/agriculture/domain-lib/sensors/environmental_sensors.py` — reference Group Library implementation
