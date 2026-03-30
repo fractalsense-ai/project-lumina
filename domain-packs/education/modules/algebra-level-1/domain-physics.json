@@ -421,39 +421,39 @@
   "execution_policy": {
     "deterministic_tools": [
       "adapter/edu/algebra-parser/v1",
-      "adapter/edu/algebra-checker/v1"
+      "adapter/edu/substitution-checker/v1"
     ],
     "precompiled_routes": {
       "invariant_handlers": {
         "equivalence_preserved": {
           "standing_order_id": "request_more_steps",
           "tool_adapter_id": "adapter/edu/algebra-parser/v1",
-          "library_deps": ["algebra_parser"]
+          "library_deps": ["education/turn_interpretation"]
         },
         "solution_verifies": {
           "standing_order_id": "request_verification_retry",
-          "tool_adapter_id": "adapter/edu/algebra-checker/v1",
-          "library_deps": ["algebra_parser"]
+          "tool_adapter_id": "adapter/edu/substitution-checker/v1",
+          "library_deps": ["education/turn_interpretation"]
         },
         "no_illegal_operations": {
           "standing_order_id": "request_more_steps",
           "tool_adapter_id": "adapter/edu/algebra-parser/v1",
-          "library_deps": ["algebra_parser"]
+          "library_deps": ["education/turn_interpretation"]
         },
         "show_work_minimum": {
           "standing_order_id": "request_more_steps",
           "tool_adapter_id": "adapter/edu/algebra-parser/v1",
-          "library_deps": ["algebra_parser"]
+          "library_deps": ["education/turn_interpretation"]
         }
       },
       "standing_order_tools": {
         "request_more_steps": {
           "tool_chain": ["adapter/edu/algebra-parser/v1"],
-          "library_deps": ["algebra_parser"]
+          "library_deps": ["education/turn_interpretation"]
         },
         "request_verification_retry": {
-          "tool_chain": ["adapter/edu/algebra-checker/v1"],
-          "library_deps": ["algebra_parser"]
+          "tool_chain": ["adapter/edu/substitution-checker/v1"],
+          "library_deps": ["education/turn_interpretation"]
         }
       }
     }
@@ -463,7 +463,7 @@
       "id": "student",
       "label": "Student",
       "description": "Learner working through algebra level 1 artifacts, producing evidence via problem-solving steps.",
-      "evidence_sources": ["adapter/edu/algebra-checker/v1"],
+      "evidence_sources": ["adapter/edu/substitution-checker/v1"],
       "groups": ["learners"]
     }
   ],

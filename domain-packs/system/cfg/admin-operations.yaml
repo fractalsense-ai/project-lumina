@@ -126,6 +126,7 @@ operations:
     params:
       username: "string — the new user's display name"
       role: "string — system role: root, domain_authority, it_support, qa, auditor, user, guest"
+      intended_domain_role: "string — domain-specific role name such as student, teacher, field_operator (optional, advisory field preserved for downstream domain-role assignment)"
       email: "string — email address (optional)"
       governed_modules: "array of strings — domain module IDs, required when role is domain_authority. Omit for other roles."
 

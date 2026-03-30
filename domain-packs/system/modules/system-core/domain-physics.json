@@ -109,6 +109,30 @@
         "intervention_notes are written to the System Logs as an immutable audit record and should describe what real-world action was taken.",
         "Escalations cannot be deleted — only resolved or deferred."
       ]
+    },
+    {
+      "id": "enforce_contract_boundaries",
+      "action": "enforce_contract_boundaries",
+      "trigger_condition": "no_autonomous_policy or no_direct_execution",
+      "max_attempts": 1,
+      "escalation_on_exhaust": true,
+      "description": "Halt the response. Reframe output within active prompt contract bounds. Escalate if not achievable in one attempt."
+    },
+    {
+      "id": "retract_and_self_correct",
+      "action": "retract_and_self_correct",
+      "trigger_condition": "no_internal_disclosure or prompt_contract_fidelity",
+      "max_attempts": 1,
+      "escalation_on_exhaust": true,
+      "description": "Retract the offending output and issue a corrected response within the prompt contract. Escalate if self-correction fails."
+    },
+    {
+      "id": "strip_and_reformat_output",
+      "action": "strip_and_reformat_output",
+      "trigger_condition": "no_unsolicited_json or no_chain_of_thought_leakage",
+      "max_attempts": 2,
+      "escalation_on_exhaust": false,
+      "description": "Remove raw JSON or chain-of-thought from the output; reissue in conformant conversational text."
     }
   ],
 
@@ -171,33 +195,6 @@
       "severity": "warning",
       "check": "chain_of_thought_in_output == false",
       "standing_order_on_violation": "strip_and_reformat_output"
-    }
-  ],
-
-  "invariant_standing_orders": [
-    {
-      "id": "enforce_contract_boundaries",
-      "action": "enforce_contract_boundaries",
-      "trigger_condition": "no_autonomous_policy or no_direct_execution",
-      "max_attempts": 1,
-      "escalation_on_exhaust": true,
-      "description": "Halt the response. Reframe output within active prompt contract bounds. Escalate if not achievable in one attempt."
-    },
-    {
-      "id": "retract_and_self_correct",
-      "action": "retract_and_self_correct",
-      "trigger_condition": "no_internal_disclosure or prompt_contract_fidelity",
-      "max_attempts": 1,
-      "escalation_on_exhaust": true,
-      "description": "Retract the offending output and issue a corrected response within the prompt contract. Escalate if self-correction fails."
-    },
-    {
-      "id": "strip_and_reformat_output",
-      "action": "strip_and_reformat_output",
-      "trigger_condition": "no_unsolicited_json or no_chain_of_thought_leakage",
-      "max_attempts": 2,
-      "escalation_on_exhaust": false,
-      "description": "Remove raw JSON or chain-of-thought from the output; reissue in conformant conversational text."
     }
   ],
 

@@ -181,13 +181,13 @@
         "within_tolerance": {
           "standing_order_id": "request_more_steps",
           "tool_adapter_id": "adapter/agri/collar-sensor/v1",
-          "library_deps": ["environmental_sensors"]
+          "library_deps": ["agriculture/environmental_sensors"]
         }
       },
       "standing_order_tools": {
         "request_more_steps": {
           "tool_chain": ["adapter/agri/collar-sensor/v1"],
-          "library_deps": ["environmental_sensors"]
+          "library_deps": ["agriculture/environmental_sensors"]
         }
       }
     }

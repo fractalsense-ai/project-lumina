@@ -454,7 +454,7 @@ def validate_command_schema(payload: dict[str, Any]) -> dict[str, Any]:
         return {"valid": False, "operation_id": "", "missing_params": [],
                 "unknown_params": [], "error": "no command_dispatch provided"}
 
-    op_id = str(dispatch.get("operation_id") or dispatch.get("name") or "")
+    op_id = str(dispatch.get("operation_id") or dispatch.get("operation") or dispatch.get("name") or "")
     cmd_params = dispatch.get("params") or {}
     if not isinstance(cmd_params, dict):
         cmd_params = {}
@@ -482,11 +482,17 @@ def validate_command_schema(payload: dict[str, Any]) -> dict[str, Any]:
                 "unknown_params": [], "error": f"unknown operation: {op_id}"}
 
     expected_params: dict[str, str] = schema_entry.get("params") or {}
-    expected_keys = set(expected_params.keys())
+    # Only flag params as missing if their description does not mark them
+    # as optional or conditional ("omit for ...").  Schema descriptions
+    # already carry this metadata in free-text form.
+    required_keys = {
+        k for k, v in expected_params.items()
+        if "optional" not in str(v).lower() and "omit" not in str(v).lower()
+    }
     provided_keys = set(cmd_params.keys())
 
-    missing = sorted(expected_keys - provided_keys)
-    unknown = sorted(provided_keys - expected_keys)
+    missing = sorted(required_keys - provided_keys)
+    unknown = sorted(provided_keys - set(expected_params.keys()))
 
     return {
         "valid": len(missing) == 0 and len(unknown) == 0,

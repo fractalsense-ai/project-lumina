@@ -215,7 +215,7 @@ def interpret_turn_input(
         try:
             _disclosure_result = _disclosure_fn({
                 "response_text": raw_response,
-                "user_requested_json": False,
+                "user_requested_json": bool(evidence.get("command_dispatch")),
             })
             evidence["internal_state_disclosed"] = _disclosure_result.get(
                 "internal_state_disclosed", False
