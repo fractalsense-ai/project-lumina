@@ -638,10 +638,10 @@ def _normalize_slm_command(parsed_command: dict[str, Any]) -> dict[str, Any]:
                     params[role_key] = "user"
                 else:
                     params[role_key] = "user"
-            # Remove governed_modules for non-authority roles — only
-            # domain_authority needs module governance scope.
-            if params.get(role_key) != "domain_authority":
-                params.pop("governed_modules", None)
+                # When we inferred the role (SLM omitted it), also clean up
+                # governed_modules — non-authority roles don't need it.
+                if params.get(role_key) != "domain_authority":
+                    params.pop("governed_modules", None)
 
         # ── governed_modules: may appear at top level or inside params ──
         if "governed_modules" not in params and cmd.get("governed_modules"):
