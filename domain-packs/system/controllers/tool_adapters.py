@@ -1,9 +1,14 @@
-"""tool_adapters.py — Read-only system-domain tool adapters.
+"""tool_adapters.py — System-domain tool adapters.
 
 Each function accepts a ``payload`` dict and returns a dict result.
 These are registered under ``adapters.tools`` in the system domain's
 runtime-config.yaml and invoked via ``invoke_runtime_tool()`` in the
 server when the command-dispatch layer resolves to a tool call.
+
+Includes both read-only query tools and deterministic verification tools.
+Verification tools are called post-SLM by the system ``interpret_turn_input``
+to populate invariant-checkable evidence fields with ground truth — the same
+pattern used by the education domain's algebra parser override.
 
 No imports from ``lumina.api`` or ``lumina.core`` are allowed here —
 adapters must be self-contained so they can be loaded and tested
@@ -13,6 +18,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -28,6 +34,20 @@ _DEFAULT_LOG_DIR = Path(tempfile.gettempdir()) / "lumina-log"
 _LOG_DIR: Path = Path(os.environ.get("LUMINA_LOG_DIR", os.environ.get("LUMINA_CTL_DIR", str(_DEFAULT_LOG_DIR))))
 
 _DOMAIN_REGISTRY_PATH: Path = _REPO_ROOT / "domain-packs" / "system" / "cfg" / "domain-registry.yaml"
+_ADMIN_OPS_PATH: Path = _REPO_ROOT / "domain-packs" / "system" / "cfg" / "admin-operations.yaml"
+
+# Patterns that indicate internal state leakage when found in CI output.
+_INTERNAL_STATE_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"\bconfidence[_\s]*(?:score|level|rating)\s*[:=]\s*\d", re.IGNORECASE),
+    re.compile(r"\bpolicy[_\s]*gate\b", re.IGNORECASE),
+    re.compile(r"\binvariant[_\s]*(?:check|violation|result)\b", re.IGNORECASE),
+    re.compile(r"\bstanding[_\s]*order\b.*\b(?:fire|trigger|exhaust)", re.IGNORECASE),
+    re.compile(r"\bescalation[_\s]*(?:id|sla|trigger)\b", re.IGNORECASE),
+    re.compile(r"\bsession[_\s]*state\b.*\bjson\b", re.IGNORECASE),
+    re.compile(r"\bhash[_\s]*chain\b", re.IGNORECASE),
+    re.compile(r"\bweight[_\s]*(?:override|classification)\b", re.IGNORECASE),
+    re.compile(r"\bprompt[_\s]*contract\b.*\b(?:internal|raw)\b", re.IGNORECASE),
+]
 
 
 def _load_yaml(path: Path) -> Any:
@@ -402,4 +422,195 @@ def list_log_records(payload: dict[str, Any]) -> dict[str, Any]:
         "records": page,
         "count": len(page),
         "total_scanned": len(filtered),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Deterministic verification tools
+# ---------------------------------------------------------------------------
+# These tools populate invariant-checkable evidence fields with ground truth.
+# Called by interpret_turn_input() after SLM extraction — same pattern as the
+# education domain's algebra parser override.
+
+
+def validate_command_schema(payload: dict[str, Any]) -> dict[str, Any]:
+    """Validate a SLM command-dispatch payload against admin-operations.yaml.
+
+    Payload keys:
+        command_dispatch (dict): The structured command from slm_parse_admin_command.
+            Expected shape: {"operation_id": str, "params": dict}
+
+    Returns:
+        {
+            "valid": bool,
+            "operation_id": str,
+            "missing_params": [...],
+            "unknown_params": [...],
+            "error": str | None,
+        }
+    """
+    dispatch = payload.get("command_dispatch")
+    if not dispatch or not isinstance(dispatch, dict):
+        return {"valid": False, "operation_id": "", "missing_params": [],
+                "unknown_params": [], "error": "no command_dispatch provided"}
+
+    op_id = str(dispatch.get("operation_id") or dispatch.get("name") or "")
+    cmd_params = dispatch.get("params") or {}
+    if not isinstance(cmd_params, dict):
+        cmd_params = {}
+
+    if not op_id:
+        return {"valid": False, "operation_id": "", "missing_params": [],
+                "unknown_params": [], "error": "operation_id is empty"}
+
+    # Load admin-operations.yaml
+    try:
+        ops_data = _load_yaml(_ADMIN_OPS_PATH)
+    except Exception:
+        return {"valid": False, "operation_id": op_id, "missing_params": [],
+                "unknown_params": [], "error": "could not load admin-operations.yaml"}
+
+    ops_list = (ops_data or {}).get("operations") or []
+    schema_entry = None
+    for entry in ops_list:
+        if isinstance(entry, dict) and entry.get("name") == op_id:
+            schema_entry = entry
+            break
+
+    if schema_entry is None:
+        return {"valid": False, "operation_id": op_id, "missing_params": [],
+                "unknown_params": [], "error": f"unknown operation: {op_id}"}
+
+    expected_params: dict[str, str] = schema_entry.get("params") or {}
+    expected_keys = set(expected_params.keys())
+    provided_keys = set(cmd_params.keys())
+
+    missing = sorted(expected_keys - provided_keys)
+    unknown = sorted(provided_keys - expected_keys)
+
+    return {
+        "valid": len(missing) == 0 and len(unknown) == 0,
+        "operation_id": op_id,
+        "missing_params": missing,
+        "unknown_params": unknown,
+        "error": None,
+    }
+
+
+def verify_policy_boundaries(payload: dict[str, Any]) -> dict[str, Any]:
+    """Check whether the SLM's proposed action stays within prompt contract bounds.
+
+    Maps to the ``no_autonomous_policy`` invariant. A proposed action is
+    autonomous if:
+      - It references an operation not in admin-operations.yaml
+      - It attempts to set params beyond the caller's role ceiling
+      - It proposes execution without going through the HITL gate
+
+    Payload keys:
+        command_dispatch (dict|None): structured command from SLM
+        query_type (str): classified query type
+        response_text (str): the SLM's raw response text (optional)
+
+    Returns:
+        {
+            "autonomous_policy_decision": bool,
+            "direct_state_change_attempted": bool,
+            "response_grounded_in_prompt_contract": bool,
+            "detail": str | None,
+        }
+    """
+    dispatch = payload.get("command_dispatch")
+    query_type = str(payload.get("query_type") or "general")
+    response_text = str(payload.get("response_text") or "")
+
+    autonomous = False
+    direct_change = False
+    grounded = True
+    detail = None
+
+    if dispatch and isinstance(dispatch, dict):
+        op_id = str(dispatch.get("operation_id") or dispatch.get("name") or "")
+
+        # Check if the operation exists in the schema
+        try:
+            ops_data = _load_yaml(_ADMIN_OPS_PATH)
+            ops_list = (ops_data or {}).get("operations") or []
+            known_ops = {e.get("name") for e in ops_list if isinstance(e, dict)}
+        except Exception:
+            known_ops = set()
+
+        if op_id and op_id not in known_ops:
+            autonomous = True
+            detail = f"operation '{op_id}' not in admin-operations schema"
+
+        # Detect if the SLM is claiming direct execution
+        direct_exec_markers = [
+            "executed", "applied", "committed", "done",
+            "completed the change", "updated the",
+            "user has been created", "role has been changed",
+        ]
+        lower_resp = response_text.lower()
+        for marker in direct_exec_markers:
+            if marker in lower_resp and dispatch:
+                direct_change = True
+                detail = f"response claims execution: '{marker}'"
+                break
+
+    # Check grounding: if response makes claims about capabilities not in
+    # the standard query types, it may be ungrounded
+    if query_type == "general" and dispatch:
+        grounded = False
+        detail = detail or "general query produced command dispatch"
+
+    return {
+        "autonomous_policy_decision": autonomous,
+        "direct_state_change_attempted": direct_change,
+        "response_grounded_in_prompt_contract": grounded,
+        "detail": detail,
+    }
+
+
+def verify_no_disclosure(payload: dict[str, Any]) -> dict[str, Any]:
+    """Scan CI output for internal state patterns.
+
+    Maps to the ``no_internal_disclosure`` invariant with secondary
+    checks for ``no_chain_of_thought_leakage`` and ``no_unsolicited_json``.
+
+    Payload keys:
+        response_text (str): the CI's response text to scan
+        user_requested_json (bool): whether the user explicitly asked for JSON
+
+    Returns:
+        {
+            "internal_state_disclosed": bool,
+            "chain_of_thought_in_output": bool,
+            "json_in_output": bool,
+            "matched_patterns": [str, ...],
+        }
+    """
+    text = str(payload.get("response_text") or "")
+    user_requested_json = bool(payload.get("user_requested_json", False))
+
+    matched: list[str] = []
+    for pattern in _INTERNAL_STATE_PATTERNS:
+        if pattern.search(text):
+            matched.append(pattern.pattern)
+
+    internal_disclosed = len(matched) > 0
+
+    # Chain-of-thought leakage: look for reasoning markers
+    cot_markers = [
+        "let me think", "step 1:", "step 2:", "reasoning:",
+        "my analysis:", "internal note:", "chain of thought",
+    ]
+    cot_leaked = any(m in text.lower() for m in cot_markers)
+
+    # Unsolicited JSON: detect JSON blocks not requested by user
+    json_block = bool(re.search(r"\{[\s\S]*\"[^\"]+\"\s*:", text))
+
+    return {
+        "internal_state_disclosed": internal_disclosed,
+        "chain_of_thought_in_output": cot_leaked,
+        "json_in_output": json_block and not user_requested_json,
+        "matched_patterns": matched,
     }

@@ -19,7 +19,7 @@
 # ============================================================
 
 id: system/lumina/conversational-interface/v1
-version: "1.3.0"
+version: "1.4.0"
 
 meta_authority_id: root
 
@@ -243,6 +243,66 @@ ci_output_contract:
   proposal_validation_requirement: domain_scoped_tool_required
   proposal_approval_requirement: hitl_required_before_execution
   physics_file_role: standing_orders_and_escalation_routes
+
+# ────────────────────────────────────────────────────────────────────────────
+# Deterministic Gating Contract
+# ────────────────────────────────────────────────────────────────────────────
+# Both SLM (local-only) and LLM (external) outputs pass through the SAME
+# deterministic pipeline.  There are no exemptions based on model type.
+# This contract is enforced by strict=True in the InspectionPipeline
+# (src/lumina/api/processing.py) regardless of the local_only flag.
+#
+# Pipeline stages (executed in order for every turn):
+#
+#   1. NLP Pre-Interpreter Anchoring
+#      Domain-specific nlp_pre_interpreter produces deterministic anchors
+#      (keyword matches, regex extractions) that are injected into the
+#      SLM/LLM prompt as grounding context.
+#
+#   2. Turn Interpretation (Evidence Extraction)
+#      The SLM or LLM classifies the operator/student message into a
+#      structured evidence dict.  Default fields fill any gaps.
+#
+#   3. Deterministic Tool Verification (Ground Truth Override)
+#      Domain-scoped verification tools OVERWRITE evidence fields with
+#      ground truth.  Education: algebra parser.  System: policy boundary
+#      verifier + disclosure scanner.  Agriculture: collar sensor.
+#      This is the critical gate: the SLM/LLM cannot bypass deterministic
+#      verification by producing different evidence.
+#
+#   4. Inspection Middleware (Schema + Invariant Check)
+#      InspectionPipeline runs three sub-stages: NLP preprocess → schema
+#      validation → invariant evaluation.  Strict mode is always on.
+#      Failed invariants trigger standing orders.
+#
+#   5. Standing Order Evaluation
+#      If an invariant is violated, the linked standing order fires with
+#      bounded max_attempts.  Exhausted standing orders escalate per the
+#      escalation_triggers configuration.
+#
+#   6. HITL Gate for State-Changing Actions
+#      All mutation proposals (command_dispatch) are staged as action cards
+#      for human review.  Only HITL-exempt read-only operations bypass this.
+
+deterministic_gating_contract:
+  strict_mode: always
+  model_type_exemptions: none
+  pipeline_stages:
+    - nlp_pre_interpreter
+    - turn_interpretation
+    - deterministic_tool_verification
+    - inspection_middleware
+    - standing_order_evaluation
+    - hitl_gate
+  verification_tools_by_domain:
+    system:
+      - validate_command_schema
+      - verify_policy_boundaries
+      - verify_no_disclosure
+    education:
+      - algebra_parser
+    agriculture:
+      - collar_sensor
 
 # ────────────────────────────────────────────────────────────────────────────
 # Glossary — Lumina infrastructure controlled vocabulary

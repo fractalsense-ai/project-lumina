@@ -10,7 +10,7 @@
 # The value "pending" is reserved for the initial bootstrap only.
 
 schema_version: 1.0.0
-last_updated: 2026-03-28
+last_updated: 2026-03-30
 
 artifacts:
 
@@ -384,7 +384,7 @@ artifacts:
     doc_version: 1.2.0
     status: active
     last_updated: 2026-03-18
-    sha256: 13d50970e90e4af9eae1c721e888059cf53ec4eeff32a53c391d35b2fc84fd19
+    sha256: 59db718b41fa0d4e2f74c9a4360b646df626b2688696e4b4ff3b6f2b39b2e8f7
 
   - path: docs/7-concepts/system-log-micro-router.md
     type: doc
@@ -440,7 +440,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-21
-    sha256: 3231da1c71406cdd5d1a200eff06deedd488ca2bdbb2d57821c26cb4018bf6ad
+    sha256: 372e6c2cca3369f70d063037515c7492f74668c26f855014a8f5024c1ee64e44
 
   - path: docs/7-concepts/domain-pack-anatomy.md
     type: doc
@@ -448,7 +448,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-21
-    sha256: 0914aaf0f55d319bd06c7263208e3eed3313fc528a4808d46519c60b67ac9067
+    sha256: bb23521bd3ddf8041b2cded2482ac1cb53a7d6374b1a4544c910dfbc04e12929
 
   - path: docs/7-concepts/hmvc-heritage.md
     type: doc
@@ -464,7 +464,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-27
-    sha256: 3f20d846e301ceaa0488c2b95117f6db1c0b09b6455ebc0eca514c6ef3188008
+    sha256: b1ed78a17baae8577a2a769f603fa4b385d27e77eada3f23c73af115676eb049
 
   - path: docs/7-concepts/edge-vectorization.md
     type: doc
@@ -1015,7 +1015,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-12
-    sha256: b2b2c21cfca9e69e64817ac31eb6c0245a4059a8f08080b10d471079deac40b8
+    sha256: dd0da343150c33ef51e480a72e04127b17c395bf63e56fb7eed22b4ee9002fed
 
 
   # ── Retrieval (relocated) ─────────────────────────────────────────────────

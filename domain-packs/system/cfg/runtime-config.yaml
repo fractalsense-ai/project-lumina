@@ -32,6 +32,14 @@ runtime:
     query_type: general
     target_component: null
     response_latency_sec: 5.0
+    # Deterministic verification defaults (populated by post-SLM tools)
+    autonomous_policy_decision: false
+    internal_state_disclosed: false
+    direct_state_change_attempted: false
+    response_grounded_in_prompt_contract: true
+    chain_of_thought_in_output: false
+    json_in_output: false
+    command_schema_valid: true
 
   ui_manifest:
     title: "Project Lumina"
@@ -105,6 +113,36 @@ runtime:
       nullable: true
       description: "Structured command from slm_parse_admin_command. Null when no parseable command was detected."
       default: null
+    # ── Deterministic verification fields ──
+    # Populated by post-SLM verification tools; checked by system-physics invariants.
+    autonomous_policy_decision:
+      type: boolean
+      default: false
+      description: "True if SLM proposed an action outside admin-operations schema bounds."
+    internal_state_disclosed:
+      type: boolean
+      default: false
+      description: "True if CI output contains internal state patterns."
+    direct_state_change_attempted:
+      type: boolean
+      default: false
+      description: "True if CI claims to have executed a state change directly."
+    response_grounded_in_prompt_contract:
+      type: boolean
+      default: true
+      description: "True if response stays within prompt contract bounds."
+    chain_of_thought_in_output:
+      type: boolean
+      default: false
+      description: "True if reasoning/CoT leaked into user-facing output."
+    json_in_output:
+      type: boolean
+      default: false
+      description: "True if unsolicited JSON blocks appear in output."
+    command_schema_valid:
+      type: boolean
+      default: true
+      description: "True if command_dispatch matches admin-operations.yaml param schema."
 
 adapters:
   nlp_pre_interpreter:
@@ -143,6 +181,21 @@ adapters:
     list_log_records:
       module_path: domain-packs/system/controllers/tool_adapters.py
       callable: list_log_records
+
+    # ── Deterministic verification tools ──
+    # Called post-SLM by interpret_turn_input to populate invariant-checkable
+    # evidence fields with ground truth.
+    validate_command_schema:
+      module_path: domain-packs/system/controllers/tool_adapters.py
+      callable: validate_command_schema
+
+    verify_policy_boundaries:
+      module_path: domain-packs/system/controllers/tool_adapters.py
+      callable: verify_policy_boundaries
+
+    verify_no_disclosure:
+      module_path: domain-packs/system/controllers/tool_adapters.py
+      callable: verify_no_disclosure
 
 # ── Night Cycle ───────────────────────────────────────────────
 night_cycle:

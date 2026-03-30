@@ -31,6 +31,9 @@ runtime:
     response_latency_sec: 10.0
     off_task_ratio: 0.0
     step_count: 0
+    sensor_reading_valid: true
+    signal_index: 0.5
+    drift_pct: 0.0
 
   turn_input_schema:
     within_tolerance:
@@ -49,6 +52,22 @@ runtime:
       type: int
       minimum: 0
       default: 0
+    sensor_reading_valid:
+      type: bool
+      default: true
+      description: "True if collar sensor reading passed normalization. Populated by deterministic sensor tool."
+    signal_index:
+      type: float
+      minimum: 0.0
+      maximum: 1.0
+      default: 0.5
+      description: "Composite signal index from domain_step. Checked by signal_within_operational_range invariant."
+    drift_pct:
+      type: float
+      minimum: 0.0
+      maximum: 1.0
+      default: 0.0
+      description: "Percentage of recent window turns where signal was outside tolerance."
 
   action_prompt_type_map:
     request_more_steps: more_steps_request

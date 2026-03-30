@@ -420,8 +420,43 @@
   },
   "execution_policy": {
     "deterministic_tools": [
+      "adapter/edu/algebra-parser/v1",
       "adapter/edu/algebra-checker/v1"
-    ]
+    ],
+    "precompiled_routes": {
+      "invariant_handlers": {
+        "equivalence_preserved": {
+          "standing_order_id": "request_more_steps",
+          "tool_adapter_id": "adapter/edu/algebra-parser/v1",
+          "library_deps": ["algebra_parser"]
+        },
+        "solution_verifies": {
+          "standing_order_id": "request_verification_retry",
+          "tool_adapter_id": "adapter/edu/algebra-checker/v1",
+          "library_deps": ["algebra_parser"]
+        },
+        "no_illegal_operations": {
+          "standing_order_id": "request_more_steps",
+          "tool_adapter_id": "adapter/edu/algebra-parser/v1",
+          "library_deps": ["algebra_parser"]
+        },
+        "show_work_minimum": {
+          "standing_order_id": "request_more_steps",
+          "tool_adapter_id": "adapter/edu/algebra-parser/v1",
+          "library_deps": ["algebra_parser"]
+        }
+      },
+      "standing_order_tools": {
+        "request_more_steps": {
+          "tool_chain": ["adapter/edu/algebra-parser/v1"],
+          "library_deps": ["algebra_parser"]
+        },
+        "request_verification_retry": {
+          "tool_chain": ["adapter/edu/algebra-checker/v1"],
+          "library_deps": ["algebra_parser"]
+        }
+      }
+    }
   },
   "actor_types": [
     {

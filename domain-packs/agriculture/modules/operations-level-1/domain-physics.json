@@ -17,19 +17,80 @@
       "severity": "warning",
       "check": "within_tolerance",
       "standing_order_on_violation": "request_more_steps"
+    },
+    {
+      "id": "sensor_reading_valid",
+      "description": "Collar sensor reading must pass normalization without error. A failed normalization indicates hardware fault or corrupt data.",
+      "severity": "critical",
+      "check": "sensor_reading_valid == true",
+      "standing_order_on_violation": "request_sensor_recheck"
+    },
+    {
+      "id": "signal_within_operational_range",
+      "description": "Composite signal index must stay within the operational band (0.2..0.9). Values outside this range indicate sensor drift or environmental anomaly.",
+      "severity": "critical",
+      "check": "signal_index >= 0.2",
+      "standing_order_on_violation": "alert_site_manager"
+    },
+    {
+      "id": "drift_minor",
+      "description": "Signal has drifted outside tolerance for >= 30% of the recent monitoring window.",
+      "severity": "warning",
+      "check": "drift_pct >= 0.3",
+      "handled_by": "ops_monitor",
+      "standing_order_on_violation": "request_more_steps"
+    },
+    {
+      "id": "drift_major",
+      "description": "Signal outside tolerance for >= 50% of recent window or 3+ consecutive turns. Requires intervention.",
+      "severity": "warning",
+      "check": "drift_pct >= 0.5",
+      "handled_by": "ops_monitor",
+      "standing_order_on_violation": "alert_site_manager"
     }
   ],
   "standing_orders": [
     {
       "id": "request_more_steps",
       "action": "request_more_steps",
-      "trigger_condition": "within_tolerance",
+      "trigger_condition": "within_tolerance or drift_minor",
       "max_attempts": 2,
       "escalation_on_exhaust": false,
       "description": "Request additional operational details from the subject."
+    },
+    {
+      "id": "request_sensor_recheck",
+      "action": "request_sensor_recheck",
+      "trigger_condition": "sensor_reading_valid",
+      "max_attempts": 2,
+      "escalation_on_exhaust": true,
+      "description": "Request the operator to re-read the collar sensor. If re-read also fails, escalate to site manager for hardware inspection."
+    },
+    {
+      "id": "alert_site_manager",
+      "action": "alert_site_manager",
+      "trigger_condition": "signal_within_operational_range or drift_major",
+      "max_attempts": 1,
+      "escalation_on_exhaust": true,
+      "description": "Notify the site manager that the signal has exceeded operational bounds. Pause data collection until the anomaly is resolved."
     }
   ],
-  "escalation_triggers": [],
+  "escalation_triggers": [
+    {
+      "id": "operational_alert_unresolved",
+      "condition": "Standing order exhausted and signal remains outside tolerance after max_attempts. Requires physical field inspection.",
+      "target_role": "site_manager",
+      "sla_minutes": 30,
+      "recommended_action": "Dispatch field operator to inspect sensor and environment. Review last N readings for pattern."
+    },
+    {
+      "id": "sensor_failure_persistent",
+      "condition": "Collar sensor returned invalid readings for 3+ consecutive turns, indicating potential hardware failure.",
+      "target_role": "site_manager",
+      "sla_minutes": 15,
+      "recommended_action": "Replace or recalibrate the sensor unit. Review recent logs for correlated failures."
+    }
+  ],
   "artifacts": [],
   "subsystem_configs": {
     "ops_monitor": {

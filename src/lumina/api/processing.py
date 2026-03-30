@@ -328,7 +328,7 @@ def process_message(
     _inspection = InspectionPipeline(
         turn_input_schema=_turn_schema,
         invariants=_domain_invariants,
-        strict=not runtime.get("local_only", False),
+        strict=True,
     )
     _inspection_result = _inspection.run(
         turn_data, input_text=input_text, task_context=task_context,

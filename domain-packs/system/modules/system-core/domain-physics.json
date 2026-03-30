@@ -129,6 +129,84 @@
     }
   ],
 
+  "invariants": [
+    {
+      "id": "no_autonomous_policy",
+      "description": "CI must not make policy decisions outside active domain physics and prompt contract bounds.",
+      "severity": "critical",
+      "check": "autonomous_policy_decision == false",
+      "standing_order_on_violation": "enforce_contract_boundaries"
+    },
+    {
+      "id": "no_internal_disclosure",
+      "description": "CI must not disclose internal confidence scores, policy internals, or runtime state.",
+      "severity": "critical",
+      "check": "internal_state_disclosed == false",
+      "standing_order_on_violation": "retract_and_self_correct"
+    },
+    {
+      "id": "prompt_contract_fidelity",
+      "description": "All CI responses must be grounded in the active prompt contract.",
+      "severity": "critical",
+      "check": "response_grounded_in_prompt_contract == true",
+      "standing_order_on_violation": "retract_and_self_correct"
+    },
+    {
+      "id": "no_direct_execution",
+      "description": "CI must not directly execute state changes; all mutations go through proposal → validate → HITL approve.",
+      "severity": "critical",
+      "check": "direct_state_change_attempted == false",
+      "standing_order_on_violation": "enforce_contract_boundaries"
+    },
+    {
+      "id": "no_unsolicited_json",
+      "description": "CI must not produce raw JSON unless explicitly requested by the user or domain contract.",
+      "severity": "warning",
+      "check": "json_in_output == false",
+      "standing_order_on_violation": "strip_and_reformat_output"
+    },
+    {
+      "id": "no_chain_of_thought_leakage",
+      "description": "Internal reasoning steps must not appear in user-facing output.",
+      "severity": "warning",
+      "check": "chain_of_thought_in_output == false",
+      "standing_order_on_violation": "strip_and_reformat_output"
+    }
+  ],
+
+  "invariant_standing_orders": [
+    {
+      "id": "enforce_contract_boundaries",
+      "action": "enforce_contract_boundaries",
+      "trigger_condition": "no_autonomous_policy or no_direct_execution",
+      "max_attempts": 1,
+      "escalation_on_exhaust": true,
+      "description": "Halt the response. Reframe output within active prompt contract bounds. Escalate if not achievable in one attempt."
+    },
+    {
+      "id": "retract_and_self_correct",
+      "action": "retract_and_self_correct",
+      "trigger_condition": "no_internal_disclosure or prompt_contract_fidelity",
+      "max_attempts": 1,
+      "escalation_on_exhaust": true,
+      "description": "Retract the offending output and issue a corrected response within the prompt contract. Escalate if self-correction fails."
+    },
+    {
+      "id": "strip_and_reformat_output",
+      "action": "strip_and_reformat_output",
+      "trigger_condition": "no_unsolicited_json or no_chain_of_thought_leakage",
+      "max_attempts": 2,
+      "escalation_on_exhaust": false,
+      "description": "Remove raw JSON or chain-of-thought from the output; reissue in conformant conversational text."
+    }
+  ],
+
+  "tool_adapters": [
+    "validate_command_schema",
+    "verify_policy_boundaries",
+    "verify_no_disclosure"
+  ],
+
   "glossary": [
     { "term": "ctl",                "definition": "System Logs — the append-only, hash-chained record of all domain-session trace events and commitment records." },
     { "term": "commitment_record",  "definition": "A System Log record that marks a durable system decision: domain-physics activation, role change, escalation, or night-cycle outcome." },
@@ -179,6 +257,63 @@
       "members": ["administrator"]
     }
   },
+
+  "execution_policy": {
+    "deterministic_tools": [
+      "validate_command_schema",
+      "verify_policy_boundaries",
+      "verify_no_disclosure"
+    ],
+    "precompiled_routes": {
+      "invariant_handlers": {
+        "no_autonomous_policy": {
+          "standing_order_id": "enforce_contract_boundaries",
+          "tool_adapter_id": "verify_policy_boundaries",
+          "library_deps": []
+        },
+        "no_internal_disclosure": {
+          "standing_order_id": "retract_and_self_correct",
+          "tool_adapter_id": "verify_no_disclosure",
+          "library_deps": []
+        },
+        "prompt_contract_fidelity": {
+          "standing_order_id": "retract_and_self_correct",
+          "tool_adapter_id": "verify_policy_boundaries",
+          "library_deps": []
+        },
+        "no_direct_execution": {
+          "standing_order_id": "enforce_contract_boundaries",
+          "tool_adapter_id": "verify_policy_boundaries",
+          "library_deps": []
+        },
+        "no_unsolicited_json": {
+          "standing_order_id": "strip_and_reformat_output",
+          "tool_adapter_id": "verify_no_disclosure",
+          "library_deps": []
+        },
+        "no_chain_of_thought_leakage": {
+          "standing_order_id": "strip_and_reformat_output",
+          "tool_adapter_id": "verify_no_disclosure",
+          "library_deps": []
+        }
+      },
+      "standing_order_tools": {
+        "enforce_contract_boundaries": {
+          "tool_chain": ["verify_policy_boundaries", "validate_command_schema"],
+          "library_deps": []
+        },
+        "retract_and_self_correct": {
+          "tool_chain": ["verify_no_disclosure", "verify_policy_boundaries"],
+          "library_deps": []
+        },
+        "strip_and_reformat_output": {
+          "tool_chain": ["verify_no_disclosure"],
+          "library_deps": []
+        }
+      }
+    }
+  },
+
   "group_libraries": [
     {
       "id": "system_health",

@@ -70,4 +70,32 @@ def interpret_turn_input(
         if key not in evidence or evidence[key] is None:
             evidence[key] = default_val
 
+    # ── Override SLM fields with deterministic sensor output ───────
+    # Same pattern as education domain's algebra parser override: call the
+    # collar sensor tool to verify within_tolerance with ground truth,
+    # overriding the SLM's estimate.
+    _tool_fns = tool_fns or {}
+    _sensor_fn = _tool_fns.get("collar_sensor") or _tool_fns.get("check_tolerance")
+    if _sensor_fn is not None:
+        try:
+            _sensor_result = _sensor_fn({"input_text": input_text, "evidence": evidence})
+            if isinstance(_sensor_result, dict):
+                if "within_tolerance" in _sensor_result:
+                    evidence["within_tolerance"] = _sensor_result["within_tolerance"]
+                if "sensor_reading_valid" in _sensor_result:
+                    evidence["sensor_reading_valid"] = _sensor_result["sensor_reading_valid"]
+                if "normalized_value" in _sensor_result:
+                    evidence["normalized_value"] = _sensor_result["normalized_value"]
+                if "deviation" in _sensor_result:
+                    evidence["deviation"] = _sensor_result["deviation"]
+        except Exception:
+            # Sensor unavailable — keep SLM defaults, flag reading as invalid
+            evidence["sensor_reading_valid"] = False
+    else:
+        # No sensor tool wired — flag for invariant checker
+        evidence.setdefault("sensor_reading_valid", True)
+
+    # Populate signal_index for invariant check if domain_step hasn't run yet
+    evidence.setdefault("signal_index", 0.5)
+
     return evidence
