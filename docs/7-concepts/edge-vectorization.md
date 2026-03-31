@@ -130,18 +130,18 @@ This rebuilds **only** the agriculture store — other domains are untouched.
 
 ## D. Daemon-Driven Rebuilds
 
-The resource monitor daemon dispatches vector rebuilds as night-cycle tasks when the system
+The resource monitor daemon dispatches vector rebuilds as batch tasks when the system
 is idle.  Three rebuild granularities are available:
 
 | Function | Scope | When used |
 |----------|-------|-----------|
 | `rebuild_domain_index(domain_id, ...)` | Single domain | After a physics file or domain doc changes |
 | `rebuild_group_library_dependents(library_id, ...)` | All domains referencing a Group Library | After a Group Library file changes |
-| `rebuild_all_domain_indexes(...)` | Every domain + global | Full re-index (night cycle, schema migration) |
+| `rebuild_all_domain_indexes(...)` | Every domain + global | Full re-index (daemon batch, schema migration) |
 | `rebuild_global_index(...)` | `_global` store only | After root-level docs/specs/standards change |
 
 The daemon's `task_priority` list includes `rebuild_domain_vectors` alongside other
-night-cycle tasks like `glossary_expansion` and `knowledge_graph_rebuild`.  The daemon walks
+batch tasks like `glossary_expansion` and `knowledge_graph_rebuild`.  The daemon walks
 this list in round-robin order during idle periods — see
 [`resource-monitor-daemon(7)`](resource-monitor-daemon.md) §F.
 

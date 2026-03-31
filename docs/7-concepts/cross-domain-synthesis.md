@@ -43,11 +43,11 @@ Each domain in Project Lumina is a fully isolated **Virtual LAN (VLAN)**:
 
 **Without cross-domain synthesis**, domains are strictly isolated — each `DomainContext` within a `SessionContainer` never references another domain's state, glossary, or invariants.
 
-**With cross-domain synthesis**, a controlled **trunk link** is established between two domains during night cycle processing.  This link:
+**With cross-domain synthesis**, a controlled **trunk link** is established between two domains during daemon batch processing.  This link:
 
 - Is **read-only**: no domain modifies another's physics.
 - Is **opt-in only**: both domains must explicitly enable and list each other.
-- Is **batch-only**: analysis runs during the night cycle, never in real-time sessions.
+- Is **batch-only**: analysis runs during daemon batch processing, never in real-time sessions.
 - Is **proposal-based**: findings require **dual domain authority approval** before recording.
 
 ---
@@ -73,7 +73,7 @@ cross_domain_synthesis:
 
 ## D. Two-Pass Analysis
 
-Cross-domain synthesis runs as a night cycle task and uses a two-pass algorithm:
+Cross-domain synthesis runs as a daemon batch task and uses a two-pass algorithm:
 
 ### Pass 1 — Glossary Structural Comparison
 
@@ -107,7 +107,7 @@ This pass identifies **invariant homomorphisms** — invariants that serve the s
 
 Cross-domain synthesis findings produce `Proposal` objects with `required_approvers` set to both domain IDs.  Approval follows a dual-key pattern:
 
-1. The night cycle generates a proposal: `"Cross-domain similarity between education and agriculture: glossary overlap (3 shared terms); invariant structure match (2 pairs)"`
+1. The daemon generates a proposal: `"Cross-domain similarity between education and agriculture: glossary overlap (3 shared terms); invariant structure match (2 pairs)"`
 2. The proposal is visible in the governance dashboard for **both** domain authorities.
 3. Each DA independently reviews and approves or rejects.
 4. **Both must approve** for the proposal to be recorded as `cross_domain_synthesis_verified` in the System Logs.
@@ -132,7 +132,7 @@ To enable cross-domain synthesis for a domain pack:
 
 3. **Populate the glossary** (recommended) — the more complete your glossary, the better Pass 1 performs.  Domains with no glossary will skip Pass 1 and go directly to invariant comparison.
 
-4. **Review proposals** in the governance dashboard after the next night cycle run.
+4. **Review proposals** in the governance dashboard after the next daemon batch run.
 
 5. **Record commitment** — approved proposals generate `cross_domain_synthesis_verified` commitment records in the System Logs.
 
@@ -148,7 +148,7 @@ Cross-domain synthesis is an extension of the [Novel Synthesis Framework](novel-
 | Key 1: LLM/adapter flags, Key 2: DA confirms | Key 1: glossary pass, Key 2: invariant pass, Key 3+4: both DAs confirm |
 | TraceEvent: `novel_synthesis_flagged` | TraceEvent: `cross_domain_synthesis_flagged` |
 | CommitmentRecord: `novel_synthesis_verified` / `_rejected` | CommitmentRecord: `cross_domain_synthesis_verified` / `_rejected` |
-| Runs in real-time during sessions | Runs in batch during night cycle |
+| Runs in real-time during sessions | Runs in batch during daemon processing |
 | Single domain authority approves | Both domain authorities must approve |
 
 The system treats cross-domain findings as novel synthesis candidates — they enter the same verification pipeline but with the additional constraint of dual approval.

@@ -129,7 +129,7 @@ src/lumina/api/
     ├── ingestion.py     ← document ingestion pipeline endpoints
     ├── system.py        ← health, domain listing, tool adapter, System Log validate
     ├── dashboard.py     ← governance dashboard telemetry endpoints
-    └── nightcycle.py    ← night-cycle trigger, status, and proposal endpoints
+    └── events.py        ← SSE event stream endpoints
 ```
 
 The `_ModProxy` test bridge enables test-time monkey-patching of any sub-module without importing the entire monolith. No route module imports from another route module — all shared state is accessed via `lumina.api.config` singletons.
@@ -330,13 +330,13 @@ See [`docs/7-concepts/execution-route-compilation.md`](docs/7-concepts/execution
 
 ### Resource Monitor Daemon
 
-A background asyncio task that periodically samples system load and dispatches night-cycle maintenance tasks when the host is idle:
+A background asyncio task that periodically samples system load and dispatches batch maintenance tasks when the host is idle:
 
 - **Load estimation** — blends event-loop latency, HTTP queue depth, and GPU VRAM usage into a single 0.0–1.0 `load_score`
 - **Idle dispatch** — triggers when `load_score < 0.20` is sustained for 300 seconds; dispatches tasks from the priority list: `knowledge_graph_rebuild`, `glossary_expansion`, `rebuild_domain_vectors`, `rejection_corpus_alignment`, and others
 - **Cooperative preemption** — requests graceful pause when `load_score > 0.40` spikes during a running task; resumes when load drops
 
-The daemon runs on the same asyncio event loop as the FastAPI server — no threads, no subprocesses. Manual and scheduled night-cycle triggers continue to work independently; the daemon is a third additive trigger path.
+The daemon runs on the same asyncio event loop as the FastAPI server — no threads, no subprocesses. Manual triggers via the `trigger_daemon_task` admin command are also supported.
 
 Source files: `src/lumina/daemon/` — see [`docs/7-concepts/resource-monitor-daemon.md`](docs/7-concepts/resource-monitor-daemon.md).
 
@@ -372,7 +372,7 @@ Domain Authorities can upload external content — PDF, DOCX, Markdown, CSV, JSO
 Upload → Content Extraction → SLM Interpretation → DA Review → Commit
 ```
 
-Night cycle runs `glossary_expansion` and `rejection_corpus_alignment` after ingestion days to incorporate newly committed content into retrieval indices.
+Daemon batch tasks run `glossary_expansion` and `rejection_corpus_alignment` after ingestion days to incorporate newly committed content into retrieval indices.
 
 See [`docs/7-concepts/ingestion-pipeline.md`](docs/7-concepts/ingestion-pipeline.md).
 

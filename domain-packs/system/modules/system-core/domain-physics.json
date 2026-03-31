@@ -206,7 +206,7 @@
 
   "glossary": [
     { "term": "ctl",                "definition": "System Logs — the append-only, hash-chained record of all domain-session trace events and commitment records." },
-    { "term": "commitment_record",  "definition": "A System Log record that marks a durable system decision: domain-physics activation, role change, escalation, or night-cycle outcome." },
+    { "term": "commitment_record",  "definition": "A System Log record that marks a durable system decision: domain-physics activation, role change, escalation, or daemon batch outcome." },
     { "term": "trace_event",        "definition": "A single LLM-driven turn record in the System Logs, capturing input evidence, state delta, and the system-physics hash active at the time." },
     { "term": "system_physics",     "definition": "The machine-readable global invariant layer (cfg/system-physics.yaml / .json) that constrains every domain session regardless of which domain is active." },
     { "term": "domain_physics",     "definition": "A domain-pack JSON file defining the module's topics, glossary, standing orders, escalation conditions, and artifacts." },
@@ -219,7 +219,7 @@
     { "term": "domain_registry",    "definition": "cfg/domain-registry.yaml — the file that maps domain_id keys to their runtime-config paths and routing metadata." },
     { "term": "standing_order",     "definition": "A persistent instruction authored by a Domain Authority that survives across session turns until explicitly revoked." },
     { "term": "escalation",         "definition": "A domain-session signal that exceeds a policy-gate threshold; surfaces to Meta Authority and writes an escalation record to the System Logs." },
-    { "term": "night_cycle",        "definition": "A configurable off-hours batch pass that performs glossary expansion, constraint refresh, and knowledge-graph rebuilds for a domain." },
+    { "term": "daemon_batch",       "definition": "A load-based batch processing subsystem that performs glossary expansion, constraint refresh, and knowledge-graph rebuilds for a domain. Supersedes the former night cycle." },
     { "term": "tool_adapter",       "definition": "A domain-pack module that exposes a callable to the Lumina orchestrator as a named tool during a session." },
     { "term": "domain_lib",         "definition": "A domain-pack library of pure functions available to controller adapters without LLM involvement." },
     { "term": "pseudonymous_id",    "definition": "The opaque, non-reversible identifier stored in the System Logs in place of a real user identifier." },
@@ -357,13 +357,15 @@
         "list_escalations",
         "explain_reasoning",
         "module_status",
-        "trigger_night_cycle",
-        "night_cycle_status",
+        "trigger_daemon_task",
+        "daemon_status",
         "review_proposals",
         "invite_user",
         "list_commands",
         "list_domains",
-        "list_modules"
+        "list_modules",
+        "list_domain_rbac_roles",
+        "get_domain_module_manifest"
       ],
       "hitl_policy": {
         "system_exempt": [
@@ -372,11 +374,13 @@
           "list_ingestions",
           "list_escalations",
           "module_status",
-          "night_cycle_status",
+          "daemon_status",
           "explain_reasoning",
           "list_commands",
           "review_ingestion",
-          "review_proposals"
+          "review_proposals",
+          "list_domain_rbac_roles",
+          "get_domain_module_manifest"
         ],
         "per_domain_overrides_enabled": true
       }
@@ -401,7 +405,7 @@
         "resolve_escalation": "domain_authority",
         "approve_interpretation": "domain_authority",
         "reject_ingestion": "domain_authority",
-        "trigger_night_cycle": "domain_authority",
+        "trigger_daemon_task": "domain_authority",
         "invite_user": "it_support"
       },
       "domain_role_aliases": {

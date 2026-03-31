@@ -84,14 +84,16 @@ Key invariants:
 | `review_ingestion` | `ingestion_id` | `root`, `domain_authority` |
 | `approve_interpretation` | `ingestion_id`, `interpretation_id` | `root`, `domain_authority` |
 | `reject_ingestion` | `ingestion_id`, `reason` | `root`, `domain_authority` |
-| `trigger_night_cycle` | *(none)* | `root`, `domain_authority` |
+| `trigger_daemon_task` | *(none)* | `root`, `domain_authority` |
 | `review_proposals` | *(none)* | `root`, `domain_authority` |
 | `invite_user` | `username`, `role` | `root` |
 | `list_escalations` | *(none)* | `root`, `domain_authority`, `it_support` |
 | `list_ingestions` | *(none)* | `root`, `domain_authority`, `it_support` |
 | `module_status` | `domain_id` | `root`, `domain_authority`, `it_support` |
 | `explain_reasoning` | `event_id` | `root`, `domain_authority`, `qa`, `auditor` |
-| `night_cycle_status` | *(none)* | `root`, `domain_authority`, `it_support` |
+| `daemon_status` | *(none)* | `root`, `domain_authority`, `it_support` |
+| `list_domain_rbac_roles` | `domain_id` | `root`, `domain_authority`, `it_support` |
+| `get_domain_module_manifest` | `domain_id` | `root`, `domain_authority`, `it_support` |
 
 ## Adding a New Operation
 

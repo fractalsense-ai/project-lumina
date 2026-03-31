@@ -40,7 +40,7 @@ description: >
 #
 # This text is the foundation layer that precedes ALL operational role
 # directives regardless of context (conversational, librarian, physics
-# interpreter, command translator, logic scraper, night cycle).
+# interpreter, command translator, logic scraper, daemon batch).
 
 universal_base_identity: >
   You are Project Lumina, a library computer access retrieval system for a

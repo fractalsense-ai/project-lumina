@@ -60,7 +60,7 @@ Assignment fields are stored in the student profile document (`domain-packs/educ
 | `teacher_id` | yes | `sub` claim of the JWT used to resolve the escalation |
 | `notes` | yes | Free-text notes from the resolution request |
 | `recorded_utc` | yes | ISO 8601 UTC timestamp of when the record was written |
-| `generated_proposal` | yes | `true` when `generate_proposal` was set in the resolve request — marks this entry for night-cycle proposal generation |
+| `generated_proposal` | yes | `true` when `generate_proposal` was set in the resolve request — marks this entry for daemon batch proposal generation |
 
 ---
 
@@ -141,7 +141,7 @@ HTTP status is `200` in all cases. The `escalated` flag mirrors whether the sess
 |-------|------|---------|-------------|
 | `generate_pin` | `bool` | `false` | Generate OTP, freeze session, include `unlock_pin` in response |
 | `intervention_notes` | `string \| null` | `null` | Appended to student profile `intervention_history` |
-| `generate_proposal` | `bool` | `false` | Mark the intervention notes entry for night-cycle proposal generation |
+| `generate_proposal` | `bool` | `false` | Mark the intervention notes entry for daemon batch proposal generation |
 
 Full endpoint documentation: [`POST /api/escalations/{escalation_id}/resolve`](../2-syscalls/lumina-api-server.md#post-apiscalationssescalation_idresolve)
 

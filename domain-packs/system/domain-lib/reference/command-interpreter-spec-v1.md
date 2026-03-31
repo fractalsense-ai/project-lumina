@@ -1,9 +1,9 @@
 # Command Interpreter Specification — System Domain
 
 **Spec ID:** command-interpreter-spec-v1  
-**Version:** 1.0.0  
+**Version:** 2.0.0  
 **Status:** Active  
-**Last updated:** 2026-03-30  
+**Last updated:** 2026-03-31  
 **Domain:** system  
 **Conformance:** Required — command translation must follow these disambiguation and output rules.
 
@@ -15,6 +15,21 @@ In this operational context you are performing admin command translation.
 Parse the user instruction into a structured operation using ONLY the
 operations from the provided list.
 If the instruction does not match any available operation, return null.
+
+## Core principle — dynamic discovery
+
+This interpreter has ZERO hardcoded knowledge of domain-specific roles,
+modules, or structure. All domain information MUST be obtained at runtime
+via discovery operations:
+
+- `list_domains` — discover available domain IDs.
+- `list_modules` — discover modules within a domain.
+- `list_domain_rbac_roles` — discover domain-specific roles for a domain.
+- `get_domain_module_manifest` — retrieve a domain's full module manifest.
+
+NEVER guess or fabricate module IDs, domain role names, or module paths.
+When domain-specific information is needed, emit the appropriate discovery
+operation first, then use the returned values in subsequent commands.
 
 ## Disambiguation rules
 
@@ -30,6 +45,15 @@ If the instruction does not match any available operation, return null.
 - list_ingestions = list pending document ingestion drafts (ingestions, uploads).
 - list_domains = list registered domains.
 - list_modules = list modules within a domain.
+- list_domain_rbac_roles = list domain-specific roles defined in a domain's physics.
+- get_domain_module_manifest = retrieve a domain's module manifest.
+
+## Domain ID rules
+
+Domain IDs are plain registry keys — NOT path-style prefixes.
+Correct: `"education"`, `"agriculture"`, `"system"`.
+WRONG: `"domain/edu"`, `"edu"`, `"domain/education"`.
+Use `list_domains` to discover valid domain IDs if unsure.
 
 ## invite_user param rules
 
@@ -48,37 +72,40 @@ When the operation is `invite_user`, use this exact structure:
 - `username` is REQUIRED — always the name of the person being invited.
   Copy it from `target` if needed.
 - `role` is REQUIRED — always a SYSTEM role (see "Role mapping" below).
-  If the user says "student", "teacher", etc., set `role` to "user" and
-  preserve the original name in `intended_domain_role`.
+  If the user mentions any role not in the seven system roles, set `role`
+  to "user" and preserve the original name in `intended_domain_role`.
 - `governed_modules` is ONLY needed when `role` is "domain_authority".
-  Do NOT include `governed_modules` for students, teachers, or other
-  non-authority roles.
+  Do NOT include `governed_modules` for non-authority roles.
+
+## governed_modules resolution
+
+When creating or promoting a user to domain_authority and a domain name is
+mentioned (e.g. "education domain"), you MUST discover the module IDs
+dynamically. NEVER hardcode or guess module paths.
+
+Procedure:
+1. Emit `list_modules` with `domain_id` set to the domain name.
+2. Use the returned module IDs verbatim in `governed_modules`.
+
+Do NOT use wildcards like `domain/edu/*` — always use full module IDs
+returned by `list_modules`.
 
 ## Role vs. Domain
 
 - `role` (or `new_role`) is always a SYSTEM role: root, domain_authority,
   it_support, qa, auditor, user, guest.
-- `intended_domain_role` is a DOMAIN-SPECIFIC role name (e.g. student, teacher,
-  field_operator). It is NOT a domain name like "education" or "agriculture".
-- When the user mentions a DOMAIN NAME (e.g. "education", "agriculture"), that
-  goes into `governed_modules` — NOT `intended_domain_role`.
-
-## governed_modules inference
-
-When creating or promoting a user to domain_authority and a domain name is
-mentioned (e.g. "education domain"), populate `governed_modules` with the
-**actual module IDs** for that domain. Use full qualified paths:
-  "education" → ["domain/edu/algebra-level-1/v1", "domain/edu/pre-algebra/v1"]
-  "agriculture" → ["domain/agri/operations-level-1/v1"]
-If unsure of exact module IDs, use `list_modules` to discover them first.
-Do NOT use wildcards like `domain/edu/*` — always use full module IDs.
+- `intended_domain_role` is a DOMAIN-SPECIFIC role name. It is NOT a
+  domain name like "education" or "agriculture".
+- When the user mentions a DOMAIN NAME (e.g. "education", "agriculture"),
+  that goes into `governed_modules` — NOT `intended_domain_role`.
 
 ## Role mapping
 
-- Domain-specific roles (student, teacher, teaching_assistant, parent, observer,
-  field_operator, site_manager) map to system role 'user'. Preserve the original
-  name in an 'intended_domain_role' param.
 - Valid system roles: root, domain_authority, it_support, qa, auditor, user, guest.
+- Any role name NOT in the above list is treated as a domain-specific role.
+  Set `role` to "user" and preserve the original name in `intended_domain_role`.
+- Use `list_domain_rbac_roles` to discover valid domain-specific roles
+  when assigning domain roles via `assign_domain_role`.
 
 ## Output constraints
 

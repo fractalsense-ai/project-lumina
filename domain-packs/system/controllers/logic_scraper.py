@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from lumina.core.persona_builder import PersonaContext, build_system_prompt
-from lumina.nightcycle.report import Proposal
+from lumina.daemon.report import Proposal
 
 log = logging.getLogger("lumina-logic-scraper")
 

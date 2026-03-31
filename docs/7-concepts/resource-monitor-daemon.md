@@ -18,14 +18,14 @@ resource-monitor-daemon — load-based opportunistic task scheduling for Lumina
 ## SYNOPSIS
 
 The **Resource Monitor Daemon** is a background asyncio task that periodically
-samples system load and dispatches night-cycle maintenance tasks when the host
+samples system load and dispatches batch maintenance tasks when the host
 is idle.  If user activity spikes while a task is running, the daemon requests
 cooperative preemption, pausing background work so latency-sensitive requests
 are not degraded.
 
-The daemon is **additive** — manual and scheduled night-cycle triggers continue
-to work exactly as before.  The daemon simply adds a third trigger path:
-load-based opportunistic dispatch.
+The daemon is the primary dispatch mechanism for batch processing tasks,
+replacing the former cron-based night cycle.  Manual triggers via the
+`trigger_daemon_task` admin command are also supported.
 
 ---
 
@@ -36,7 +36,7 @@ load-based opportunistic dispatch.
 Traditional batch systems run on a wall-clock schedule (e.g. daily at 02:00).
 This works poorly when the system is heavily used at night or sits idle during
 the day.  The Resource Monitor Daemon inverts the trigger model: instead of
-asking "is it 2 AM?", it asks "is the system idle right now?"
+asking “is it 2 AM?”, it asks “is the system idle right now?”
 
 > **Analogy:** a workbench janitor who tidies up whenever the workshop is empty
 > but immediately backs off when someone walks in.
@@ -127,8 +127,8 @@ task_priority:
   - context_crawler
 ```
 
-Only tasks already registered in the night-cycle `get_task()` registry are
-eligible.  Unknown tasks are skipped with a warning.
+Only tasks registered in the daemon's task registry are eligible.  Unknown
+tasks are skipped with a warning.
 
 ---
 

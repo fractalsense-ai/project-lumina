@@ -10,7 +10,7 @@
 # The value "pending" is reserved for the initial bootstrap only.
 
 schema_version: 1.0.0
-last_updated: 2026-03-30
+last_updated: 2026-03-31
 
 artifacts:
 
@@ -121,7 +121,7 @@ artifacts:
     doc_version: 1.4.0
     status: active
     last_updated: 2026-06-15
-    sha256: c4e5cb11fe9dbca1df695557458cdd9d6cad4397c2a6f8a394bc38178297dce9
+    sha256: 212474447f5498dc74416eab246a355e265ee948131d3419672d3c0026473ade
 
 
   # ── Section 3: Functions ──────────────────────────────────────────────────
@@ -240,7 +240,7 @@ artifacts:
     doc_version: 1.3.0
     status: active
     last_updated: 2026-03-18
-    sha256: 9aa03014519edfa7b91743d661dbff44fab878036d59c18aabc90d44cbba194e
+    sha256: c58da34b582921b48587ac6f731e3b0b4d3fd539a5016f15f8f619c0364cb48a
 
   - path: docs/7-concepts/api-server-architecture.md
     type: doc
@@ -248,7 +248,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-18
-    sha256: 73614efe4a5e51c9ce7047373d8f4b295d1e2c125cea80c2b7b932a3ad602391
+    sha256: 31bc2c063f649f90918547df946279578d84daf5952f814eb95481ec8510c1ea
 
   - path: docs/7-concepts/cross-domain-synthesis.md
     type: doc
@@ -256,7 +256,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-15
-    sha256: 5073487b8707aac3fde79dceb7e0ab42eb08bcdc604315e9d14da0d0a4feb4e1
+    sha256: 01d4e4c6df6a4cfd12fe3ca14b0909a75c3f3f000f688dcedc4ba3f111822095
 
   - path: docs/7-concepts/dsa-actor-model.md
     type: doc
@@ -304,7 +304,7 @@ artifacts:
     doc_version: 1.1.0
     status: active
     last_updated: 2026-06-15
-    sha256: eaa23d227ce717df05ae2c7a50469c140b283c3288cc5442636738570a281427
+    sha256: 9496937e5595650f7885078231f8a17ad2488f253df32d0bf58fc8340146f285
 
   - path: docs/7-concepts/graceful-degradation.md
     type: doc
@@ -338,13 +338,13 @@ artifacts:
     last_updated: 2026-03-15
     sha256: ed6f784be8825ee85ca6f01598fd6ad23156d38351548e1f62a97a5e6dc198ca
 
-  - path: docs/7-concepts/night-cycle-processing.md
+  - path: docs/7-concepts/daemon-batch-processing.md
     type: doc
     section: 7
-    doc_version: 1.0.0
+    doc_version: 2.0.0
     status: active
-    last_updated: 2026-03-20
-    sha256: e9ad8d935d463c1455136937aea18dd0293d1654ce3e8197a2f192a6e09bda2c
+    last_updated: 2026-03-31
+    sha256: 65571c7a30e5cc97f3cfe341c85a78611c21c4268e867374415fa70214f0a5e1
 
   - path: docs/7-concepts/nlp-semantic-router.md
     type: doc
@@ -376,7 +376,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-06-15
-    sha256: 4646532022633af1bba5cb2479822449f411e0feee47d723bb35b4f06d2f0a88
+    sha256: c85138f06f834c415bef43562ff462cf1eda261083d98a1cd3f5e773e99d9733
 
   - path: docs/7-concepts/slm-compute-distribution.md
     type: doc
@@ -464,7 +464,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-27
-    sha256: b1ed78a17baae8577a2a769f603fa4b385d27e77eada3f23c73af115676eb049
+    sha256: 1823147837cbae4a29b09c2e1b16a0c7cc78caa403ccebddc28cff178bc69c03
 
   - path: docs/7-concepts/edge-vectorization.md
     type: doc
@@ -472,7 +472,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-27
-    sha256: b3929be41560bc0aab289b2dfb142c67143b69c2960ef9be079c9e7509725337
+    sha256: ffa3360047d2dd07784c6d7608b5e00f14295cc5678e7d32a480d5e69a6e73d0
 
   - path: docs/7-concepts/execution-route-compilation.md
     type: doc
@@ -515,7 +515,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-20
-    sha256: b10877c9646ce0cba801f7a4ed37eef47084dab84c53ea35f7846e5e7cdf08be
+    sha256: e3e09363f3f35baf1e032e4fbef6ea705fb5972b625fc6239706fe55f59f01c4
 
   - path: docs/8-admin/air-gapped-admin-architecture.md
     type: doc
@@ -531,7 +531,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-19
-    sha256: 33b41e0aa207848dfc0bd24e897fcec96ba87d9687a88ed6e5b95d5db041b49f
+    sha256: f575458b259602459b6f30912add2de9a78a5a9c099dad71396885d3a6b1aeea
 
   - path: docs/8-admin/rbac-administration.md
     type: doc
@@ -555,7 +555,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-13
-    sha256: 13dd73450ad6db2b89b3038b42ad897c2ef0dbdbac6c4ccb038524442a722f88
+    sha256: eddd638da54d36afda1e070c9bde4fdf9ecfdec4fb3a04236d8c80e82fb709fd
 
 
   # ── Docs Root ─────────────────────────────────────────────────────────────
@@ -603,7 +603,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-12
-    sha256: 42c8fda3da3ee5db0ef97a321a915e435c822259263bc44e03aae95eff23c371
+    sha256: d99d0651d9dd9ba395b2992002a069b5ebb7d7cd7fa76ea8ab80f74defe74141
 
   - path: docs/7-concepts/memory-spec.md
     type: spec
@@ -899,6 +899,20 @@ artifacts:
     last_updated: 2026-03-31
     sha256: 21934dbf8e2c9755dc851b3a6d7c3e2603b0cf714b7d58ac3c8e6c72ebe7a2d3
 
+  - path: standards/admin-command-schemas/list-domain-rbac-roles.json
+    type: schema
+    doc_version: 1.0.0
+    status: active
+    last_updated: 2026-03-31
+    sha256: e711715b7d87d9bbef17e71b7f6d351df5f74e84974564933ac9ff9f606208e5
+
+  - path: standards/admin-command-schemas/get-domain-module-manifest.json
+    type: schema
+    doc_version: 1.0.0
+    status: active
+    last_updated: 2026-03-31
+    sha256: 7c1f2bb8cdd1b4dea2200241606579bbc468605c5a85fdbf0e1301a6001cab84
+
   - path: standards/admin-command-schemas/reject-ingestion.json
     type: schema
     doc_version: 1.0.0
@@ -1001,7 +1015,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-20
-    sha256: 173bbf1cca2ec0f1c5acce0ebd542747a95962da8074df43c5b0e6f60274a6aa
+    sha256: 3642e77db66abc61c03e78d784906121bb97904dc2aab7e359a62efb8ee3de09
 
   - path: domain-packs/system/cfg/system-physics.json
     type: config
@@ -1015,7 +1029,7 @@ artifacts:
     doc_version: 1.0.0
     status: active
     last_updated: 2026-03-12
-    sha256: dd0da343150c33ef51e480a72e04127b17c395bf63e56fb7eed22b4ee9002fed
+    sha256: 0bb5b9635c0cc6a57a6a6b7ab1fece6464a6f81d5f84f0fe94ddb39c1726f24e
 
 
   # ── Retrieval (relocated) ─────────────────────────────────────────────────

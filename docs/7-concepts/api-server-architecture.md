@@ -17,7 +17,7 @@ This document describes the internal structure of the Lumina API server after it
 
 ## A. Motivation
 
-The original `server.py` grew to ~3,600 lines as the system acquired new capabilities: multi-domain routing, HITL admin staging, ingestion pipeline, night-cycle scheduling, governance dashboard, cross-domain synthesis, and System Log record browsing. At that scale:
+The original `server.py` grew to ~3,600 lines as the system acquired new capabilities: multi-domain routing, HITL admin staging, ingestion pipeline, daemon batch scheduling, governance dashboard, cross-domain synthesis, and System Log record browsing. At that scale:
 
 - **Tests required full-import** of the entire module to patch any single function, making fixture setup slow and interdependencies fragile.
 - **Merge conflicts were frequent** — unrelated features touched the same file.
@@ -54,7 +54,7 @@ src/lumina/api/
     ├── ingestion.py     ← document ingestion pipeline endpoints
     ├── system.py        ← health, domain listing, tool adapter, System Log validate
     ├── dashboard.py     ← governance dashboard telemetry endpoints
-    └── nightcycle.py    ← night-cycle trigger, status, and proposal endpoints
+    └── events.py       ← SSE event stream and escalation event endpoints
 ```
 
 ### Key invariant

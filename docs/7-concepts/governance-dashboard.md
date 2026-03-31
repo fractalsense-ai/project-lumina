@@ -13,7 +13,7 @@ last_updated: 2026-06-15
 
 ## Overview
 
-The Governance Dashboard is a React SPA route within the Lumina web interface, accessible only to users with `root` or `domain_authority` roles. It provides a centralized view for managing domain governance operations: reviewing escalations, monitoring ingestions, overseeing night cycle proposals, and observing system telemetry.
+The Governance Dashboard is a React SPA route within the Lumina web interface, accessible only to users with `root` or `domain_authority` roles. It provides a centralized view for managing domain governance operations: reviewing escalations, monitoring ingestions, overseeing daemon batch proposals, and observing system telemetry.
 
 Since v1.1.0 the dashboard uses a **dynamic tab manifest** that filters visible tabs by the authenticated user's RBAC role. Tabs are defined in a `TAB_MANIFEST` array within `DashboardPage.tsx`. Real-time events are delivered via the SSE event stream (`GET /api/events/stream`).
 
@@ -62,16 +62,16 @@ The interpretation viewer expands to show each candidate interpretation with con
 
 Data source: `GET /api/ingest`
 
-### Night Cycle Tab
+### Daemon Batch Tab
 
-Displays the night cycle subsystem status and pending proposals:
-- **Status Card** — Enabled state, cron schedule, total runs, running indicator
+Displays the daemon batch subsystem status and pending proposals:
+- **Status Card** — Enabled state, load score, total runs, running indicator
 - **Last Run Summary** — Status, trigger source, proposals generated, timestamp
 - **Pending Proposals** — List of actionable proposals with approve/reject buttons
 
 Data sources:
-- `GET /api/nightcycle/status`
-- `GET /api/nightcycle/proposals`
+- `GET /api/health/load`
+- `GET /api/admin/command/staged` (filtered to daemon proposals)
 
 ### Staged Commands Tab
 

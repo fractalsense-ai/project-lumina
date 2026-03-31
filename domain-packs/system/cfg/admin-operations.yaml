@@ -143,3 +143,13 @@ operations:
     description: "List modules within a domain or all domains."
     params:
       domain_id: "string — domain identifier (optional, lists all if omitted)"
+
+  - name: list_domain_rbac_roles
+    description: "List domain-specific roles defined in a domain's physics configuration. Use this to discover valid role names before assigning domain roles."
+    params:
+      domain_id: "string — target domain identifier"
+
+  - name: get_domain_module_manifest
+    description: "Retrieve a domain's full module manifest including module IDs, labels, and versions. Use this to discover valid module IDs before referencing them."
+    params:
+      domain_id: "string — target domain identifier"

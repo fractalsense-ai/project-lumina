@@ -1,0 +1,131 @@
+﻿........................................................................ [  2%]
+........................................................................ [  4%]
+........................................................................ [  7%]
+........................................................................ [  9%]
+........................................................................ [ 11%]
+........................................................................ [ 14%]
+........................................................................ [ 16%]
+........................................................................ [ 19%]
+........................................................................ [ 21%]
+................................................s....................... [ 23%]
+........................................................................ [ 26%]
+........................................................................ [ 28%]
+..........................s............................................. [ 31%]
+........................................................................ [ 33%]
+........................................................................ [ 35%]
+........................................................................ [ 38%]
+........................................................................ [ 40%]
+........................................................................ [ 43%]
+........................................................................ [ 45%]
+........................................................................ [ 47%]
+........................................................................ [ 50%]
+........................................................................ [ 52%]
+........................................................................ [ 55%]
+........................................................................ [ 57%]
+........................................................................ [ 59%]
+........................................................................ [ 62%]
+........................................................................ [ 64%]
+........................................................................ [ 67%]
+........................................................................ [ 69%]
+........................................................................ [ 71%]
+........................................................................ [ 74%]
+........................................................................ [ 76%]
+........................................................................ [ 79%]
+........................................................................ [ 81%]
+........................................................................ [ 83%]
+........................................................................ [ 86%]
+........................................................................ [ 88%]
+........................................................................ [ 91%]
+........................................................................ [ 93%]
+........................................................................ [ 95%]
+........................................................................ [ 98%]
+.....................................................                    [100%]
+============================== warnings summary ===============================
+src\lumina\api\server.py:231: 2 warnings
+tests/test_admin_command.py: 9 warnings
+tests/test_admin_command_regressions.py: 6 warnings
+tests/test_admin_endpoints.py: 33 warnings
+tests/test_api_auth_integration.py: 3 warnings
+tests/test_api_chat_tool_log_integration.py: 7 warnings
+tests/test_domain_roles.py: 14 warnings
+tests/test_escalation_unlock.py: 18 warnings
+tests/test_hitl_command_gate.py: 16 warnings
+tests/test_holodeck_sandbox.py: 10 warnings
+tests/test_invite_flow.py: 18 warnings
+tests/test_list_domains_modules.py: 3 warnings
+tests/test_multi_domain.py: 15 warnings
+tests/test_session_handoff.py: 9 warnings
+tests/test_sse_and_events.py: 11 warnings
+tests/test_three_features.py: 11 warnings
+tests/test_world_sim_consent.py: 11 warnings
+  C:\Users\dxn00\Lumina\project-lumina\src\lumina\api\server.py:231: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+.venv\Lib\site-packages\fastapi\applications.py:4598: 4 warnings
+tests/test_admin_command.py: 18 warnings
+tests/test_admin_command_regressions.py: 12 warnings
+tests/test_admin_endpoints.py: 66 warnings
+tests/test_api_auth_integration.py: 6 warnings
+tests/test_api_chat_tool_log_integration.py: 14 warnings
+tests/test_domain_roles.py: 28 warnings
+tests/test_escalation_unlock.py: 36 warnings
+tests/test_hitl_command_gate.py: 32 warnings
+tests/test_holodeck_sandbox.py: 20 warnings
+tests/test_invite_flow.py: 36 warnings
+tests/test_list_domains_modules.py: 6 warnings
+tests/test_multi_domain.py: 30 warnings
+tests/test_session_handoff.py: 18 warnings
+tests/test_sse_and_events.py: 22 warnings
+tests/test_three_features.py: 22 warnings
+tests/test_world_sim_consent.py: 22 warnings
+  C:\Users\dxn00\Lumina\project-lumina\.venv\Lib\site-packages\fastapi\applications.py:4598: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)  # ty: ignore[deprecated]
+
+src\lumina\api\server.py:331: 2 warnings
+tests/test_admin_command.py: 9 warnings
+tests/test_admin_command_regressions.py: 6 warnings
+tests/test_admin_endpoints.py: 33 warnings
+tests/test_api_auth_integration.py: 3 warnings
+tests/test_api_chat_tool_log_integration.py: 7 warnings
+tests/test_domain_roles.py: 14 warnings
+tests/test_escalation_unlock.py: 18 warnings
+tests/test_hitl_command_gate.py: 16 warnings
+tests/test_holodeck_sandbox.py: 10 warnings
+tests/test_invite_flow.py: 18 warnings
+tests/test_list_domains_modules.py: 3 warnings
+tests/test_multi_domain.py: 15 warnings
+tests/test_session_handoff.py: 9 warnings
+tests/test_sse_and_events.py: 11 warnings
+tests/test_three_features.py: 11 warnings
+tests/test_world_sim_consent.py: 11 warnings
+  C:\Users\dxn00\Lumina\project-lumina\src\lumina\api\server.py:331: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("shutdown")
+
+tests/test_resource_monitor.py::test_grace_period_suppresses_dispatch[asyncio]
+tests/test_resource_monitor.py::test_idle_triggers_dispatch[asyncio]
+tests/test_resource_monitor.py::test_preemption_on_load_spike[asyncio]
+  C:\Users\dxn00\Lumina\project-lumina\src\lumina\daemon\resource_monitor.py:179: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    await self._poll_once()
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+SKIPPED [1] tests\test_group_libraries.py:231: environmental_sensors.py not found
+SKIPPED [1] tests\test_invite_flow.py:398: SLM staging unavailable in test env
+3003 passed, 2 skipped, 787 warnings in 332.08s (0:05:32)

@@ -56,7 +56,7 @@ Generic runtime host for D.S.A. orchestration with built-in JWT authentication. 
 | `routes/system.py` | Health, domain listing, tool adapter, System Log validate |
 | `routes/events.py` | SSE real-time event stream (token-auth + RBAC-filtered) |
 | `routes/dashboard.py` | Governance dashboard data endpoints |
-| `routes/nightcycle.py` | Night-cycle trigger, status, and proposal endpoints |
+| `routes/nightcycle.py` | *(removed)* — batch tasks now managed via daemon and admin commands |
 | `structured_content.py` | Action-card builders for ChatResponse structured content |
 
 ## ENVIRONMENT
@@ -236,7 +236,7 @@ Resolve an open escalation with a decision.
 | `reasoning` | `string` | required | Free-text rationale recorded in the System Logs |
 | `generate_pin` | `bool` | `false` | When `true`, generates a 6-digit OTP, freezes the session, and returns `unlock_pin` in the response |
 | `intervention_notes` | `string \| null` | `null` | Free-text intervention notes appended to the student's `intervention_history` in their profile |
-| `generate_proposal` | `bool` | `false` | Marks the intervention notes entry for night-cycle proposal generation |
+| `generate_proposal` | `bool` | `false` | Marks the intervention notes entry for daemon batch proposal generation |
 
 **Response:** `{record_id, escalation_id, decision}` plus `unlock_pin` (6-digit string) when `generate_pin=true`.
 
@@ -532,53 +532,22 @@ Return per-domain summary telemetry (turn count, escalation rate, last active ti
 
 ### GET /api/dashboard/telemetry
 
-Return aggregate system telemetry (active sessions, pending escalations, ingestion queue depth, last night-cycle run).
+Return aggregate system telemetry (active sessions, pending escalations, ingestion queue depth, last daemon batch run).
 
 **Auth:** Bearer token required. Roles: `root`, `domain_authority`, `it_support`.
 
 ---
 
-### POST /api/nightcycle/trigger
+### Daemon Batch Processing
 
-Trigger an immediate night-cycle batch run for one or all domains.
+Batch processing tasks are triggered via the `trigger_daemon_task` admin
+command or dispatched automatically by the Resource Monitor Daemon.  The
+former `/api/nightcycle/*` endpoint family has been removed.
 
-**Request:** `NightcycleTriggerRequest` — `domain_id` (optional; omit for all domains)
-
-**Auth:** Bearer token required. Role: `root`.
-
----
-
-### GET /api/nightcycle/status
-
-Return the status of the most recent night-cycle run.
-
-**Auth:** Bearer token required. Roles: `root`, `domain_authority`, `it_support`.
-
----
-
-### GET /api/nightcycle/report/{run_id}
-
-Return the full report for a completed night-cycle run.
-
-**Auth:** Bearer token required. Roles: `root`, `domain_authority`, `it_support`, `qa`.
-
----
-
-### GET /api/nightcycle/proposals
-
-List pending night-cycle proposals (glossary additions/prunings, consistency fixes) awaiting domain-authority review.
-
-**Auth:** Bearer token required. Roles: `root`, `domain_authority`.
-
----
-
-### POST /api/nightcycle/proposals/{proposal_id}/resolve
-
-Accept or reject a night-cycle proposal.
-
-**Request:** `ProposalResolveRequest` — `decision` (`accept` | `reject`), `notes`
-
-**Auth:** Bearer token required. Roles: `root`, `domain_authority`.
+Use admin chat commands:
+- `trigger_daemon_task` — manually trigger a batch run
+- `daemon_status` — check daemon scheduler status
+- `review_proposals` — list pending proposals
 
 ---
 

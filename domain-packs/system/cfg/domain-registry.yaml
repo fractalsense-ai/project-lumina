@@ -64,11 +64,7 @@ domains:
   system:
     runtime_config_path: domain-packs/system/cfg/runtime-config.yaml
     label: System — Lumina Infrastructure
-    description: >-
-      System domain for Project Lumina infrastructure queries.  Routes admin
-      and operator questions about System Log records, domain physics, RBAC, policy
-      gates, and Lumina operational concepts.  Only root and it_support roles
-      may execute sessions in this domain.
+    description: System domain for Project Lumina infrastructure queries. Routes admin and operator questions about System Log records, domain physics, RBAC, policy gates, and Lumina operational concepts. Only root and it_support roles may execute sessions in this domain.
     module_prefix: sys
     keywords:
       - ctl

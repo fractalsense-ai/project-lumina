@@ -197,7 +197,7 @@ def detect_compound_command(input_text: str) -> dict[str, Any]:
 _SYSTEM_GLOSSARY: frozenset[str] = frozenset([
     "ctl", "commitment_record", "trace_event", "system_physics", "domain_physics",
     "domain_pack", "domain_authority", "meta_authority", "policy_gate", "hash_chain",
-    "rbac", "domain_registry", "standing_order", "escalation", "night_cycle",
+    "rbac", "domain_registry", "standing_order", "escalation", "daemon_batch",
     "tool_adapter", "domain_lib", "pseudonymous_id", "ingestion_pipeline",
     "governed_modules", "invite_token", "pending_user",
 ])

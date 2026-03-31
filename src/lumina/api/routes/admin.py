@@ -480,16 +480,16 @@ _FALLBACK_KNOWN_OPERATIONS: frozenset[str] = frozenset({
     "resolve_escalation", "list_ingestions", "review_ingestion",
     "approve_interpretation", "reject_ingestion", "list_escalations",
     "explain_reasoning", "module_status", "trigger_daemon_task",
-    "trigger_night_cycle", "daemon_status", "night_cycle_status",
-    "review_proposals", "invite_user",
+    "daemon_status", "review_proposals", "invite_user",
     "list_domains", "list_modules", "list_commands",
+    "list_domain_rbac_roles", "get_domain_module_manifest",
 })
 
 _FALLBACK_HITL_EXEMPT: frozenset[str] = frozenset({
     "list_domains", "list_modules", "list_ingestions", "list_escalations",
-    "module_status", "daemon_status", "night_cycle_status", "explain_reasoning",
-    "list_commands",
-    "review_ingestion", "review_proposals",
+    "module_status", "daemon_status", "explain_reasoning",
+    "list_commands", "review_ingestion", "review_proposals",
+    "list_domain_rbac_roles", "get_domain_module_manifest",
 })
 
 _FALLBACK_ROLE_HIERARCHY: dict[str, int] = {
@@ -1310,6 +1310,61 @@ async def _execute_admin_operation(
         modules = _cfg.DOMAIN_REGISTRY.list_modules_for_domain(resolved)
         result = {"operation": operation, "domain_id": resolved, "modules": modules, "count": len(modules)}
 
+    elif operation == "list_domain_rbac_roles":
+        domain_id = str(params.get("domain_id", parsed.get("target", "")))
+        if not domain_id:
+            raise HTTPException(status_code=422, detail="domain_id required")
+        try:
+            resolved = _cfg.DOMAIN_REGISTRY.resolve_domain_id(domain_id)
+        except DomainNotFoundError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        # Collect domain_role_aliases from all physics files in the domain
+        modules = _cfg.DOMAIN_REGISTRY.list_modules_for_domain(resolved)
+        domain_roles: dict[str, Any] = {}
+        for mod in modules:
+            dp_path = mod.get("domain_physics_path", "")
+            if not dp_path:
+                continue
+            try:
+                dp_full = Path(_cfg.DOMAIN_REGISTRY._repo_root) / dp_path
+                dp_data = json.loads(dp_full.read_text(encoding="utf-8"))
+                governance = dp_data.get("subsystem_configs", {}).get("governance", {})
+                aliases = governance.get("domain_role_aliases", {})
+                if aliases:
+                    domain_roles[mod["module_id"]] = {
+                        "roles": list(aliases.keys()),
+                        "maps_to_system_role": aliases,
+                    }
+            except Exception:
+                log.debug("Could not read domain physics for %s", mod.get("module_id"))
+        result = {"operation": operation, "domain_id": resolved, "domain_roles": domain_roles}
+
+    elif operation == "get_domain_module_manifest":
+        domain_id = str(params.get("domain_id", parsed.get("target", "")))
+        if not domain_id:
+            raise HTTPException(status_code=422, detail="domain_id required")
+        try:
+            resolved = _cfg.DOMAIN_REGISTRY.resolve_domain_id(domain_id)
+        except DomainNotFoundError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        modules = _cfg.DOMAIN_REGISTRY.list_modules_for_domain(resolved)
+        manifest_entries: list[dict[str, Any]] = []
+        for mod in modules:
+            dp_path = mod.get("domain_physics_path", "")
+            entry: dict[str, Any] = {"module_id": mod["module_id"]}
+            if dp_path:
+                try:
+                    dp_full = Path(_cfg.DOMAIN_REGISTRY._repo_root) / dp_path
+                    dp_data = json.loads(dp_full.read_text(encoding="utf-8"))
+                    entry["label"] = dp_data.get("label", "")
+                    entry["version"] = dp_data.get("version", "")
+                    entry["description"] = dp_data.get("description", "")
+                    entry["domain"] = dp_data.get("domain", resolved)
+                except Exception:
+                    pass
+            manifest_entries.append(entry)
+        result = {"operation": operation, "domain_id": resolved, "modules": manifest_entries, "count": len(manifest_entries)}
+
     else:
         raise HTTPException(status_code=422, detail=f"Unknown operation: {operation}")
 
@@ -1318,6 +1373,7 @@ async def _execute_admin_operation(
         "list_domains", "list_modules", "list_commands", "list_ingestions",
         "list_escalations", "module_status", "daemon_status",
         "night_cycle_status", "explain_reasoning", "review_proposals",
+        "list_domain_rbac_roles", "get_domain_module_manifest",
     })
     if operation not in _READ_ONLY_OPS:
         try:

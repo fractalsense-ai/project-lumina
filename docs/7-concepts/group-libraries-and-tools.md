@@ -214,7 +214,7 @@ rebuild_group_library_dependents(
 ```
 
 This function scans each domain pack's physics files for `group_libraries` entries matching
-the given `library_id`, then re-indexes only those domains.  The daemon's night-cycle
+the given `library_id`, then re-indexes only those domains.  The daemon's batch
 task list includes vector rebuilds that honour these dependency chains — see
 [`edge-vectorization(7)`](edge-vectorization.md) §D and
 [`resource-monitor-daemon(7)`](resource-monitor-daemon.md) §F.

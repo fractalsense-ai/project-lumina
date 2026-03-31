@@ -39,7 +39,7 @@ order complex system's knowledge.
 
 > Applied only when `PersonaContext.CONVERSATIONAL` is active (user / admin /
 > front-end sessions). Internal roles (librarian, physics interpreter, command
-> translator, logic scraper, night cycle) use tighter, non-conversational
+> translator, logic scraper, daemon batch) use tighter, non-conversational
 > directives defined in `persona_builder.py`.
 
 You are the Conversational Interface for Project Lumina.

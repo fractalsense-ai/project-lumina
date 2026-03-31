@@ -257,11 +257,35 @@ class DomainRegistry:
         return self._default_domain or next(iter(self._domains))
 
     def resolve_domain_id(self, requested: str | None) -> str:
-        """Map a request-level domain_id to a validated registry key."""
+        """Map a request-level domain_id to a validated registry key.
+
+        Handles exact matches, prefix lookups (e.g. "edu" → "education"),
+        and path-style domain IDs (e.g. "domain/edu" → "education").
+        """
         if requested and requested in self._domains:
             return requested
 
         if requested and requested not in self._domains:
+            # Try prefix lookup (e.g. "edu" → "education")
+            resolved = self._prefix_to_domain.get(requested)
+            if resolved:
+                return resolved
+
+            # Try stripping "domain/" path prefix (e.g. "domain/edu" → "edu")
+            stripped = requested
+            if stripped.startswith("domain/"):
+                stripped = stripped[len("domain/"):]
+            # Strip trailing segments (e.g. "domain/edu/algebra" → "edu")
+            stripped = stripped.split("/")[0]
+            if stripped != requested:
+                # Check direct match after stripping
+                if stripped in self._domains:
+                    return stripped
+                # Check prefix map
+                resolved = self._prefix_to_domain.get(stripped)
+                if resolved:
+                    return resolved
+
             raise DomainNotFoundError(requested, list(self._domains.keys()))
 
         if self._default_domain:

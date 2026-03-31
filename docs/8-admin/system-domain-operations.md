@@ -69,7 +69,7 @@ from domain-level users by default.
 - **Status queries** — discuss the state of a Lumina component from session context
 - **Diagnostic discussion** — troubleshooting guidance for runtime issues
 - **Config review** — walk through domain-registry, domain-physics, or system-physics
-- **Operational monitoring** — System Log record structure, night-cycle status, hash-chain
+- **Operational monitoring** — System Log record structure, daemon batch status, hash-chain
   integrity
 
 The system domain does **not** support world-sim personas, learner ZPD tracking,
