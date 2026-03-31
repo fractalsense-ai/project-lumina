@@ -1,13 +1,13 @@
 ---
-version: 1.2.0
-last_updated: 2026-03-21
+version: 1.3.0
+last_updated: 2026-03-31
 ---
 
 # installation-and-packaging(1)
 
-**Version:** 1.2.0  
-**Status:** Active  
-**Last updated:** 2026-03-21  
+**Version:** 1.3.0
+**Status:** Active
+**Last updated:** 2026-03-31
 
 ---
 
@@ -18,7 +18,7 @@ installation-and-packaging — install, configure, and run Project Lumina
 ## SYNOPSIS
 
 ```
-pip install -e .[nlp,providers,sqlite]
+pip install -e ".[nlp,providers,sqlite,math,retrieval,passwords]"
 lumina-api
 ```
 
@@ -56,10 +56,10 @@ uv venv && uv pip install -r requirements-dev.txt
 
 Use editable install when you want command entrypoints and local package iteration.
 
-First, create and activate a venv. On Windows, use the `py` launcher to pin a specific Python version — this is required when installing the `nlp` extra, since spaCy is not yet compatible with Python 3.14+:
+First, create and activate a venv. On Windows, use the `py` launcher to pin a specific Python version — this is required when installing the `nlp` extra, since spaCy is not yet compatible with Python 3.14+. All other extras work on 3.12–3.14:
 
 ```powershell
-# Windows (PowerShell)
+# Windows (PowerShell) — use 3.13 if you need the nlp extra, otherwise 3.14 is fine
 py -3.13 -m venv .venv
 .venv\Scripts\Activate.ps1
 ```
@@ -86,11 +86,20 @@ pip install -e ".[providers]"
 # With SQLite persistence backend
 pip install -e ".[sqlite]"
 
+# With symbolic math engine (education domain algebra tools)
+pip install -e ".[math]"
+
+# With semantic retrieval (MiniLM embeddings for RAG grounding)
+pip install -e ".[retrieval]"
+
+# With production password hashing (Argon2id / bcrypt)
+pip install -e ".[passwords]"
+
 # Full — all extras
-pip install -e ".[nlp,providers,sqlite]"
+pip install -e ".[nlp,providers,sqlite,math,retrieval,passwords]"
 
 # uv equivalents (prefix with `uv pip`)
-uv pip install -e ".[nlp,providers,sqlite]"
+uv pip install -e ".[nlp,providers,sqlite,math,retrieval,passwords]"
 ```
 
 ### Optional extras
@@ -100,7 +109,10 @@ uv pip install -e ".[nlp,providers,sqlite]"
 | `nlp` | `spacy>=3.7.0` | Glossary-term detection in turn data — **create your venv with `py -3.13` or `py -3.12`** (spaCy is not yet compatible with Python 3.14+) |
 | `providers` | `openai`, `anthropic` | Live LLM mode |
 | `sqlite` | `sqlalchemy[asyncio]`, `aiosqlite` | SQLite persistence backend |
-| `dev` | `pytest`, `pytest-cov` | Running the test suite |
+| `math` | `sympy>=1.12` | Education domain algebra tool adapters (symbolic verification, equation parsing) |
+| `retrieval` | `sentence-transformers>=3.0.0`, `numpy>=1.26.0` | MiniLM semantic embeddings for RAG grounding and domain-pack doc retrieval |
+| `passwords` | `bcrypt>=4.0.0`, `argon2-cffi>=23.1.0` | Production-grade password hashing (Argon2id/bcrypt); falls back to SHA-256 without these |
+| `dev` | `pytest`, `pytest-cov`, `jsonschema`, plus `sqlite` and `passwords` extras | Running the test suite |
 
 ## Primary LLM setup
 
@@ -338,6 +350,8 @@ lumina-orchestrator-demo  # run the deterministic orchestrator demo
 lumina-system-log-validate       # validate a System Log commitment record
 lumina-security-freeze    # check for exposed secrets / security hygiene
 lumina-yaml-convert       # convert YAML files to JSON
+lumina-integrity-check    # verify SHA-256 hashes for all core artifacts
+lumina-manifest-regen     # recompute and rewrite SHA-256 hashes in MANIFEST.yaml
 ```
 
 `lumina-api` starts the FastAPI server on `LUMINA_PORT` (default: `8000`).

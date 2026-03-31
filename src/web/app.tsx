@@ -618,7 +618,7 @@ function ChatInterface({
           user: trimmedInput,
           assistant: apiResponse.response,
           ts: Date.now() / 1000,
-          domain_id: apiResponse.session_id?.split('_')[0] ?? '',
+          domain_id: apiResponse.transcript_seal_metadata?.domain_id ?? '',
         }
         transcriptRef.current = [...transcriptRef.current, turn]
         transcriptStoreRef.current.saveSession({
@@ -650,12 +650,29 @@ function ChatInterface({
     }
   }
 
+  // Save transcript to IndexedDB before calling the parent logout handler.
+  // The beforeunload handler does NOT fire on React state-driven logouts,
+  // so we must explicitly save here to survive the re-login cycle.
+  const handleLogoutWithSave = () => {
+    const meta = sealMetadataRef.current
+    if (sealRef.current && transcriptRef.current.length > 0 && meta) {
+      transcriptStoreRef.current.saveSession({
+        sessionId,
+        messages: transcriptRef.current,
+        seal: sealRef.current,
+        metadata: meta,
+        updatedAt: Date.now(),
+      }).catch(() => {})
+    }
+    onLogout()
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <AppHeader
         manifest={manifest}
         auth={auth}
-        onLogout={onLogout}
+        onLogout={handleLogoutWithSave}
         showDashboard={showDashboard}
         view={view}
         onViewChange={onViewChange}

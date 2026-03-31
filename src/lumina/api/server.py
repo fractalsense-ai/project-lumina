@@ -274,6 +274,19 @@ async def _start_idle_cleanup() -> None:
     _set_ki(_ki)
     log.info("KnowledgeIndex active: %s", _ki.stats)
 
+    # Load persisted MiniLM vector stores for RAG grounding + domain routing.
+    try:
+        from lumina.retrieval.housekeeper import make_registry as _make_vsr
+        from lumina.retrieval.embedder import DocEmbedder as _DocEmbedder
+        from lumina.core.nlp import set_vector_registry as _set_vr
+
+        _vsr = _make_vsr()
+        _vsr.load_all()
+        _set_vr(_vsr, _DocEmbedder())
+        log.info("VectorStoreRegistry active: %d domain store(s) loaded", len(_vsr._stores))
+    except Exception:
+        log.warning("VectorStoreRegistry: not loaded — retrieval extra may not be installed", exc_info=True)
+
     # Start the async SLM PPA enrichment worker ("same bus, different lane").
     from lumina.core.slm_ppa_worker import start as _start_slm_ppa_worker
     await _start_slm_ppa_worker()

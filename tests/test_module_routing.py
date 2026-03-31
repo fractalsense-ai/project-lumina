@@ -1,7 +1,7 @@
-"""Tests for module-map routing and the three new module-level evidence schemas.
+"""Tests for module-map routing and the education module-level evidence schemas.
 
 Covers:
-  1. runtime-config.yaml has a module_map section with exactly 3 entries
+  1. runtime-config.yaml has a module_map section with exactly 4 entries
   2. Each module_map entry's domain_physics_path resolves to a valid, loadable JSON file
   3. All three new evidence-schema.json files exist and are valid JSON with correct schema_id/domain_id
   4. Module-selection logic: given a student profile declaring domain_id X, the
@@ -23,6 +23,11 @@ _EXPECTED_MODULE_IDS = [
     "domain/edu/pre-algebra/v1",
     "domain/edu/algebra-intro/v1",
     "domain/edu/algebra-1/v1",
+]
+
+# All module_map entries (includes the legacy module added for explicit routing)
+_ALL_MODULE_MAP_IDS = _EXPECTED_MODULE_IDS + [
+    "domain/edu/algebra-level-1/v1",
 ]
 
 _EXPECTED_SCHEMA_IDS = {
@@ -64,16 +69,16 @@ class TestModuleMapStructure:
             "runtime-config.yaml missing 'module_map' under runtime:"
         )
 
-    def test_module_map_has_three_entries(self, module_map):
-        assert len(module_map) == 3, (
-            f"Expected 3 module_map entries, got {len(module_map)}: {list(module_map.keys())}"
+    def test_module_map_has_four_entries(self, module_map):
+        assert len(module_map) == 4, (
+            f"Expected 4 module_map entries, got {len(module_map)}: {list(module_map.keys())}"
         )
 
-    @pytest.mark.parametrize("domain_id", _EXPECTED_MODULE_IDS)
+    @pytest.mark.parametrize("domain_id", _ALL_MODULE_MAP_IDS)
     def test_expected_domain_ids_present(self, module_map, domain_id):
         assert domain_id in module_map, f"module_map missing entry for {domain_id!r}"
 
-    @pytest.mark.parametrize("domain_id", _EXPECTED_MODULE_IDS)
+    @pytest.mark.parametrize("domain_id", _ALL_MODULE_MAP_IDS)
     def test_each_entry_has_domain_physics_path(self, module_map, domain_id):
         entry = module_map[domain_id]
         assert "domain_physics_path" in entry, (
@@ -88,13 +93,13 @@ class TestModuleMapStructure:
 # ---------------------------------------------------------------------------
 
 class TestModuleMapPhysicsPaths:
-    @pytest.mark.parametrize("domain_id", _EXPECTED_MODULE_IDS)
+    @pytest.mark.parametrize("domain_id", _ALL_MODULE_MAP_IDS)
     def test_domain_physics_path_file_exists(self, module_map, domain_id):
         path_str = module_map[domain_id]["domain_physics_path"]
         path = REPO_ROOT / path_str
         assert path.exists(), f"{path_str} does not exist (referenced by module_map[{domain_id!r}])"
 
-    @pytest.mark.parametrize("domain_id", _EXPECTED_MODULE_IDS)
+    @pytest.mark.parametrize("domain_id", _ALL_MODULE_MAP_IDS)
     def test_domain_physics_json_is_valid(self, module_map, domain_id):
         path_str = module_map[domain_id]["domain_physics_path"]
         path = REPO_ROOT / path_str
@@ -223,7 +228,7 @@ class TestModuleRoutingLogic:
         result = self._resolve_domain_physics_path(runtime_cfg, profile)
         assert result == runtime_cfg["domain_physics_path"]
 
-    @pytest.mark.parametrize("domain_id", _EXPECTED_MODULE_IDS)
+    @pytest.mark.parametrize("domain_id", _ALL_MODULE_MAP_IDS)
     def test_known_domain_id_routes_to_module_path(self, runtime_cfg, module_map, domain_id):
         profile = {"domain_id": domain_id}
         result = self._resolve_domain_physics_path(runtime_cfg, profile)
