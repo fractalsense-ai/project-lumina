@@ -229,7 +229,7 @@ async def _session_idle_cleanup() -> None:
 @app.on_event("startup")
 async def _start_idle_cleanup() -> None:
     from lumina.core.invite_store import register_persistence as _reg_invite_persistence
-    _reg_invite_persistence(_cfg.PERSISTENCE)
+    _reg_invite_persistence(PERSISTENCE)
 
     _assert_system_physics_commitment()
 
