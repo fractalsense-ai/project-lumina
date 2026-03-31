@@ -106,18 +106,18 @@ operations:
       module_id: "string — module identifier"
       domain_id: "string — domain identifier (optional)"
 
-  - name: trigger_night_cycle
-    description: "Manually trigger the night cycle batch processing for a domain."
+  - name: trigger_daemon_task
+    description: "Manually trigger a daemon batch-processing task for a domain."
     params:
       domain_id: "string — domain identifier (optional, runs all if omitted)"
       tasks: "array of strings — specific tasks to run (optional, runs all if omitted)"
 
-  - name: night_cycle_status
-    description: "Check the status of the night cycle scheduler."
+  - name: daemon_status
+    description: "Check the status of the daemon scheduler."
     params: {}
 
   - name: review_proposals
-    description: "Show pending night cycle proposals for review."
+    description: "Show pending daemon proposals for review."
     params:
       domain_id: "string — domain identifier (optional)"
 

@@ -120,14 +120,14 @@ class TestReloadAndDiscovery:
             "review_ingestion",
             "approve_interpretation",
             "reject_ingestion",
-            "trigger_night_cycle",
+            "trigger_daemon_task",
             "review_proposals",
             "invite_user",
             "list_escalations",
             "list_ingestions",
             "module_status",
             "explain_reasoning",
-            "night_cycle_status",
+            "daemon_status",
         }
         missing = expected - ops
         assert not missing, f"Missing schemas: {missing}"
@@ -384,8 +384,8 @@ class TestRealSchemaValidation:
         assert approved is False
         assert any("must be one of" in v for v in violations)
 
-    def test_trigger_night_cycle_no_params(self, real_schemas: int):
-        approved, violations = validate_command("trigger_night_cycle", {})
+    def test_trigger_daemon_task_no_params(self, real_schemas: int):
+        approved, violations = validate_command("trigger_daemon_task", {})
         assert approved is True, violations
 
     def test_invite_user_valid(self, real_schemas: int):
@@ -406,8 +406,8 @@ class TestRealSchemaValidation:
         )
         assert approved is True, violations
 
-    def test_night_cycle_status_empty_params(self, real_schemas: int):
-        approved, violations = validate_command("night_cycle_status", {})
+    def test_daemon_status_empty_params(self, real_schemas: int):
+        approved, violations = validate_command("daemon_status", {})
         assert approved is True, violations
 
     def test_commit_domain_physics_valid(self, real_schemas: int):

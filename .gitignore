@@ -61,7 +61,6 @@ remaining_test1.txt
 remaining_test2.txt
 remaining_test3.txt
 manifest_result.txt
-nightcycle_result.txt
 other_results.txt
 remaining_test4.txt
 test_full_results.txt
@@ -75,6 +74,11 @@ full_suite_results2.txt
 full_suite_post_fix.txt
 full_suite_post_fix2.txt
 full_suite_march27.txt
+
+# Runtime database
+lumina.db
+*.db-journal
+*.db-wal
 
 # Black box snapshots
 /data/blackbox

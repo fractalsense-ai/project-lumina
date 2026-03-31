@@ -197,17 +197,6 @@ adapters:
       module_path: domain-packs/system/controllers/tool_adapters.py
       callable: verify_no_disclosure
 
-# ── Night Cycle ───────────────────────────────────────────────
-night_cycle:
-  enabled: false
-  schedule: "0 2 * * *"
-  max_duration_minutes: 240
-  tasks:
-    - verify_repo
-    - schema_integrity
-    - log_integrity
-    - retrieval_reindex
-
 # ── Resource Monitor Daemon ───────────────────────────────────
 daemon:
   enabled: false
@@ -219,6 +208,8 @@ daemon:
     memory: 0.3
     inflight: 0.3
   task_priority:
+    - verify_repo
+    - schema_integrity
     - log_integrity
     - retrieval_reindex
 

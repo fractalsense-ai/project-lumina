@@ -91,7 +91,7 @@ _CATEGORY_EVENT_MAP: dict[str, str] = {
     "escalation": "escalation",
     "hash_chain": "audit",
     "daemon": "daemon_state",
-    "nightcycle": "nightcycle_status",
+    "daemon": "daemon_state",
     "preemption": "daemon_state",
     "session_lifecycle": "session",
     "hitl_command": "command_staged",

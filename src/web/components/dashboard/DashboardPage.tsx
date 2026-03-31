@@ -3,7 +3,6 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { EscalationQueue } from './EscalationQueue'
 import { IngestionReview } from './IngestionReview'
-import { NightCyclePanel } from './NightCyclePanel'
 import { DaemonMonitorPanel } from './DaemonMonitorPanel'
 import { SystemLogPanel } from './SystemLogPanel'
 import { StagedCommandsPanel } from './StagedCommandsPanel'
@@ -66,7 +65,6 @@ const TAB_MANIFEST: TabDef[] = [
   { id: 'ingestions', label: 'Ingestions',    roles: ['root', 'domain_authority'] },
   { id: 'logs',       label: 'System Log',   roles: ['root', 'domain_authority', 'qa', 'auditor'] },
   { id: 'daemon',     label: 'Daemon',       roles: ['root', 'auditor'] },
-  { id: 'nightcycle', label: 'Night Cycle',  roles: ['root', 'domain_authority'] },
 ]
 
 function getApiBase(): string {
@@ -151,9 +149,6 @@ export function DashboardPage({ auth, manifest }: { auth: AuthState; manifest?: 
       )}
       {tab === 'daemon' && (
         <DaemonMonitorPanel auth={auth} />
-      )}
-      {tab === 'nightcycle' && (
-        <NightCyclePanel auth={auth} />
       )}
 
       {/* Domain-specific panels from ui_manifest */}

@@ -1,6 +1,6 @@
-"""task_adapter.py — Bridge between daemon dispatch and night-cycle tasks.
+"""task_adapter.py — Bridge between daemon dispatch and task functions.
 
-Wraps existing synchronous night-cycle task functions so they can be
+Wraps existing synchronous task functions so they can be
 dispatched by the ``ResourceMonitorDaemon`` with preemption support.
 
 The adapter runs each task in ``asyncio.to_thread()`` so blocking work
@@ -15,8 +15,8 @@ import time
 from typing import Any, Callable
 
 from lumina.daemon.preemption import PreemptionToken, TaskPreempted
-from lumina.nightcycle.report import TaskResult
-from lumina.nightcycle.tasks import get_task, get_cross_domain_task
+from lumina.daemon.report import TaskResult
+from lumina.daemon.tasks import get_task, get_cross_domain_task
 
 log = logging.getLogger("lumina-daemon")
 

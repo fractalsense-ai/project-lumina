@@ -61,9 +61,6 @@ STATE_MUTATING_ENDPOINTS: dict[str, set[str]] = {
     "chat": {
         "chat",
     },
-    "nightcycle": {
-        "nightcycle_resolve_proposal",
-    },
 }
 
 

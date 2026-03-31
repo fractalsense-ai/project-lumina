@@ -404,10 +404,15 @@ def _load_admin_operations_from_yaml(yaml_path: Path) -> list[dict[str, Any]]:
     for entry in ops:
         if not isinstance(entry, dict) or "name" not in entry:
             continue
+        params_raw = entry.get("params")
+        # The built-in YAML parser may return '{}' as a string for empty
+        # inline mappings — normalise to a real dict.
+        if params_raw is None or params_raw == "{}" or params_raw == "":
+            params_raw = {}
         result.append({
             "name": entry["name"],
             "description": entry.get("description", ""),
-            "params_schema": entry.get("params") or {},
+            "params_schema": params_raw if isinstance(params_raw, dict) else {},
         })
     return result
 
@@ -454,9 +459,9 @@ _FALLBACK_ADMIN_OPERATIONS: list[dict[str, Any]] = [
     {"name": "list_escalations", "description": "List open escalation events.", "params_schema": {"domain_id": "string", "status": "string"}},
     {"name": "explain_reasoning", "description": "Explain a system decision.", "params_schema": {"event_id": "string"}},
     {"name": "module_status", "description": "Show the current status of a domain module.", "params_schema": {"module_id": "string", "domain_id": "string"}},
-    {"name": "trigger_night_cycle", "description": "Manually trigger night cycle.", "params_schema": {"domain_id": "string", "tasks": "array of strings"}},
-    {"name": "night_cycle_status", "description": "Check night cycle scheduler status.", "params_schema": {}},
-    {"name": "review_proposals", "description": "Show pending night cycle proposals.", "params_schema": {"domain_id": "string"}},
+    {"name": "trigger_daemon_task", "description": "Manually trigger a daemon task.", "params_schema": {"domain_id": "string", "tasks": "array of strings"}},
+    {"name": "daemon_status", "description": "Check daemon scheduler status.", "params_schema": {}},
+    {"name": "review_proposals", "description": "Show pending daemon proposals.", "params_schema": {"domain_id": "string"}},
     {"name": "invite_user", "description": "Create and invite a new user.", "params_schema": {"username": "string", "role": "string", "email": "string", "governed_modules": "array of strings"}},
     {"name": "list_commands", "description": "List available admin commands.", "params_schema": {"include_details": "boolean"}},
     {"name": "list_domains", "description": "List all registered domains.", "params_schema": {}},

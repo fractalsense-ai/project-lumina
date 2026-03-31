@@ -29,7 +29,6 @@ from lumina.api.models import (
     SessionUnlockRequest,
 )
 from lumina.api.routes.ingestion import _get_ingest_service
-from lumina.api.routes.nightcycle import _get_night_scheduler
 from lumina.auth.auth import VALID_ROLES
 from lumina.core.domain_registry import DomainNotFoundError
 from lumina.core import slm as _slm_mod
@@ -48,6 +47,7 @@ from lumina.system_log.admin_operations import (
     map_role_to_actor_role,
 )
 from lumina.core.state_machine import StateTransaction, TransactionState, IllegalTransitionError
+from lumina.core.yaml_loader import load_yaml
 from lumina.middleware.command_schema_registry import get_schema as _get_cmd_schema, validate_command
 from lumina.systools.manifest_integrity import check_manifest_report, regen_manifest_report
 from lumina.system_log.commit_guard import requires_log_commit
@@ -55,6 +55,24 @@ from lumina.system_log.commit_guard import requires_log_commit
 log = logging.getLogger("lumina-api")
 
 router = APIRouter()
+
+_DAEMON_SCHEDULER: Any = None
+
+
+def _get_daemon_scheduler() -> Any:
+    """Lazy-init the daemon task scheduler (replaces nightcycle scheduler)."""
+    global _DAEMON_SCHEDULER
+    if _DAEMON_SCHEDULER is None:
+        from lumina.daemon.scheduler import NightCycleScheduler
+
+        nc_cfg: dict[str, Any] = {}
+        try:
+            rt = load_yaml(Path("domain-packs/system/cfg/runtime-config.yaml"))
+            nc_cfg = rt.get("daemon", {})
+        except Exception:
+            pass
+        _DAEMON_SCHEDULER = NightCycleScheduler(config=nc_cfg, persistence=_cfg.PERSISTENCE)
+    return _DAEMON_SCHEDULER
 
 
 def _has_escalation_capability(user_data: dict[str, Any], module_id: str) -> bool:
@@ -153,6 +171,47 @@ async def get_escalation_detail(
             raise HTTPException(status_code=403, detail="Not authorized for this domain")
 
     return target
+
+
+@router.delete("/api/escalations/stale")
+async def clear_stale_escalations(
+    max_age_hours: int = 24,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+) -> dict[str, Any]:
+    """Purge escalation records older than *max_age_hours*. Root only."""
+    current = await get_current_user(credentials)
+    user_data = require_auth(current)
+    if user_data["role"] != "root":
+        raise HTTPException(status_code=403, detail="Root only")
+
+    all_esc = await run_in_threadpool(
+        _cfg.PERSISTENCE.query_escalations, limit=10000,
+    )
+    cutoff = datetime.now(timezone.utc).timestamp() - (max_age_hours * 3600)
+    stale_ids: list[str] = []
+    for esc in all_esc:
+        ts_str = esc.get("timestamp_utc", "")
+        try:
+            ts = datetime.fromisoformat(ts_str).timestamp()
+        except (ValueError, TypeError):
+            ts = 0.0
+        if ts < cutoff and esc.get("status", "open") == "open":
+            stale_ids.append(esc["record_id"])
+
+    # Mark each stale escalation as expired in the log
+    for rid in stale_ids:
+        expired = {
+            "record_type": "EscalationRecord",
+            "record_id": rid,
+            "status": "expired",
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        }
+        _cfg.PERSISTENCE.append_log_record(
+            "admin", expired,
+            ledger_path=_cfg.PERSISTENCE.get_log_ledger_path("admin", domain_id="_admin"),
+        )
+
+    return {"purged": len(stale_ids), "max_age_hours": max_age_hours}
 
 
 @router.post("/api/escalations/{escalation_id}/resolve")
@@ -420,14 +479,15 @@ _FALLBACK_KNOWN_OPERATIONS: frozenset[str] = frozenset({
     "deactivate_user", "assign_domain_role", "revoke_domain_role",
     "resolve_escalation", "list_ingestions", "review_ingestion",
     "approve_interpretation", "reject_ingestion", "list_escalations",
-    "explain_reasoning", "module_status", "trigger_night_cycle",
-    "night_cycle_status", "review_proposals", "invite_user",
+    "explain_reasoning", "module_status", "trigger_daemon_task",
+    "trigger_night_cycle", "daemon_status", "night_cycle_status",
+    "review_proposals", "invite_user",
     "list_domains", "list_modules", "list_commands",
 })
 
 _FALLBACK_HITL_EXEMPT: frozenset[str] = frozenset({
     "list_domains", "list_modules", "list_ingestions", "list_escalations",
-    "module_status", "night_cycle_status", "explain_reasoning",
+    "module_status", "daemon_status", "night_cycle_status", "explain_reasoning",
     "list_commands",
     "review_ingestion", "review_proposals",
 })
@@ -447,6 +507,7 @@ _FALLBACK_MIN_ROLE: dict[str, str] = {
     "resolve_escalation": "domain_authority",
     "approve_interpretation": "domain_authority",
     "reject_ingestion": "domain_authority",
+    "trigger_daemon_task": "domain_authority",
     "trigger_night_cycle": "domain_authority",
     "invite_user": "it_support",
 }
@@ -1095,16 +1156,16 @@ async def _execute_admin_operation(
             "modules": [m.get("module_id") for m in (domain.get("modules") or [])],
         }
 
-    elif operation in ("trigger_night_cycle", "night_cycle_status", "review_proposals"):
-        scheduler = _get_night_scheduler()
-        if operation == "trigger_night_cycle":
+    elif operation in ("trigger_daemon_task", "trigger_night_cycle", "daemon_status", "night_cycle_status", "review_proposals"):
+        scheduler = _get_daemon_scheduler()
+        if operation in ("trigger_daemon_task", "trigger_night_cycle"):
             if user_data["role"] not in ("root", "domain_authority"):
                 raise HTTPException(status_code=403, detail="Insufficient permissions")
             run_id = scheduler.trigger_async(actor_id=user_data["sub"])
-            result = {"operation": operation, "run_id": run_id, "status": "started"}
-        elif operation == "night_cycle_status":
+            result = {"operation": "trigger_daemon_task", "run_id": run_id, "status": "started"}
+        elif operation in ("daemon_status", "night_cycle_status"):
             result = scheduler.get_status()
-            result["operation"] = operation
+            result["operation"] = "daemon_status"
         else:
             resolved_id = str(params.get("domain_id", parsed.get("target", "")))
             proposals = scheduler.get_pending_proposals(domain_id=resolved_id)
@@ -1251,6 +1312,32 @@ async def _execute_admin_operation(
 
     else:
         raise HTTPException(status_code=422, detail=f"Unknown operation: {operation}")
+
+    # ── Emit TraceEvent for mutating operations (causal trace ledger) ──
+    _READ_ONLY_OPS = frozenset({
+        "list_domains", "list_modules", "list_commands", "list_ingestions",
+        "list_escalations", "module_status", "daemon_status",
+        "night_cycle_status", "explain_reasoning", "review_proposals",
+    })
+    if operation not in _READ_ONLY_OPS:
+        try:
+            trace = build_trace_event(
+                session_id="admin",
+                actor_id=user_data["sub"],
+                event_type="admin_command_executed",
+                decision=f"{operation}: {json.dumps(result.get('record_id', result.get('operation', operation)), default=str)[:200]}",
+                evidence_summary={
+                    "operation": operation,
+                    "actor_role": user_data["role"],
+                    "params": {k: str(v)[:100] for k, v in (params or {}).items()},
+                },
+            )
+            _cfg.PERSISTENCE.append_log_record(
+                "admin", trace,
+                ledger_path=_cfg.PERSISTENCE.get_log_ledger_path("admin", domain_id="_admin"),
+            )
+        except Exception:
+            log.debug("Could not write admin command TraceEvent for %s", operation)
 
     return result
 

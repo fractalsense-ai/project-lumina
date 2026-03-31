@@ -280,7 +280,9 @@ def process_message(
     # enrichment.  The SLM matches incoming signals against domain
     # invariants, standing orders, and glossary so the orchestrator has
     # structured context before making action decisions.
-    if slm_available():
+    # Skip for deterministic responses — the response is pre-computed so
+    # physics context enrichment is unnecessary overhead.
+    if not deterministic_response and slm_available():
         slm_context = slm_interpret_physics_context(
             incoming_signals=turn_data,
             domain_physics=domain_physics,

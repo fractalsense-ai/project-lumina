@@ -8,5 +8,9 @@ Public surface
   ``TaskPreempted``)
 - ``resource_monitor`` – the daemon itself (``ResourceMonitorDaemon``,
   ``start``, ``stop``, ``is_running``, ``get_status``)
-- ``task_adapter``     – bridge between daemon dispatch and night-cycle tasks
+- ``task_adapter``     – bridge between daemon dispatch and task functions
+- ``tasks``            – task implementations (migrated from nightcycle)
+- ``report``           – task result and proposal data classes
+- ``scheduler``        – task scheduler with run history and proposals
+- ``cross_domain``     – cross-domain synthesis analysis
 """

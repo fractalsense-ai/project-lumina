@@ -134,7 +134,6 @@ from lumina.api.routes.ingestion import (  # noqa: E402
     _detect_content_type,
     router as ingestion_router,
 )
-from lumina.api.routes.nightcycle import router as nightcycle_router  # noqa: E402
 from lumina.api.routes.staging import router as staging_router  # noqa: E402
 from lumina.api.routes.admin_auth import router as admin_auth_router  # noqa: E402
 from lumina.api.routes.events import router as events_router  # noqa: E402
@@ -162,23 +161,27 @@ app.add_middleware(
 
 
 # ── In-flight request counting middleware ──────────────────────
+# Pure ASGI middleware (avoids BaseHTTPMiddleware deadlock with run_in_threadpool)
 
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 
-class _InFlightCounterMiddleware(BaseHTTPMiddleware):
+class _InFlightCounterMiddleware:
     """Middleware that tracks in-flight HTTP requests for the daemon."""
 
-    async def dispatch(self, request: Request, call_next: Any) -> Response:  # type: ignore[override]
+    def __init__(self, app: ASGIApp) -> None:
+        self._app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self._app(scope, receive, send)
+            return
         from lumina.systools.hw_http_queue import increment, decrement
         increment()
         try:
-            response = await call_next(request)
+            await self._app(scope, receive, send)
         finally:
             decrement()
-        return response
 
 
 app.add_middleware(_InFlightCounterMiddleware)
@@ -192,7 +195,6 @@ app.include_router(domain_roles_router)
 app.include_router(ingestion_router)
 app.include_router(system_log_router)
 app.include_router(dashboard_router)
-app.include_router(nightcycle_router)
 app.include_router(staging_router)
 app.include_router(admin_auth_router)
 app.include_router(admin_router)
