@@ -350,7 +350,7 @@ def _assert_system_physics_commitment() -> None:
     if not PERSISTENCE.has_system_physics_commitment(SYSTEM_PHYSICS_HASH):
         raise RuntimeError(
             "System-physics commitment missing: the active system-physics.json hash is not present in "
-            "the system log. Run scripts/seed-system-physics-log.ps1 before starting the server."
+            "the system log. Run scripts/seed-system-physics-log.sh (or .ps1 on Windows) before starting the server."
         )
 
 

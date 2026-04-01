@@ -87,7 +87,7 @@ The system domain has its own System Logs located at
 
 | Type | When written | Script |
 |------|-------------|--------|
-| `system_physics_activation` | On first compile of a new `system-physics.json` hash | `scripts/seed-system-physics-log.ps1` |
+| `system_physics_activation` | On first compile of a new `system-physics.json` hash | `scripts/seed-system-physics-log.sh` (or `.ps1` on Windows) |
 | `system_physics_rollback` | When rolling back to a previous hash | manual — see rollback procedure below |
 
 ### Hash chaining
@@ -145,7 +145,11 @@ Fix the YAML and rerun; do **not** hand-edit the compiled JSON.
     -PythonExe ".\.venv\Scripts\python.exe" `
     -ActorId "<your-actor-id>"
 ```
+Or on Linux / macOS:
 
+```bash
+bash scripts/seed-system-physics-log.sh --actor-id "<your-actor-id>"
+```
 Expected output:
 
 ```

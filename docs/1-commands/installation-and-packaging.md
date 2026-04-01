@@ -427,7 +427,7 @@ installation without a venv:
 .\scripts\<script>.ps1 -PythonExe "C:\Python312\python.exe"
 ```
 
-### seed-system-physics-log.ps1
+### seed-system-physics-log.ps1 / seed-system-physics-log.sh
 
 Computes the canonical SHA-256 of `cfg/system-physics.json` and writes a
 `system_physics_activation` CommitmentRecord to the System Log
@@ -452,6 +452,19 @@ then a temp directory. Set `LUMINA_LOG_DIR` in production.
 
 # Custom Python
 .\scripts\seed-system-physics-log.ps1 -PythonExe "C:\Python312\python.exe"
+```
+
+Linux / macOS:
+
+```bash
+# Default (uses .venv, LUMINA_LOG_DIR from environment)
+bash scripts/seed-system-physics-log.sh
+
+# Custom actor and System Log directory
+bash scripts/seed-system-physics-log.sh --actor-id "ci-pipeline" --log-dir /var/lumina-log
+
+# Custom Python
+PYTHON=python3.12 bash scripts/seed-system-physics-log.sh
 ```
 
 See [system-domain-operations](../8-admin/system-domain-operations.md) for the
