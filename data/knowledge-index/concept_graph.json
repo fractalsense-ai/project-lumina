@@ -1,0 +1,1014 @@
+{
+  "nodes": {
+    "glossary:education:variable": {
+      "node_id": "glossary:education:variable",
+      "label": "variable",
+      "kind": "glossary_term",
+      "domain_id": "education",
+      "detail": {
+        "definition": "A letter (like x or y) that represents an unknown number you are trying to find.",
+        "aliases": [
+          "variables",
+          "unknown",
+          "unknowns",
+          "the letter"
+        ]
+      }
+    },
+    "glossary:education:expression": {
+      "node_id": "glossary:education:expression",
+      "label": "expression",
+      "kind": "glossary_term",
+      "domain_id": "education",
+      "detail": {
+        "definition": "A combination of numbers, variables, and operations that does NOT have an equals sign. It has a value but is not a complete statement.",
+        "aliases": [
+          "expressions",
+          "algebraic expression",
+          "math expression"
+        ]
+      }
+    },
+    "glossary:education:order of operations": {
+      "node_id": "glossary:education:order of operations",
+      "label": "order of operations",
+      "kind": "glossary_term",
+      "domain_id": "education",
+      "detail": {
+        "definition": "The rule that dictates the sequence for evaluating an expression: Parentheses, Exponents, Multiplication and Division (left to right), Addition and Subtraction (left to right). PEMDAS.",
+        "aliases": [
+          "PEMDAS",
+          "BODMAS",
+          "order of ops"
+        ]
+      }
+    },
+    "glossary:education:inverse operation": {
+      "node_id": "glossary:education:inverse operation",
+      "label": "inverse operation",
+      "kind": "glossary_term",
+      "domain_id": "education",
+      "detail": {
+        "definition": "The opposite operation that undoes another. Addition and subtraction are inverses. Multiplication and division are inverses. To isolate x, apply inverse operations in the reverse order they were applied.",
+        "aliases": [
+          "inverse operations",
+          "opposite operation",
+          "undo operation"
+        ]
+      }
+    },
+    "glossary:education:isolate": {
+      "node_id": "glossary:education:isolate",
+      "label": "isolate",
+      "kind": "glossary_term",
+      "domain_id": "education",
+      "detail": {
+        "definition": "To get the variable alone on one side of the equation by performing inverse operations on both sides.",
+        "aliases": [
+          "isolating the variable",
+          "get x alone",
+          "solve for x"
+        ]
+      }
+    },
+    "glossary:education:inequality": {
+      "node_id": "glossary:education:inequality",
+      "label": "inequality",
+      "kind": "glossary_term",
+      "domain_id": "education",
+      "detail": {
+        "definition": "A mathematical statement that two expressions are not equal, using <, >, ≤, or ≥. The solution is usually a range of values, not a single number.",
+        "aliases": [
+          "inequalities",
+          "inequality statement",
+          "inequality sign"
+        ]
+      }
+    },
+    "glossary:education:inequality direction flip": {
+      "node_id": "glossary:education:inequality direction flip",
+      "label": "inequality direction flip",
+      "kind": "glossary_term",
+      "domain_id": "education",
+      "detail": {
+        "definition": "When both sides of an inequality are multiplied or divided by a negative number, the inequality sign must reverse direction.",
+        "aliases": [
+          "flip the sign",
+          "reverse the inequality",
+          "flip rule"
+        ]
+      }
+    },
+    "glossary:education:coefficient": {
+      "node_id": "glossary:education:coefficient",
+      "label": "coefficient",
+      "kind": "glossary_term",
+      "domain_id": "education",
+      "detail": {
+        "definition": "The number multiplied directly by a variable. When no number is written, the coefficient is 1.",
+        "aliases": [
+          "coefficients",
+          "the number in front of x"
+        ]
+      }
+    },
+    "glossary:education:constant": {
+      "node_id": "glossary:education:constant",
+      "label": "constant",
+      "kind": "glossary_term",
+      "domain_id": "education",
+      "detail": {
+        "definition": "A number on its own that does not change and is not attached to a variable.",
+        "aliases": [
+          "constants",
+          "plain number",
+          "fixed number"
+        ]
+      }
+    },
+    "invariant:education:equivalence_preserved": {
+      "node_id": "invariant:education:equivalence_preserved",
+      "label": "equivalence_preserved",
+      "kind": "invariant",
+      "domain_id": "education",
+      "detail": {
+        "description": "Law 1 (Balance Principle): both sides of an equation must remain algebraically equal after every transformation step. Applying an operation to only one side is the canonical Law 1 failure.\n",
+        "severity": "critical"
+      }
+    },
+    "invariant:education:no_illegal_operations": {
+      "node_id": "invariant:education:no_illegal_operations",
+      "label": "no_illegal_operations",
+      "kind": "invariant",
+      "domain_id": "education",
+      "detail": {
+        "description": "Division by zero, taking a square root of a negative number (outside imaginary number context), or applying any undefined operation is not permitted.\n",
+        "severity": "critical"
+      }
+    },
+    "invariant:education:solution_verifies": {
+      "node_id": "invariant:education:solution_verifies",
+      "label": "solution_verifies",
+      "kind": "invariant",
+      "domain_id": "education",
+      "detail": {
+        "description": "The proposed solution must satisfy the original equation or inequality when substituted back in. Active from artifact single_step_equations onward.\n",
+        "severity": "critical"
+      }
+    },
+    "invariant:education:inequality_direction_preserved": {
+      "node_id": "invariant:education:inequality_direction_preserved",
+      "label": "inequality_direction_preserved",
+      "kind": "invariant",
+      "domain_id": "education",
+      "detail": {
+        "description": "When multiplying or dividing both sides of an inequality by a negative number, the inequality sign must flip direction. This is the critical direction-flip rule and the primary advanced diagnostic signal in this module.\n",
+        "severity": "critical"
+      }
+    },
+    "invariant:education:reversibility_order_correct": {
+      "node_id": "invariant:education:reversibility_order_correct",
+      "label": "reversibility_order_correct",
+      "kind": "invariant",
+      "domain_id": "education",
+      "detail": {
+        "description": "Law 2 (Inverse Operations): to undo a multi-step expression the student must reverse the order of operations — PEMDAS in reverse. Attempting to divide by a coefficient before eliminating an added constant is the canonical failure signal. NOTE: this invariant requires evidence field 'reversibility_order_correct', currently estimated by the LLM interpreter; deterministic tool_adapter support is planned for module v0.2.\n",
+        "severity": "warning"
+      }
+    },
+    "invariant:education:standard_method_preferred": {
+      "node_id": "invariant:education:standard_method_preferred",
+      "label": "standard_method_preferred",
+      "kind": "invariant",
+      "domain_id": "education",
+      "detail": {
+        "description": "Non-standard solution methods are acceptable but should be flagged for Domain Authority review.\n",
+        "severity": "warning"
+      }
+    },
+    "invariant:education:show_work_minimum": {
+      "node_id": "invariant:education:show_work_minimum",
+      "label": "show_work_minimum",
+      "kind": "invariant",
+      "domain_id": "education",
+      "detail": {
+        "description": "Solutions must show at least the minimum number of distinct transformation steps required by the problem type. A bare answer with no work shown is not acceptable.\n",
+        "severity": "warning"
+      }
+    },
+    "invariant:education:zpd_drift_minor": {
+      "node_id": "invariant:education:zpd_drift_minor",
+      "label": "zpd_drift_minor",
+      "kind": "invariant",
+      "domain_id": "education",
+      "detail": {
+        "description": "The student's challenge level has drifted outside the ZPD band in >= 30% of the recent window turns.\n",
+        "severity": "warning"
+      }
+    },
+    "invariant:education:zpd_drift_major": {
+      "node_id": "invariant:education:zpd_drift_major",
+      "label": "zpd_drift_major",
+      "kind": "invariant",
+      "domain_id": "education",
+      "detail": {
+        "description": "The student's challenge level has drifted outside the ZPD band in >= 50% of recent window turns, or for 3+ consecutive turns.\n",
+        "severity": "warning"
+      }
+    },
+    "invariant:education:fluency_bottleneck": {
+      "node_id": "invariant:education:fluency_bottleneck",
+      "label": "fluency_bottleneck",
+      "kind": "invariant",
+      "domain_id": "education",
+      "detail": {
+        "description": "The student is solving equations correctly but consistently exceeding the time threshold, indicating procedural automaticity has not been achieved at the current tier.\n",
+        "severity": "warning"
+      }
+    },
+    "standing_order:education:request_more_steps": {
+      "node_id": "standing_order:education:request_more_steps",
+      "label": "request_more_steps",
+      "kind": "standing_order",
+      "domain_id": "education",
+      "detail": {
+        "description": "Ask the student to show their work step by step, identifying each transformation they applied to both sides of the equation.\n"
+      }
+    },
+    "standing_order:education:request_verification_retry": {
+      "node_id": "standing_order:education:request_verification_retry",
+      "label": "request_verification_retry",
+      "kind": "standing_order",
+      "domain_id": "education",
+      "detail": {
+        "description": "Ask the student to substitute their answer back into the original equation or inequality and confirm both sides balance.\n"
+      }
+    },
+    "standing_order:education:request_inequality_direction_correction": {
+      "node_id": "standing_order:education:request_inequality_direction_correction",
+      "label": "request_inequality_direction_correction",
+      "kind": "standing_order",
+      "domain_id": "education",
+      "detail": {
+        "description": "Prompt the student to re-examine the step where they divided or multiplied by a negative number and ask which direction the inequality sign should point. Do not state the flip rule directly on the first prompt.\n"
+      }
+    },
+    "standing_order:education:hint_reverse_order_of_operations": {
+      "node_id": "standing_order:education:hint_reverse_order_of_operations",
+      "label": "hint_reverse_order_of_operations",
+      "kind": "standing_order",
+      "domain_id": "education",
+      "detail": {
+        "description": "Provide the Law 2 scaffolding: ask the student to list the operations applied to x in order, then ask them to undo those operations starting from the last one. Do not solve the problem.\n"
+      }
+    },
+    "standing_order:education:request_method_justification": {
+      "node_id": "standing_order:education:request_method_justification",
+      "label": "request_method_justification",
+      "kind": "standing_order",
+      "domain_id": "education",
+      "detail": {
+        "description": "Acknowledge the non-standard approach and ask the student to explain their reasoning. Flag for Domain Authority review.\n"
+      }
+    },
+    "standing_order:education:zpd_scaffold": {
+      "node_id": "standing_order:education:zpd_scaffold",
+      "label": "zpd_scaffold",
+      "kind": "standing_order",
+      "domain_id": "education",
+      "detail": {
+        "description": "Reduce challenge level on the next task. Offer an optional hint. Provide additional scaffolding in the explanation.\n"
+      }
+    },
+    "standing_order:education:zpd_intervene_or_escalate": {
+      "node_id": "standing_order:education:zpd_intervene_or_escalate",
+      "label": "zpd_intervene_or_escalate",
+      "kind": "standing_order",
+      "domain_id": "education",
+      "detail": {
+        "description": "Pause the current task. Issue one probe question to check understanding. If the probe response does not improve state, escalate to teacher.\n"
+      }
+    },
+    "standing_order:education:trigger_targeted_hint": {
+      "node_id": "standing_order:education:trigger_targeted_hint",
+      "label": "trigger_targeted_hint",
+      "kind": "standing_order",
+      "domain_id": "education",
+      "detail": {
+        "description": "Provide a targeted procedural hint for the specific step the student is slowing on. Do not solve the problem.\n"
+      }
+    },
+    "invariant:agriculture:within_tolerance": {
+      "node_id": "invariant:agriculture:within_tolerance",
+      "label": "within_tolerance",
+      "kind": "invariant",
+      "domain_id": "agriculture",
+      "detail": {
+        "description": "Operating signal should remain within configured tolerance.",
+        "severity": "warning"
+      }
+    },
+    "invariant:agriculture:sensor_reading_valid": {
+      "node_id": "invariant:agriculture:sensor_reading_valid",
+      "label": "sensor_reading_valid",
+      "kind": "invariant",
+      "domain_id": "agriculture",
+      "detail": {
+        "description": "Collar sensor reading must pass normalization without error. A failed normalization indicates hardware fault or corrupt data.",
+        "severity": "critical"
+      }
+    },
+    "invariant:agriculture:signal_within_operational_range": {
+      "node_id": "invariant:agriculture:signal_within_operational_range",
+      "label": "signal_within_operational_range",
+      "kind": "invariant",
+      "domain_id": "agriculture",
+      "detail": {
+        "description": "Composite signal index must stay within the operational band (0.2..0.9). Values outside this range indicate sensor drift or environmental anomaly.",
+        "severity": "critical"
+      }
+    },
+    "invariant:agriculture:drift_minor": {
+      "node_id": "invariant:agriculture:drift_minor",
+      "label": "drift_minor",
+      "kind": "invariant",
+      "domain_id": "agriculture",
+      "detail": {
+        "description": "Signal has drifted outside tolerance for >= 30% of the recent monitoring window.",
+        "severity": "warning"
+      }
+    },
+    "invariant:agriculture:drift_major": {
+      "node_id": "invariant:agriculture:drift_major",
+      "label": "drift_major",
+      "kind": "invariant",
+      "domain_id": "agriculture",
+      "detail": {
+        "description": "Signal outside tolerance for >= 50% of recent window or 3+ consecutive turns. Requires intervention.",
+        "severity": "warning"
+      }
+    },
+    "standing_order:agriculture:request_more_steps": {
+      "node_id": "standing_order:agriculture:request_more_steps",
+      "label": "request_more_steps",
+      "kind": "standing_order",
+      "domain_id": "agriculture",
+      "detail": {
+        "description": "Request additional operational details from the subject."
+      }
+    },
+    "standing_order:agriculture:request_sensor_recheck": {
+      "node_id": "standing_order:agriculture:request_sensor_recheck",
+      "label": "request_sensor_recheck",
+      "kind": "standing_order",
+      "domain_id": "agriculture",
+      "detail": {
+        "description": "Request the operator to re-read the collar sensor. If re-read also fails, escalate to site manager for hardware inspection."
+      }
+    },
+    "standing_order:agriculture:alert_site_manager": {
+      "node_id": "standing_order:agriculture:alert_site_manager",
+      "label": "alert_site_manager",
+      "kind": "standing_order",
+      "domain_id": "agriculture",
+      "detail": {
+        "description": "Notify the site manager that the signal has exceeded operational bounds. Pause data collection until the anomaly is resolved."
+      }
+    },
+    "glossary:system:ctl": {
+      "node_id": "glossary:system:ctl",
+      "label": "ctl",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "System Logs — the append-only, hash-chained record of all domain-session trace events and commitment records.",
+        "aliases": []
+      }
+    },
+    "glossary:system:commitment_record": {
+      "node_id": "glossary:system:commitment_record",
+      "label": "commitment_record",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "A System Log record that marks a durable system decision: domain-physics activation, role change, escalation, or daemon batch outcome.",
+        "aliases": []
+      }
+    },
+    "glossary:system:trace_event": {
+      "node_id": "glossary:system:trace_event",
+      "label": "trace_event",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "A single LLM-driven turn record in the System Logs, capturing input evidence, state delta, and the system-physics hash active at the time.",
+        "aliases": []
+      }
+    },
+    "glossary:system:system_physics": {
+      "node_id": "glossary:system:system_physics",
+      "label": "system_physics",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "The machine-readable global invariant layer (cfg/system-physics.yaml / .json) that constrains every domain session regardless of which domain is active.",
+        "aliases": []
+      }
+    },
+    "glossary:system:domain_physics": {
+      "node_id": "glossary:system:domain_physics",
+      "label": "domain_physics",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "A domain-pack JSON file defining the module's topics, glossary, standing orders, escalation conditions, and artifacts.",
+        "aliases": []
+      }
+    },
+    "glossary:system:domain_pack": {
+      "node_id": "glossary:system:domain_pack",
+      "label": "domain_pack",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "A self-contained module bundle (cfg, prompts, domain-lib, controllers, modules) that implants a domain into the Lumina runtime.",
+        "aliases": []
+      }
+    },
+    "glossary:system:domain_authority": {
+      "node_id": "glossary:system:domain_authority",
+      "label": "domain_authority",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "A role with authoring rights over one or more governed modules; highest ceiling for domain-scoped operations.",
+        "aliases": []
+      }
+    },
+    "glossary:system:meta_authority": {
+      "node_id": "glossary:system:meta_authority",
+      "label": "meta_authority",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "The cross-domain governance layer above a Domain Authority; approves cross-domain synthesis and standing-order conflicts.",
+        "aliases": []
+      }
+    },
+    "glossary:system:policy_gate": {
+      "node_id": "glossary:system:policy_gate",
+      "label": "policy_gate",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "A hard invariant in system physics that cannot be overridden by any domain pack; violated by a session → escalation.",
+        "aliases": []
+      }
+    },
+    "glossary:system:hash_chain": {
+      "node_id": "glossary:system:hash_chain",
+      "label": "hash_chain",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "The linked sequence of record_hash values in the System Logs that provides tamper-evidence across all ledger entries.",
+        "aliases": []
+      }
+    },
+    "glossary:system:rbac": {
+      "node_id": "glossary:system:rbac",
+      "label": "rbac",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "Role-Based Access Control — Lumina's permission model combining chmod-style octal modes with optional extended ACLs.",
+        "aliases": []
+      }
+    },
+    "glossary:system:domain_registry": {
+      "node_id": "glossary:system:domain_registry",
+      "label": "domain_registry",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "cfg/domain-registry.yaml — the file that maps domain_id keys to their runtime-config paths and routing metadata.",
+        "aliases": []
+      }
+    },
+    "glossary:system:standing_order": {
+      "node_id": "glossary:system:standing_order",
+      "label": "standing_order",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "A persistent instruction authored by a Domain Authority that survives across session turns until explicitly revoked.",
+        "aliases": []
+      }
+    },
+    "glossary:system:escalation": {
+      "node_id": "glossary:system:escalation",
+      "label": "escalation",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "A domain-session signal that exceeds a policy-gate threshold; surfaces to Meta Authority and writes an escalation record to the System Logs.",
+        "aliases": []
+      }
+    },
+    "glossary:system:daemon_batch": {
+      "node_id": "glossary:system:daemon_batch",
+      "label": "daemon_batch",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "A load-based batch processing subsystem that performs glossary expansion, constraint refresh, and knowledge-graph rebuilds for a domain. Supersedes the former night cycle.",
+        "aliases": []
+      }
+    },
+    "glossary:system:tool_adapter": {
+      "node_id": "glossary:system:tool_adapter",
+      "label": "tool_adapter",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "A domain-pack module that exposes a callable to the Lumina orchestrator as a named tool during a session.",
+        "aliases": []
+      }
+    },
+    "glossary:system:domain_lib": {
+      "node_id": "glossary:system:domain_lib",
+      "label": "domain_lib",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "A domain-pack library of pure functions available to controller adapters without LLM involvement.",
+        "aliases": []
+      }
+    },
+    "glossary:system:pseudonymous_id": {
+      "node_id": "glossary:system:pseudonymous_id",
+      "label": "pseudonymous_id",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "The opaque, non-reversible identifier stored in the System Logs in place of a real user identifier.",
+        "aliases": []
+      }
+    },
+    "glossary:system:ingestion_pipeline": {
+      "node_id": "glossary:system:ingestion_pipeline",
+      "label": "ingestion_pipeline",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "The upload → extract → SLM-interpret → DA-review → commit workflow for importing external content into a domain pack.",
+        "aliases": []
+      }
+    },
+    "glossary:system:governed_modules": {
+      "node_id": "glossary:system:governed_modules",
+      "label": "governed_modules",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "The list of module IDs (e.g. domain/edu/algebra-level-1/v1) that a domain_authority has authoring and approval rights over.  Required at invite time; cannot be empty for the domain_authority role.",
+        "aliases": []
+      }
+    },
+    "glossary:system:invite_token": {
+      "node_id": "glossary:system:invite_token",
+      "label": "invite_token",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "A single-use, URL-safe token generated when an admin invites a new user.  Embedded in the setup_url; consumed by POST /api/auth/setup-password to activate the account.  Expires after LUMINA_INVITE_TOKEN_TTL_SECONDS (default 24 h).",
+        "aliases": []
+      }
+    },
+    "glossary:system:pending_user": {
+      "node_id": "glossary:system:pending_user",
+      "label": "pending_user",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "A user account that has been created by invitation but not yet activated.  active=false, password_hash is empty.  Cannot log in until POST /api/auth/setup-password is called with a valid invite_token.",
+        "aliases": []
+      }
+    },
+    "glossary:system:user_management_sop": {
+      "node_id": "glossary:system:user_management_sop",
+      "label": "user_management_sop",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "The standing order defining the invite → setup-link → password-set → active account workflow.  Ensures passwords are never transmitted over the admin interface.",
+        "aliases": []
+      }
+    },
+    "glossary:system:domain_authority_onboarding_sop": {
+      "node_id": "glossary:system:domain_authority_onboarding_sop",
+      "label": "domain_authority_onboarding_sop",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "The standing order for creating domain_authority accounts with explicit governed_modules definitions before the invite is issued.",
+        "aliases": []
+      }
+    },
+    "glossary:system:escalation_review_sop": {
+      "node_id": "glossary:system:escalation_review_sop",
+      "label": "escalation_review_sop",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "The standing order for reviewing, resolving, and optionally PIN-unlocking sessions tied to open escalation events.",
+        "aliases": []
+      }
+    },
+    "glossary:system:domain_role": {
+      "node_id": "glossary:system:domain_role",
+      "label": "domain_role",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "A role defined in a module's domain-physics.json (e.g. student, teacher, parent) that is scoped to that domain.  Domain roles are not system roles; they map to the system role 'user' via maps_to_system_role.  Domain roles carry module-specific capabilities and access levels.",
+        "aliases": []
+      }
+    },
+    "glossary:system:system_role": {
+      "node_id": "glossary:system:system_role",
+      "label": "system_role",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "One of the seven RBAC roles recognised by the Lumina kernel: root, domain_authority, it_support, qa, auditor, user, guest.  System roles are stored in the user record and govern API-level access.  Domain roles are assigned separately within a module context.",
+        "aliases": []
+      }
+    },
+    "glossary:system:intended_domain_role": {
+      "node_id": "glossary:system:intended_domain_role",
+      "label": "intended_domain_role",
+      "kind": "glossary_term",
+      "domain_id": "system",
+      "detail": {
+        "definition": "An advisory field set during SLM command normalisation when the user requests a domain-specific role (e.g. 'student').  The system role is set to 'user' and the original domain role name is preserved in this field for downstream domain-role assignment.",
+        "aliases": []
+      }
+    },
+    "invariant:system:no_autonomous_policy": {
+      "node_id": "invariant:system:no_autonomous_policy",
+      "label": "no_autonomous_policy",
+      "kind": "invariant",
+      "domain_id": "system",
+      "detail": {
+        "description": "CI must not make policy decisions outside active domain physics and prompt contract bounds.",
+        "severity": "critical"
+      }
+    },
+    "invariant:system:no_internal_disclosure": {
+      "node_id": "invariant:system:no_internal_disclosure",
+      "label": "no_internal_disclosure",
+      "kind": "invariant",
+      "domain_id": "system",
+      "detail": {
+        "description": "CI must not disclose internal confidence scores, policy internals, or runtime state.",
+        "severity": "critical"
+      }
+    },
+    "invariant:system:prompt_contract_fidelity": {
+      "node_id": "invariant:system:prompt_contract_fidelity",
+      "label": "prompt_contract_fidelity",
+      "kind": "invariant",
+      "domain_id": "system",
+      "detail": {
+        "description": "All CI responses must be grounded in the active prompt contract.",
+        "severity": "critical"
+      }
+    },
+    "invariant:system:no_direct_execution": {
+      "node_id": "invariant:system:no_direct_execution",
+      "label": "no_direct_execution",
+      "kind": "invariant",
+      "domain_id": "system",
+      "detail": {
+        "description": "CI must not directly execute state changes; all mutations go through proposal → validate → HITL approve.",
+        "severity": "critical"
+      }
+    },
+    "invariant:system:no_unsolicited_json": {
+      "node_id": "invariant:system:no_unsolicited_json",
+      "label": "no_unsolicited_json",
+      "kind": "invariant",
+      "domain_id": "system",
+      "detail": {
+        "description": "CI must not produce raw JSON unless explicitly requested by the user or domain contract.",
+        "severity": "warning"
+      }
+    },
+    "invariant:system:no_chain_of_thought_leakage": {
+      "node_id": "invariant:system:no_chain_of_thought_leakage",
+      "label": "no_chain_of_thought_leakage",
+      "kind": "invariant",
+      "domain_id": "system",
+      "detail": {
+        "description": "Internal reasoning steps must not appear in user-facing output.",
+        "severity": "warning"
+      }
+    },
+    "standing_order:system:user_management_sop": {
+      "node_id": "standing_order:system:user_management_sop",
+      "label": "user_management_sop",
+      "kind": "standing_order",
+      "domain_id": "system",
+      "detail": {
+        "description": "Standard operating procedure for creating and onboarding Lumina users without exposing passwords over the admin interface."
+      }
+    },
+    "standing_order:system:domain_authority_onboarding_sop": {
+      "node_id": "standing_order:system:domain_authority_onboarding_sop",
+      "label": "domain_authority_onboarding_sop",
+      "kind": "standing_order",
+      "domain_id": "system",
+      "detail": {
+        "description": "Standard operating procedure for creating a Domain Authority account with explicit module-boundary definition."
+      }
+    },
+    "standing_order:system:slm_command_translation_guidance": {
+      "node_id": "standing_order:system:slm_command_translation_guidance",
+      "label": "slm_command_translation_guidance",
+      "kind": "standing_order",
+      "domain_id": "system",
+      "detail": {
+        "description": "Rules for translating natural-language admin commands into structured JSON before schema validation."
+      }
+    },
+    "standing_order:system:escalation_review_sop": {
+      "node_id": "standing_order:system:escalation_review_sop",
+      "label": "escalation_review_sop",
+      "kind": "standing_order",
+      "domain_id": "system",
+      "detail": {
+        "description": "Standard operating procedure for reviewing and resolving open escalation events."
+      }
+    },
+    "standing_order:system:enforce_contract_boundaries": {
+      "node_id": "standing_order:system:enforce_contract_boundaries",
+      "label": "enforce_contract_boundaries",
+      "kind": "standing_order",
+      "domain_id": "system",
+      "detail": {
+        "description": "Halt the response. Reframe output within active prompt contract bounds. Escalate if not achievable in one attempt."
+      }
+    },
+    "standing_order:system:retract_and_self_correct": {
+      "node_id": "standing_order:system:retract_and_self_correct",
+      "label": "retract_and_self_correct",
+      "kind": "standing_order",
+      "domain_id": "system",
+      "detail": {
+        "description": "Retract the offending output and issue a corrected response within the prompt contract. Escalate if self-correction fails."
+      }
+    },
+    "standing_order:system:strip_and_reformat_output": {
+      "node_id": "standing_order:system:strip_and_reformat_output",
+      "label": "strip_and_reformat_output",
+      "kind": "standing_order",
+      "domain_id": "system",
+      "detail": {
+        "description": "Remove raw JSON or chain-of-thought from the output; reissue in conformant conversational text."
+      }
+    }
+  },
+  "edges": [
+    {
+      "source": "glossary:education:variable",
+      "target": "glossary:education:expression",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:variable",
+      "target": "glossary:education:coefficient",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:variable",
+      "target": "glossary:education:constant",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:expression",
+      "target": "glossary:education:equation",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:expression",
+      "target": "glossary:education:variable",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:expression",
+      "target": "glossary:education:term",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:order of operations",
+      "target": "glossary:education:expression",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:order of operations",
+      "target": "glossary:education:inverse operation",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:inverse operation",
+      "target": "glossary:education:order of operations",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:inverse operation",
+      "target": "glossary:education:isolate",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:inverse operation",
+      "target": "glossary:education:equation",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:isolate",
+      "target": "glossary:education:inverse operation",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:isolate",
+      "target": "glossary:education:equation",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:isolate",
+      "target": "glossary:education:variable",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:inequality",
+      "target": "glossary:education:equation",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:inequality",
+      "target": "glossary:education:solution set",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:inequality",
+      "target": "glossary:education:number line",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:inequality direction flip",
+      "target": "glossary:education:inequality",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:inequality direction flip",
+      "target": "glossary:education:inverse operation",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:coefficient",
+      "target": "glossary:education:variable",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:coefficient",
+      "target": "glossary:education:constant",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:coefficient",
+      "target": "glossary:education:term",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:constant",
+      "target": "glossary:education:variable",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:constant",
+      "target": "glossary:education:coefficient",
+      "relation": "related_term"
+    },
+    {
+      "source": "glossary:education:constant",
+      "target": "glossary:education:expression",
+      "relation": "related_term"
+    },
+    {
+      "source": "invariant:education:equivalence_preserved",
+      "target": "standing_order:education:request_more_steps",
+      "relation": "governs"
+    },
+    {
+      "source": "invariant:education:no_illegal_operations",
+      "target": "standing_order:education:request_more_steps",
+      "relation": "governs"
+    },
+    {
+      "source": "invariant:education:solution_verifies",
+      "target": "standing_order:education:request_verification_retry",
+      "relation": "governs"
+    },
+    {
+      "source": "invariant:education:inequality_direction_preserved",
+      "target": "standing_order:education:request_inequality_direction_correction",
+      "relation": "governs"
+    },
+    {
+      "source": "invariant:education:reversibility_order_correct",
+      "target": "standing_order:education:hint_reverse_order_of_operations",
+      "relation": "governs"
+    },
+    {
+      "source": "invariant:education:standard_method_preferred",
+      "target": "standing_order:education:request_method_justification",
+      "relation": "governs"
+    },
+    {
+      "source": "invariant:education:show_work_minimum",
+      "target": "standing_order:education:request_more_steps",
+      "relation": "governs"
+    },
+    {
+      "source": "invariant:education:zpd_drift_minor",
+      "target": "standing_order:education:zpd_scaffold",
+      "relation": "governs"
+    },
+    {
+      "source": "invariant:education:zpd_drift_major",
+      "target": "standing_order:education:zpd_intervene_or_escalate",
+      "relation": "governs"
+    },
+    {
+      "source": "invariant:education:fluency_bottleneck",
+      "target": "standing_order:education:trigger_targeted_hint",
+      "relation": "governs"
+    },
+    {
+      "source": "invariant:agriculture:within_tolerance",
+      "target": "standing_order:agriculture:request_more_steps",
+      "relation": "governs"
+    },
+    {
+      "source": "invariant:agriculture:sensor_reading_valid",
+      "target": "standing_order:agriculture:request_sensor_recheck",
+      "relation": "governs"
+    },
+    {
+      "source": "invariant:agriculture:signal_within_operational_range",
+      "target": "standing_order:agriculture:alert_site_manager",
+      "relation": "governs"
+    },
+    {
+      "source": "invariant:agriculture:drift_minor",
+      "target": "standing_order:agriculture:request_more_steps",
+      "relation": "governs"
+    },
+    {
+      "source": "invariant:agriculture:drift_major",
+      "target": "standing_order:agriculture:alert_site_manager",
+      "relation": "governs"
+    },
+    {
+      "source": "invariant:system:no_autonomous_policy",
+      "target": "standing_order:system:enforce_contract_boundaries",
+      "relation": "governs"
+    },
+    {
+      "source": "invariant:system:no_internal_disclosure",
+      "target": "standing_order:system:retract_and_self_correct",
+      "relation": "governs"
+    },
+    {
+      "source": "invariant:system:prompt_contract_fidelity",
+      "target": "standing_order:system:retract_and_self_correct",
+      "relation": "governs"
+    },
+    {
+      "source": "invariant:system:no_direct_execution",
+      "target": "standing_order:system:enforce_contract_boundaries",
+      "relation": "governs"
+    },
+    {
+      "source": "invariant:system:no_unsolicited_json",
+      "target": "standing_order:system:strip_and_reformat_output",
+      "relation": "governs"
+    },
+    {
+      "source": "invariant:system:no_chain_of_thought_leakage",
+      "target": "standing_order:system:strip_and_reformat_output",
+      "relation": "governs"
+    }
+  ]
+}
