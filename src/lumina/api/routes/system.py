@@ -136,6 +136,20 @@ async def domain_info(
         raise HTTPException(status_code=400, detail=str(exc))
     runtime = _cfg.DOMAIN_REGISTRY.get_runtime_context(resolved)
     domain_physics_path = runtime["domain_physics_path"]
+
+    # ── Role-based module routing ──
+    if user is not None:
+        from lumina.api.config import _SYSTEM_ROLE_TO_DOMAIN_ROLE
+        _user_dr = user.get("domain_roles") or {}
+        _eff_role = _user_dr.get(resolved)
+        if not _eff_role:
+            _eff_role = _SYSTEM_ROLE_TO_DOMAIN_ROLE.get(user.get("role", ""))
+        _r2m = runtime.get("role_to_default_module") or {}
+        _mm = runtime.get("module_map") or {}
+        _role_mod = _r2m.get(_eff_role or "")
+        if _role_mod and _role_mod in _mm:
+            domain_physics_path = _mm[_role_mod]["domain_physics_path"]
+
     domain = _cfg.PERSISTENCE.load_domain_physics(str(domain_physics_path))
     manifest = runtime.get("ui_manifest") or {}
 

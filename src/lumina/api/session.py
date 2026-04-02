@@ -207,6 +207,15 @@ def _build_domain_context(
     _profile_domain_id = profile.get("domain_id") or profile.get("subject_domain_id")
     if _profile_domain_id and _profile_domain_id in _module_map:
         domain_physics_path = Path(_module_map[_profile_domain_id]["domain_physics_path"])
+    elif user is not None:
+        # Role-based module routing when profile has no explicit domain_id
+        _eff_role = _domain_role
+        if not _eff_role:
+            _eff_role = _cfg._SYSTEM_ROLE_TO_DOMAIN_ROLE.get(user.get("role", ""))
+        _r2m = runtime.get("role_to_default_module") or {}
+        _role_mod = _r2m.get(_eff_role or "")
+        if _role_mod and _role_mod in _module_map:
+            domain_physics_path = Path(_module_map[_role_mod]["domain_physics_path"])
 
     domain = _cfg.PERSISTENCE.load_domain_physics(str(domain_physics_path))
     ledger_path = _cfg.PERSISTENCE.get_log_ledger_path(session_id, domain_id=resolved_domain_id)
