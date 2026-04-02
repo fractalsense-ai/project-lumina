@@ -677,7 +677,7 @@ def _compute_schema_delta(original: dict[str, Any], modified: dict[str, Any]) ->
 _DOMAIN_ROLE_ALIASES: dict[str, str] = _FALLBACK_DOMAIN_ROLE_ALIASES
 
 
-def _normalize_slm_command(parsed_command: dict[str, Any]) -> dict[str, Any]:
+def _normalize_slm_command(parsed_command: dict[str, Any], original_instruction: str = "") -> dict[str, Any]:
     """Normalise SLM-produced command dicts so they match admin-command-schemas.
 
     The SLM is probabilistic --- it may return ``"Domain Authority"`` instead of
@@ -742,6 +742,32 @@ def _normalize_slm_command(parsed_command: dict[str, Any]) -> dict[str, Any]:
                     params[role_key] = "user"
                 else:
                     params[role_key] = "user"
+
+            # ── Infer intended_domain_role when SLM pre-mapped to system role ──
+            # If the SLM already mapped e.g. "student" → role="user" and set
+            # intended_domain_role to null, try to recover from the original
+            # instruction text stored in target or from known domain role aliases.
+            if not params.get("intended_domain_role"):
+                _search_text = f"{target or ''} {original_instruction}".lower()
+                _aliases = _get_domain_role_aliases()
+                for _alias in _aliases:
+                    if _alias in _search_text:
+                        params["intended_domain_role"] = _alias
+                        break
+
+            # ── Infer domain_id from target or instruction context ──
+            # If the SLM didn't set domain_id, check whether any registered
+            # domain ID appears in the target field.
+            if not params.get("domain_id") and _cfg.DOMAIN_REGISTRY is not None:
+                _search_text = f"{target or ''} {original_instruction}".lower()
+                try:
+                    for _dom in _cfg.DOMAIN_REGISTRY.list_domains():
+                        _did = _dom.get("domain_id", "")
+                        if _did and _did.lower() in _search_text:
+                            params["domain_id"] = _did
+                            break
+                except Exception:
+                    pass
 
             # ── Strip governed_modules for non-DA roles unconditionally ──
             # The SLM frequently hallucinates governed_modules for student/user
@@ -832,7 +858,7 @@ def _stage_command(
         raise ValueError(f"Unknown operation: {operation}")
 
     # Normalise SLM output before schema validation.
-    parsed_command = _normalize_slm_command(parsed_command)
+    parsed_command = _normalize_slm_command(parsed_command, original_instruction)
 
     cmd_approved, cmd_violations = validate_command(
         operation, parsed_command.get("params", {}), parsed_command.get("target", ""),
@@ -1719,7 +1745,7 @@ async def admin_command(
 
     # HITL-exempt operations execute immediately without staging.
     if operation in _get_hitl_exempt_ops():
-        parsed = _normalize_slm_command(parsed)
+        parsed = _normalize_slm_command(parsed, req.instruction)
         try:
             exec_result = await _execute_admin_operation(user_data, parsed, req.instruction)
         except HTTPException:
@@ -1872,7 +1898,7 @@ async def admin_command_resolve(
                 detail=f"Modified command schema validation failed: {'; '.join(mod_violations)}",
             )
         delta = _compute_schema_delta(parsed, req.modified_schema)
-        parsed = _normalize_slm_command(req.modified_schema)
+        parsed = _normalize_slm_command(req.modified_schema, original_instruction)
         commitment_type: str = "hitl_command_modified"
         metadata: dict[str, Any] = {
             "staged_id": staged_id,

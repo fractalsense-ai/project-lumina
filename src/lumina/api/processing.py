@@ -518,7 +518,7 @@ def process_message(
                     from lumina.api.routes.admin import _execute_admin_operation
                     import asyncio
 
-                    _normalized = _normalize_slm_command(cmd_dispatch)
+                    _normalized = _normalize_slm_command(cmd_dispatch, input_text)
                     _user_data = user or {"sub": _actor_id, "role": _actor_role}
                     # _execute_admin_operation is async; we are in a sync function.
                     _coro = _execute_admin_operation(

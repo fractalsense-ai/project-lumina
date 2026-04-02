@@ -74,7 +74,8 @@ When the operation is `invite_user`, use this exact structure:
   "params": {
     "username": "<person_name>",
     "role": "<system_role>",
-    "intended_domain_role": "<domain_role_if_any>"
+    "intended_domain_role": "<domain_role_if_any>",
+    "domain_id": "<domain_id_if_any>"
   }
 }
 ```
@@ -83,11 +84,33 @@ When the operation is `invite_user`, use this exact structure:
 - `role` is REQUIRED — always a SYSTEM role (see "Role mapping" below).
   If the user mentions any role not in the seven system roles, set `role`
   to "user" and preserve the original name in `intended_domain_role`.
+- `intended_domain_role` — MUST be set whenever the user mentions a
+  domain-specific role (any role not in the seven system roles).
+  This is the **original domain role name**, not a system role.
+  The system uses it to pre-assign the domain role when the user
+  activates their account. Use `list_domain_rbac_roles` to discover
+  valid domain role names for a given domain.
+  Example: user says "as a student" → `"intended_domain_role": "student"`.
+  If no domain-specific role is mentioned, omit or set to null.
+- `domain_id` — MUST be set whenever the user mentions a target domain
+  (e.g. "in the education domain", "for agriculture").
+  Use the plain registry key: `"education"`, `"agriculture"`, `"system"`.
+  The system uses it to auto-resolve `governed_modules` for the user.
+  If no domain is mentioned, omit or set to null.
 - `governed_modules` is ONLY needed when `role` is "domain_authority".
   For domain_authority, `governed_modules` may be null — this means
   access to ALL modules in the domain (DAs are domain-level admins).
   Do NOT include `governed_modules` for non-authority roles — they
   will be auto-assigned to the domain's default staging module.
+
+### invite_user examples
+
+| User instruction | Correct params |
+|---|---|
+| "create user Clanker4 as a student in the education domain" | `{"username": "Clanker4", "role": "user", "intended_domain_role": "student", "domain_id": "education"}` |
+| "invite Alice as a teacher in edu" | `{"username": "Alice", "role": "user", "intended_domain_role": "teacher", "domain_id": "education"}` |
+| "add a new user Bob" | `{"username": "Bob", "role": "user"}` |
+| "create a domain authority for agriculture" | `{"username": "...", "role": "domain_authority", "governed_modules": null, "domain_id": "agriculture"}` |
 
 ## governed_modules resolution
 
