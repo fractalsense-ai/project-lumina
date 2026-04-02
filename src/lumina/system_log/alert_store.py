@@ -37,11 +37,14 @@ class WarningStore:
         limit: int = 50,
         offset: int = 0,
         category_filter: str | None = None,
+        domain_id: str | None = None,
     ) -> list[dict[str, Any]]:
         with self._lock:
             items: Sequence[LogEvent] = list(self._buf)
         if category_filter:
             items = [e for e in items if e.category == category_filter]
+        if domain_id:
+            items = [e for e in items if e.domain_id == domain_id]
         # Most-recent first.
         items = list(reversed(items))
         page = items[offset : offset + limit]
@@ -67,9 +70,12 @@ class AlertStore:
         self,
         limit: int = 20,
         offset: int = 0,
+        domain_id: str | None = None,
     ) -> list[dict[str, Any]]:
         with self._lock:
             items = list(self._buf)
+        if domain_id:
+            items = [e for e in items if e.domain_id == domain_id]
         items = list(reversed(items))
         page = items[offset : offset + limit]
         return [e.to_dict() for e in page]

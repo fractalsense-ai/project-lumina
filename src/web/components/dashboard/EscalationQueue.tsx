@@ -23,7 +23,7 @@ function getApiBase(): string {
   return (import.meta as any).env?.VITE_LUMINA_API_BASE_URL ?? 'http://localhost:8000'
 }
 
-export function EscalationQueue({ auth }: { auth: AuthState }) {
+export function EscalationQueue({ auth, domainId }: { auth: AuthState; domainId?: string }) {
   const [escalations, setEscalations] = useState<Escalation[]>([])
   const [error, setError] = useState<string | null>(null)
   const [resolving, setResolving] = useState<string | null>(null)
@@ -36,7 +36,8 @@ export function EscalationQueue({ auth }: { auth: AuthState }) {
   const load = async () => {
     setError(null)
     try {
-      const res = await fetch(`${getApiBase()}/api/escalations?status=pending`, {
+      const domainParam = domainId ? `&domain_id=${encodeURIComponent(domainId)}` : ''
+      const res = await fetch(`${getApiBase()}/api/escalations?status=pending${domainParam}`, {
         headers: { Authorization: `Bearer ${auth.token}` },
       })
       if (res.ok) setEscalations(await res.json())

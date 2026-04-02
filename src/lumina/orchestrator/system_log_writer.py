@@ -118,6 +118,7 @@ class SystemLogWriter:
             category="hash_chain",
             message=f"{record.get('record_type', 'record')} appended",
             record=record,
+            domain_id=record.get("domain_pack_id"),
         ))
 
     # ── Record writers ────────────────────────────────────────
@@ -227,6 +228,7 @@ class SystemLogWriter:
             "prev_record_hash": self._prev_hash,
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
             "session_id": self.session_id,
+            "domain_pack_id": domain_physics.get("id", "") if domain_physics else "",
             "actor_id": self._profile.get(
                 "subject_id", self._profile.get("student_id", "unknown")
             ),

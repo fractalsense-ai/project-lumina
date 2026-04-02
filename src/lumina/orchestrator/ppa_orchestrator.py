@@ -374,6 +374,7 @@ class PPAOrchestrator:
                     "task_id": task_spec.get("task_id", ""),
                     "failed_ids": [r["id"] for r in failed_invariants],
                 },
+                domain_id=self.domain.get("id"),
             ))
 
         # Determine standing-order trigger label for the contract
@@ -432,6 +433,7 @@ class PPAOrchestrator:
                 "task_id": task_spec.get("task_id", ""),
                 "action": resolved_action,
             },
+            domain_id=self.domain.get("id"),
         ))
 
         return prompt_contract, resolved_action

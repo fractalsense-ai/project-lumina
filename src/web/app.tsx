@@ -528,6 +528,7 @@ function ChatInterface({
   unreadCount?: number
   onClearUnread?: () => void
   roleLayout?: RoleLayout
+  domainId?: string
 }) {
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState('')
@@ -772,6 +773,7 @@ function ChatInterface({
             roleLayout={roleLayout}
             auth={auth}
             onClose={() => setSidebarOpen(false)}
+            domainId={domainId}
           />
         )}
       </div>
@@ -795,6 +797,7 @@ function App() {
   })
   const [manifest, setManifest] = useState<UiManifest>(DEFAULT_MANIFEST)
   const [roleLayout, setRoleLayout] = useState<RoleLayout | undefined>(undefined)
+  const [domainId, setDomainId] = useState<string | undefined>(undefined)
   const [view, setView] = useState<'chat' | 'dashboard'>('chat')
   const showDashboard = auth !== null && (auth.role === 'root' || auth.role === 'domain_authority')
 
@@ -825,6 +828,7 @@ function App() {
       setManifest(info.ui_manifest)
       applyThemeOverrides(info.ui_manifest.theme)
       setRoleLayout(info.role_layout)
+      setDomainId(info.domain_id)
     })
   }, [auth?.token])
 
@@ -902,6 +906,7 @@ function App() {
           unreadCount={unreadCount}
           onClearUnread={clearUnread}
           roleLayout={roleLayout}
+          domainId={domainId}
         />
       </div>
     </>

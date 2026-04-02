@@ -51,6 +51,7 @@ class LogEvent:
     message: str
     data: dict[str, Any] = field(default_factory=dict)
     record: dict[str, Any] | None = None
+    domain_id: str | None = None
 
     # -- helpers --------------------------------------------------------
 
@@ -69,6 +70,7 @@ def create_event(
     *,
     data: dict[str, Any] | None = None,
     record: dict[str, Any] | None = None,
+    domain_id: str | None = None,
 ) -> LogEvent:
     """Factory that stamps the current UTC time and coerces *level*."""
     if isinstance(level, str):
@@ -81,4 +83,5 @@ def create_event(
         message=message,
         data=data or {},
         record=record,
+        domain_id=domain_id,
     )

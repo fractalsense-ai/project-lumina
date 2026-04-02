@@ -34,10 +34,12 @@ export function RoleSidebar({
   roleLayout,
   auth,
   onClose,
+  domainId,
 }: {
   roleLayout: RoleLayout
   auth: AuthState
   onClose: () => void
+  domainId?: string
 }) {
   const [expandedPanels, setExpandedPanels] = useState<Set<string>>(
     () => new Set(roleLayout.sidebar_panels.map((p) => p.id)),
@@ -96,6 +98,7 @@ export function RoleSidebar({
                     auth={auth}
                     panelId={panel.id}
                     endpoint={panel.endpoint}
+                    domainId={domainId}
                   />
                 </div>
               )}

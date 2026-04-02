@@ -25,17 +25,18 @@ export interface PanelComponentProps {
   auth: AuthState
   panelId: string
   endpoint?: string
+  domainId?: string
 }
 
 /**
- * Wrapper that adapts existing dashboard components (which accept only
- * `{ auth }`) to the PanelComponentProps interface.
+ * Wrapper that adapts existing dashboard components (which accept
+ * `{ auth, domainId? }`) to the PanelComponentProps interface.
  */
 function wrapLegacy(
-  Comp: ComponentType<{ auth: AuthState }>,
+  Comp: ComponentType<{ auth: AuthState; domainId?: string }>,
 ): ComponentType<PanelComponentProps> {
-  return function LegacyWrapper({ auth }: PanelComponentProps) {
-    return <Comp auth={auth} />
+  return function LegacyWrapper({ auth, domainId }: PanelComponentProps) {
+    return <Comp auth={auth} domainId={domainId} />
   }
 }
 
