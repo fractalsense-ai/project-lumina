@@ -284,6 +284,32 @@ async def _start_idle_cleanup() -> None:
 
         _vsr = _make_vsr()
         _vsr.load_all()
+
+        # Bootstrap: if any registered domain is missing a persisted vector
+        # store, build all indexes now.  This mirrors the KnowledgeIndex
+        # pattern above — runs once on first startup, subsequent starts
+        # find the persisted stores and skip.
+        _persisted_domains = set(_vsr.domain_ids())
+        _registered_domains = {d["domain_id"] for d in DOMAIN_REGISTRY.list_domains()}
+        _missing = _registered_domains - _persisted_domains
+        if _missing:
+            log.info(
+                "VectorStore bootstrap: %d domain(s) missing (%s) — rebuilding all indexes",
+                len(_missing), ", ".join(sorted(_missing)),
+            )
+            try:
+                from lumina.retrieval.housekeeper import rebuild_all_domain_indexes as _rebuild_all
+                _embedder = _DocEmbedder()
+                _rebuild_summary = _rebuild_all(_vsr, _embedder)
+                log.info(
+                    "VectorStore bootstrap complete: %d domains, %d total chunks in %.1fs",
+                    _rebuild_summary.get("domains_rebuilt", 0),
+                    _rebuild_summary.get("total_chunks", 0),
+                    _rebuild_summary.get("elapsed_seconds", 0),
+                )
+            except Exception:
+                log.warning("VectorStore bootstrap failed — RAG grounding may be degraded", exc_info=True)
+
         _set_vr(_vsr, _DocEmbedder())
         log.info("VectorStoreRegistry active: %d domain store(s) loaded", len(_vsr._stores))
     except Exception:

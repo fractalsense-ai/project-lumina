@@ -531,15 +531,35 @@ def slm_parse_admin_command(
                 text = text[start : end + 1]
         log.debug("slm_parse_admin_command extracted text: %r", text[:200])
         result = json.loads(text)
+        # Handle SLM returning a list instead of a dict (take first element)
+        if isinstance(result, list) and result:
+            result = result[0]
         if not isinstance(result, dict):
+            log.warning(
+                "SLM admin command returned non-dict type %s for input: %r",
+                type(result).__name__, natural_language[:80],
+            )
             return None
         if "operation" not in result:
+            log.warning(
+                "SLM admin command missing 'operation' key (keys=%s) for input: %r",
+                list(result.keys()), natural_language[:80],
+            )
             return None
         return {
             "operation": str(result["operation"]),
             "target": str(result.get("target", "")),
             "params": result.get("params") or {},
         }
+    except json.JSONDecodeError as exc:
+        log.warning(
+            "SLM admin command JSON decode failed for input: %r — %s (raw: %r)",
+            natural_language[:80], exc, text[:200] if "text" in dir() else "<no response>",
+        )
+        return None
     except Exception:
-        log.warning("SLM admin command parsing failed for input: %r", natural_language[:80])
+        log.warning(
+            "SLM admin command parsing failed for input: %r",
+            natural_language[:80], exc_info=True,
+        )
         return None

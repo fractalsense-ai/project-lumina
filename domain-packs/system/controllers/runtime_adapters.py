@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import Any, Callable
 
 log = logging.getLogger("lumina-system-adapter")
@@ -23,6 +24,122 @@ _QUERY_TYPE_ACTION_MAP: dict[str, str] = {
 _COMMAND_DISPATCH_TYPES: frozenset[str] = frozenset(
     {"admin_command", "config_review"}
 )
+
+# ── Deterministic fallback command parser ─────────────────────────────────
+# When the SLM fails to parse an admin command (timeout, bad JSON, etc.)
+# this regex-based fallback uses NLP pre-interpreter anchors to construct
+# a minimal command_dispatch dict.  It handles the most common mutation
+# and read operations so the HITL staging flow still works.
+
+_CREATE_VERBS = frozenset({"create", "add", "invite", "onboard"})
+_ASSIGN_VERBS = frozenset({"assign", "grant", "give"})
+_REVOKE_VERBS = frozenset({"remove", "revoke", "delete"})
+_READ_VERBS_SET = frozenset({"show", "list", "get", "check", "view", "what", "status", "display", "find"})
+
+_DOMAIN_MENTION = re.compile(
+    r"\b(?:in|to|for|from|of)\s+(?:the\s+)?(\w+)\s+domain\b", re.IGNORECASE,
+)
+
+
+def _deterministic_command_fallback(
+    input_text: str,
+    nlp_evidence: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Build a command_dispatch dict from deterministic NLP anchors.
+
+    Returns ``None`` when the input doesn't match any known pattern with
+    sufficient confidence.  This is intentionally conservative — it only
+    handles clear-cut cases and leaves ambiguous input for clarification.
+    """
+    if nlp_evidence is None:
+        return None
+
+    intent = nlp_evidence.get("intent_type", "unknown")
+    verb = nlp_evidence.get("_nlp_verb", "")
+    target_user = nlp_evidence.get("target_user")
+    target_role = nlp_evidence.get("target_role")
+    governed_domains = nlp_evidence.get("governed_domains")
+
+    # Extract verb from anchors if not directly available
+    if not verb:
+        for anchor in nlp_evidence.get("_nlp_anchors", []):
+            if anchor.get("field") == "intent_type" and "detail" in anchor:
+                detail = anchor["detail"]
+                if detail.startswith("verb: "):
+                    verb = detail[6:]
+                    break
+
+    # Extract domain mention from input text
+    domain_match = _DOMAIN_MENTION.search(input_text)
+    mentioned_domain = domain_match.group(1).lower() if domain_match else None
+
+    # ── Mutation intents ──────────────────────────────────────
+    if intent == "mutation":
+        # invite_user: "create/add/invite user <name>"
+        if verb in _CREATE_VERBS and target_user:
+            params: dict[str, Any] = {
+                "username": target_user,
+                "role": "user",  # safe default
+            }
+            if target_role == "domain_authority":
+                params["role"] = "domain_authority"
+                if governed_domains:
+                    params["governed_modules"] = None  # DA gets all modules in domain
+            elif target_role and target_role not in (
+                "root", "domain_authority", "it_support", "qa", "auditor", "user", "guest",
+            ):
+                # Domain-scoped role → system role is "user"
+                params["intended_domain_role"] = target_role
+            elif target_role:
+                params["role"] = target_role
+
+            log.info("Deterministic fallback: invite_user for %r (role=%s)", target_user, params["role"])
+            return {
+                "operation": "invite_user",
+                "target": target_user,
+                "params": params,
+            }
+
+        # assign_domain_role: "assign/grant <user> to <domain>"
+        if verb in _ASSIGN_VERBS and target_user and target_role:
+            params = {"user_id": target_user, "domain_role": target_role}
+            if mentioned_domain:
+                params["module_id"] = mentioned_domain
+            return {
+                "operation": "assign_domain_role",
+                "target": target_user,
+                "params": params,
+            }
+
+        # revoke_domain_role: "remove/revoke <user> from <domain>"
+        if verb in _REVOKE_VERBS and target_user:
+            params = {"user_id": target_user}
+            if mentioned_domain:
+                params["module_id"] = mentioned_domain
+            return {
+                "operation": "revoke_domain_role",
+                "target": target_user,
+                "params": params,
+            }
+
+    # ── Read intents ──────────────────────────────────────────
+    if intent == "read":
+        lower = input_text.lower()
+        if "user" in lower:
+            return {"operation": "list_users", "target": "", "params": {}}
+        if "domain" in lower and "module" not in lower:
+            return {"operation": "list_domains", "target": "", "params": {}}
+        if "module" in lower:
+            params = {}
+            if mentioned_domain:
+                params["domain_id"] = mentioned_domain
+            return {"operation": "list_modules", "target": "", "params": params}
+        if "command" in lower:
+            return {"operation": "list_commands", "target": "", "params": {}}
+        if "escalation" in lower:
+            return {"operation": "list_escalations", "target": "", "params": {}}
+
+    return None
 
 
 def build_system_state(
@@ -105,6 +222,7 @@ def interpret_turn_input(
     """
     # ── NLP pre-interpreter (deterministic anchors) ───────────────────────
     context_hint = ""
+    nlp_evidence: dict[str, Any] | None = None
     if nlp_pre_interpreter_fn is not None:
         try:
             nlp_evidence = nlp_pre_interpreter_fn(input_text, task_context)
@@ -167,6 +285,14 @@ def interpret_turn_input(
         except Exception:  # noqa: BLE001
             log.debug("command dispatch unavailable for input %r", input_text[:80])
             evidence["command_dispatch"] = None
+
+        # Deterministic fallback: when the SLM fails to parse, use NLP
+        # anchors to construct a minimal command_dispatch so the HITL
+        # staging flow can still proceed.
+        if evidence["command_dispatch"] is None and nlp_evidence is not None:
+            evidence["command_dispatch"] = _deterministic_command_fallback(
+                input_text, nlp_evidence,
+            )
     else:
         evidence["command_dispatch"] = None
 
@@ -213,9 +339,15 @@ def interpret_turn_input(
     _disclosure_fn = _tool_fns.get("verify_no_disclosure")
     if _disclosure_fn is not None:
         try:
+            # The classification prompt always requests JSON output, so
+            # admin_command / config_review query types legitimately produce
+            # JSON in the raw response.  Using command_dispatch here created
+            # a circular failure: SLM parse failure → no dispatch → json
+            # flagged as unsolicited → invariant override → command never
+            # staged.  Base the flag on query_type instead.
             _disclosure_result = _disclosure_fn({
                 "response_text": raw_response,
-                "user_requested_json": bool(evidence.get("command_dispatch")),
+                "user_requested_json": evidence.get("query_type") in _COMMAND_DISPATCH_TYPES,
             })
             evidence["internal_state_disclosed"] = _disclosure_result.get(
                 "internal_state_disclosed", False
