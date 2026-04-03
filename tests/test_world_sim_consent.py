@@ -243,7 +243,7 @@ class TestMUDDeterministic:
     def test_deterministic_with_mud_has_narrative(self, client: TestClient) -> None:
         """When MUD state is present on the orchestrator, deterministic mode
         should produce narrative-flavored output (guide_npc, zone, etc.)."""
-        token = _make_token("root")  # bypass consent
+        token = _make_token("qa")  # bypass consent; qa→student→learning adapters
         # Valid turn data that satisfies domain invariants.
         # Evidence field names must match the check expressions in
         # domain-physics.json, NOT the invariant IDs.  e.g. the
