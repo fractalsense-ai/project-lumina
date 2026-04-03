@@ -138,6 +138,7 @@ async def domain_info(
     domain_physics_path = runtime["domain_physics_path"]
 
     # ── Role-based module routing ──
+    _role_mod: str | None = None
     if user is not None:
         from lumina.api.config import _SYSTEM_ROLE_TO_DOMAIN_ROLE
         _user_dr = user.get("domain_roles") or {}
@@ -151,7 +152,14 @@ async def domain_info(
             domain_physics_path = _mm[_role_mod]["domain_physics_path"]
 
     domain = _cfg.PERSISTENCE.load_domain_physics(str(domain_physics_path))
-    manifest = runtime.get("ui_manifest") or {}
+    manifest = dict(runtime.get("ui_manifest") or {})
+
+    # ── Apply per-module UI overrides (e.g. subtitle per role) ──
+    _mm = runtime.get("module_map") or {}
+    if _role_mod and _role_mod in _mm:
+        _ui_ov = _mm[_role_mod].get("ui_overrides")
+        if isinstance(_ui_ov, dict):
+            manifest = {**manifest, **_ui_ov}
 
     # ── Resolve role-based layout for the authenticated user ──
     role_layout = _resolve_role_layout(manifest, user, domain)

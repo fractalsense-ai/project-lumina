@@ -204,9 +204,11 @@ def _build_domain_context(
 
     profile = _cfg.PERSISTENCE.load_subject_profile(str(subject_profile_path))
     _module_map = runtime.get("module_map") or {}
+    _resolved_module_key: str | None = None
     _profile_domain_id = profile.get("domain_id") or profile.get("subject_domain_id")
     if _profile_domain_id and _profile_domain_id in _module_map:
         domain_physics_path = Path(_module_map[_profile_domain_id]["domain_physics_path"])
+        _resolved_module_key = _profile_domain_id
     elif user is not None:
         # Role-based module routing when profile has no explicit domain_id
         _eff_role = _domain_role
@@ -216,13 +218,19 @@ def _build_domain_context(
         _role_mod = _r2m.get(_eff_role or "")
         if _role_mod and _role_mod in _module_map:
             domain_physics_path = Path(_module_map[_role_mod]["domain_physics_path"])
+            _resolved_module_key = _role_mod
 
     domain = _cfg.PERSISTENCE.load_domain_physics(str(domain_physics_path))
     ledger_path = _cfg.PERSISTENCE.get_log_ledger_path(session_id, domain_id=resolved_domain_id)
     ps = persisted_state or {}
 
-    state_builder = runtime["state_builder_fn"]
-    domain_step = runtime["domain_step_fn"]
+    # ── Per-module adapter overrides (governance modules) ─────
+    # If the resolved module has pre-compiled adapter overrides (e.g.
+    # governance_adapters.py), use those instead of the shared learning
+    # adapters.  This prevents governance roles from hitting ZPD/fluency.
+    _mod_entry = _module_map.get(_resolved_module_key or "") or {}
+    state_builder = _mod_entry.get("state_builder_fn") or runtime["state_builder_fn"]
+    domain_step = _mod_entry.get("domain_step_fn") or runtime["domain_step_fn"]
     domain_params = dict(runtime["domain_step_params"])
 
     _sb_sig = inspect.signature(state_builder)
@@ -256,6 +264,11 @@ def _build_domain_context(
     )
 
     default_task_spec = dict(runtime["default_task_spec"])
+    # Prefer module-specific task_spec from domain physics (e.g. governance modules
+    # define their own under subsystem_configs.governance.default_task_spec).
+    _gov_task = (domain.get("subsystem_configs") or {}).get("governance", {}).get("default_task_spec")
+    if isinstance(_gov_task, dict) and _gov_task.get("task_id"):
+        default_task_spec = dict(_gov_task)
     task_spec = dict(ps.get("task_spec") or default_task_spec)
     current_problem = dict(ps.get("current_problem") or _default_current_problem(task_spec, runtime))
     turn_count = int(ps.get("turn_count") or 0)

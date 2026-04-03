@@ -322,6 +322,20 @@ def load_runtime_context(repo_root: Path, runtime_config_path: str | None = None
     # Module routing map (optional) — used by session.py for profile→physics
     _module_map = runtime_cfg.get("module_map")
     if isinstance(_module_map, dict) and _module_map:
+        # Pre-compile per-module adapter overrides so session.py can swap
+        # state_builder_fn / domain_step_fn for governance modules.
+        for _mod_id, _mod_cfg in _module_map.items():
+            _mod_adapters = _mod_cfg.get("adapters")
+            if isinstance(_mod_adapters, dict):
+                for _ak in ("state_builder", "domain_step"):
+                    _acfg = _mod_adapters.get(_ak)
+                    if isinstance(_acfg, dict) and _acfg.get("module_path") and _acfg.get("callable"):
+                        try:
+                            _mod_cfg[f"{_ak}_fn"] = _load_callable(
+                                repo_root, _acfg["module_path"], _acfg["callable"],
+                            )
+                        except Exception as _e:
+                            log.warning("Failed to load module adapter %s.%s: %s", _mod_id, _ak, _e)
         ctx["module_map"] = _module_map
 
     # Role-to-default-module routing (optional)
