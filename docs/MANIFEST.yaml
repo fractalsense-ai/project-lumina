@@ -1,5 +1,5 @@
 schema_version: 1.0.0
-last_updated: 2026-04-27
+last_updated: 2026-05-05
 artifacts:
 - path: docs/1-commands/README.md
   type: doc
@@ -1684,3 +1684,22 @@ artifacts:
   status: active
   last_updated: 2026-07-17
   sha256: 78d1690395592e6480da406a6b7c3357ee8d348fb3fcc0decaa717687c91e1d5
+- path: docs/7-concepts/framework-boundary.md
+  type: doc
+  section: 7
+  doc_version: 1.0.0
+  status: active
+  last_updated: 2026-05-05
+  sha256: a55afbf98a92ae56dfd4408bb6ff868789eba682c059121c7046a894aeeab3c4
+- path: docs/roadmap/README.md
+  type: doc
+  doc_version: 1.0.0
+  status: active
+  last_updated: 2026-05-05
+  sha256: 4cd69a22f3f7b5811093d1e71149362ed0196a58043d567b716734a01f6f7c57
+- path: docs/roadmap/slices/01-framework-boundary.md
+  type: doc
+  doc_version: 1.0.0
+  status: active
+  last_updated: 2026-05-05
+  sha256: 0847b2cb5965be5d2bed4058b9155d2e7993ccc7efb3d412ec3a7a9e34a5f287

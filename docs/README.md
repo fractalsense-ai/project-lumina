@@ -28,6 +28,7 @@ for the engine/model-pack/module vocabulary.
 | [6](6-examples/) | Examples | Worked examples, traces, and tutorials |
 | [7](7-concepts/) | Concepts | Architecture, principles, and design frameworks |
 | [8](8-admin/) | Administration | Governance, audit, RBAC, and operational policy |
+| [Roadmap](roadmap/) | Roadmap | PR-per-slice implementation roadmap and slice planning documents |
 
 ---
 

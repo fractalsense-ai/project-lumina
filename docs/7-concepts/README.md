@@ -17,6 +17,7 @@ Architectural principles, design frameworks, and system philosophy.
 |---------|-------------|
 | [principles-v1](../../specs/principles-v1.md) | Non-negotiable system principles |
 | [principles](principles.md) | Principles overview (local reference) |
+| [framework-boundary](framework-boundary.md) | Base framework boundary contract: the three base packs, single-ingress invariant, governance posture, and distinction between framework infrastructure and provisional domain packs |
 | [lumina-framework-ontology](lumina-framework-ontology.md) | Engine/model-pack/module ontology for the Lumina Neuro-Symbolic Systems Framework |
 | [dsa-framework-v1](../../specs/dsa-framework-v1.md) | D.S.A. structural schema (Domain, State, Actor) — the contract model behind PPA |
 | [dsa-framework](dsa-framework.md) | D.S.A. framework overview (local reference) |
