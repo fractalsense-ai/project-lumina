@@ -1703,3 +1703,8 @@ artifacts:
   status: active
   last_updated: 2026-05-05
   sha256: 0847b2cb5965be5d2bed4058b9155d2e7993ccc7efb3d412ec3a7a9e34a5f287
+- path: docs/roadmap/slices/02-system-update-vocabulary.md
+  type: doc
+  doc_version: 1.0.0
+  status: active
+  last_updated: 2026-05-06

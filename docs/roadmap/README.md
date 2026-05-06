@@ -27,6 +27,7 @@ under `docs/roadmap/slices/` and delivered as a focused PR.
 | Slice | Title | Status |
 |-------|-------|--------|
 | [01](slices/01-framework-boundary.md) | Framework Boundary and Final Shape Documentation | Active |
+| [02](slices/02-system-update-vocabulary.md) | System Update Vocabulary | Active |
 
 ---
 
