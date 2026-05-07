@@ -28,6 +28,7 @@ under `docs/roadmap/slices/` and delivered as a focused PR.
 |-------|-------|--------|
 | [01](slices/01-framework-boundary.md) | Framework Boundary and Final Shape Documentation | Active |
 | [02](slices/02-system-update-vocabulary.md) | System Update Vocabulary | Active |
+| [03](slices/03-request-intake-and-classification.md) | Request Intake and Classification | Active |
 
 ---
 

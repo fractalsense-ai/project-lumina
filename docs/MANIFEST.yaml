@@ -1708,3 +1708,9 @@ artifacts:
   doc_version: 1.0.0
   status: active
   last_updated: 2026-05-06
+- path: docs/roadmap/slices/03-request-intake-and-classification.md
+  type: doc
+  doc_version: 1.0.0
+  status: active
+  last_updated: 2026-05-07
+  sha256: 5ce678ff95bd77b136161cf34153d692b64727f334c3a71b828aa4b4427bff56
